@@ -23,15 +23,16 @@ void hd::type::DeadParser::processFile() {
     std::thread(&DeadParser::consumer_job, this).detach();
   }
   timer->start();
-  pcap_loop(mHandle, opt.num_packets, deadHandler, reinterpret_cast<byte_t*>(this));
+  pcap_loop(mHandle, opt.num_packets, deadHandler, reinterpret_cast<byte_t *>(this));
   timer->stop1();
 }
 
-void hd::type::DeadParser::deadHandler(byte_t* user_data, const pcap_pkthdr* pkthdr, const byte_t* packet) {
-  auto const _this{reinterpret_cast<DeadParser*>(user_data)};
+void hd::type::DeadParser::deadHandler(byte_t *user_data, const pcap_pkthdr *pkthdr, const byte_t *packet) {
+  auto const _this{reinterpret_cast<DeadParser *>(user_data)};
+  constexpr int hdr_size{TCP_PADSIZE + UDP_PADSIZE + IP4_PADSIZE};
   std::unique_lock _accessToQueue(_this->mQueueLock);
   _this->mPacketQueue.push(
-    {pkthdr, packet, util::min<int>(global::opt.payload + 128, static_cast<int>(pkthdr->caplen))});
+    {pkthdr, packet, util::min<int>(global::opt.payload + hdr_size, static_cast<int>(pkthdr->caplen))});
   _accessToQueue.unlock();
   _this->cv_consumer.notify_all();
   ++global::num_captured_packet;
