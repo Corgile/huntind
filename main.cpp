@@ -2,27 +2,25 @@
 #include <hound/common/util.hpp>
 #include <hound/common/global.hpp>
 
-#include <hound/parser/live_parser.hpp>
+#include <hound/parser/dead_parser.hpp>
 
 namespace hd::global {
 type::capture_option opt;
 std::string fillBit;
-#if defined(BENCHMARK)
 std::atomic<int32_t> packet_index = 0;
 std::atomic<int32_t> num_captured_packet = 0;
 std::atomic<int32_t> num_dropped_packets = 0;
 std::atomic<int32_t> num_consumed_packet = 0;
 std::atomic<int32_t> num_written_csv = 0;
-#endif
 }
 
 int main(const int argc, char* argv[]) {
   using namespace hd::global;
   using namespace hd::type;
   hd::util::ParseOptions(opt, argc, argv);
-  if (opt.stride == 1) opt.fill_bit = 0;
+  if (opt.unsign or opt.stride == 1) opt.fill_bit = 0;
   fillBit = std::to_string(opt.fill_bit).append(opt.separator);
-  static std::unique_ptr<LiveParser> _live_parser{nullptr};
+  static std::unique_ptr<DeadParser> deadParser{nullptr};
   static int ctrlc = 0, max__ = 5;
   auto handler = [](int const signal) -> void {
     if (signal == SIGINT) {
@@ -45,7 +43,7 @@ int main(const int argc, char* argv[]) {
   std::signal(SIGINT, handler);
   std::signal(SIGTERM, handler);
   std::signal(SIGKILL, handler);
-  _live_parser = std::make_unique<LiveParser>();
-  _live_parser->startCapture();
+  deadParser = std::make_unique<DeadParser>();
+  deadParser->processFile();
   return 0;
 }

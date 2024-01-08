@@ -63,10 +63,10 @@ static option longopts[] = {
 {"verbose", no_argument, nullptr, 'V'},
 {nullptr, 0, nullptr, 0}
 };
-static char const *shortopts = "J:P:W:F:f:N:E:K:D:S:L:R:p:CTVhIm:";
+static char const* shortopts = "J:P:W:F:f:N:S:L:R:p:CTVhIm:";
 #pragma endregion ShortAndLongOptions //@formatter:on
 
-static void SetFilter(pcap_t *handle) {
+static void SetFilter(pcap_t* handle) {
   if (opt.filter.empty() or handle == nullptr) { return; }
   constexpr bpf_u_int32 net{0};
   bpf_program fp{};
@@ -81,10 +81,10 @@ static void SetFilter(pcap_t *handle) {
   }
 }
 
-static pcap_t *OpenLiveHandle(capture_option &option) {
+static pcap_t* OpenLiveHandle(capture_option& option) {
   /* getFlowId device */
   if (option.device.empty()) {
-    pcap_if_t *l;
+    pcap_if_t* l;
     int32_t const rv{pcap_findalldevs(&l, ByteBuffer)};
     if (rv == -1) {
       hd_line("找不到默认网卡设备", ByteBuffer);
@@ -108,8 +108,8 @@ static pcap_t *OpenLiveHandle(capture_option &option) {
   return handle;
 }
 
-static pcap_t *OpenDeadHandle(const capture_option &option, uint32_t &link_type) {
-  using offline = pcap_t* (*)(const char *, char *);
+static pcap_t* OpenDeadHandle(const capture_option& option, uint32_t& link_type) {
+  using offline = pcap_t* (*)(const char*, char*);
   offline const open_offline{pcap_open_offline};
   if (not fs::exists(option.pcap_file)) {
     hd_line("无法打开文件 ", option.pcap_file);
@@ -122,16 +122,12 @@ static pcap_t *OpenDeadHandle(const capture_option &option, uint32_t &link_type)
 }
 
 static void Doc() {
-  std::cout << "\t用法: \n";
+  std::cout << "\t选项: " << shortopts << '\n';
   std::cout
     << "\t-J, --workers=1               处理流量包的线程数 (默认 1)\n"
     << "\t-F, --filter=\"filter\"         pcap filter (https://linux.die.net/man/7/pcap-filter)\n"
     << "                              " RED("\t非常重要,必须设置并排除镜像流量服务器和kafka集群之间的流量,比如 \"not port 9092\"\n")
     << "\t-f, --fill=0                  空字节填充值 (默认 0)\n"
-    << "\t-D, --duration=-1             D秒后结束抓包  (默认 -1, non-stop)\n"
-    << "\t-N, --num=-1                  指定抓包的数量 (默认 -1, non-stop)\n"
-    << "\t-E, --timeout=20              flow超时时间(新到达的packet距离上一个packet的时间) (默认 20)\n"
-    << "\t-K, --kafka-conf              kafka 配置文件路径\n"
     << "\t-L, --min-packets=10          合并成流/json的时候，指定流的最 小 packet数量 (默认 10)\n"
     << "\t-R, --max-packets=100         合并成流/json的时候，指定流的最 大 packet数量 (默认 100)\n"
     << "\t-P, --pcap-file=/path/pcap    pcap文件路径, 处理离线 pcap,pcapng 文件\n"
@@ -147,14 +143,12 @@ static void Doc() {
     << std::endl;
 }
 
-static void ParseOptions(capture_option &arguments, int argc, char *argv[]) {
+static void ParseOptions(capture_option& arguments, int argc, char* argv[]) {
   int longind = 0, option, j;
   opterr = 0;
   while ((option = getopt_long(argc, argv, shortopts, longopts, &longind)) not_eq -1) {
     switch (option) {
     case 'd': arguments.device = optarg;
-      break;
-    case 'D': arguments.duration = std::stoi(optarg);
       break;
     case 'C': arguments.include_pktlen = true;
       break;
@@ -163,12 +157,6 @@ static void ParseOptions(capture_option &arguments, int argc, char *argv[]) {
     case 'f': arguments.fill_bit = std::stoi(optarg);
       break;
     case 'N': arguments.num_packets = std::stoi(optarg);
-      break;
-    case 'K': arguments.kafka_config = optarg;
-      if (arguments.kafka_config.empty()) {
-        hd_line("-k, --kafka-config 缺少值");
-        exit(EXIT_FAILURE);
-      }
       break;
     case 'p': arguments.payload = std::stoi(optarg);
       break;
@@ -181,6 +169,8 @@ static void ParseOptions(capture_option &arguments, int argc, char *argv[]) {
     case 'T': arguments.include_ts = true;
       break;
     case 'V': arguments.verbose = true;
+      break;
+    case 'U': arguments.unsign = true;
       break;
     case 'm': arguments.separator = optarg;
       std::sprintf(arguments.format, "%s%s", "%ld", optarg);

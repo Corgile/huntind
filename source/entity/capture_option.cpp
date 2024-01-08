@@ -14,7 +14,8 @@ void hd::type::capture_option::print() const {
   if (num_packets > 0)  hd_line(CYAN(",读取包个数: "), num_packets);
   hd_line(CYAN("填充值: "), fill_bit);
   hd_info(CYAN("将每 "), stride, CYAN(" 位一组按"));
-  hd_line(YELLOW("无符号") CYAN("类型转换为10进制"));
+  if (unsign)           hd_line(YELLOW("无符号") CYAN("类型转换为10进制"));
+  else                  hd_line(YELLOW("有符号") CYAN("类型转换为10进制"));
   hd_line(CYAN("包处理线程: "), workers);
   hd_line(CYAN("filter: "), filter);
   //@formatter:on

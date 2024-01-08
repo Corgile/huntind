@@ -2,8 +2,3 @@
 include(ansi-color)
 include(json)
 include(dbg-macro)
-if (INCLUDE_KAFKA)
-#    include(kafka)
-    include(kafka-cpp-api)
-endif ()
-

@@ -51,9 +51,9 @@ protected:
 
   static void fillRawBitVec(ParsedData const& data, std::string& buffer) {
     using namespace global;
-    core::util::fill<IP4_PADSIZE>(true, data.mIP4Head, buffer);
-    core::util::fill<TCP_PADSIZE>(true, data.mTcpHead, buffer);
-    core::util::fill<UDP_PADSIZE>(true, data.mUdpHead, buffer);
+    core::util::fill<IP4_PADSIZE>(opt.include_ip4, data.mIP4Head, buffer);
+    core::util::fill<TCP_PADSIZE>(opt.include_tcp, data.mTcpHead, buffer);
+    core::util::fill<UDP_PADSIZE>(opt.include_udp, data.mUdpHead, buffer);
     core::util::fill(opt.payload > 0, data.mPayload, buffer);
     buffer.pop_back();
   }

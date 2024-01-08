@@ -7,7 +7,6 @@
 
 #include <pcap/pcap.h>
 #include <cstring>
-#include <hound/common/macro.hpp>
 
 namespace hd::type {
 

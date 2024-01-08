@@ -46,19 +46,25 @@ hd::macro::printL(__VA_ARGS__); \
 } while (false)
 #endif//-hd_info
 
+
+/// 仅在开发阶段作为调试使用
+#if defined(HD_DEV)
+#ifndef hd_debug
+#define hd_debug(...)  dbg(__VA_ARGS__)
+#endif
+
+#ifndef hd_line
+#define hd_line(...)   dbg(__VA_ARGS__)
+#endif//-hd_line
+
+#else//- not HD_DEV
+#define hd_debug(...)
+
 #ifndef hd_line
 #define hd_line(...)       			      \
 do {                     				      \
 hd::macro::printL(__VA_ARGS__, "\n"); \
 } while (false)
-#endif//-hd_line
-
-/// 仅在开发阶段作为调试使用
-#ifndef hd_debug
-#if defined(HD_DEV)
-#define hd_debug(...)  dbg(__VA_ARGS__)
-#else//- not HD_DEV
-#define hd_debug(...)
 #endif
 #endif//- hd_debug
 
