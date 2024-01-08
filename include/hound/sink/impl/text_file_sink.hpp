@@ -43,7 +43,9 @@ public:
     std::string buffer;
     this->fillCsvBuffer(data, buffer);
     this->mOutFile << std::move(buffer);
+#if defined(BENCHMARK)
     ++global::num_written_csv;
+#endif
   }
 };
 } // entity

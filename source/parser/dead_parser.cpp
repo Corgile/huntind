@@ -35,7 +35,9 @@ void hd::type::DeadParser::deadHandler(byte_t *user_data, const pcap_pkthdr *pkt
     {pkthdr, packet, util::min<int>(global::opt.payload + hdr_size, static_cast<int>(pkthdr->caplen))});
   _accessToQueue.unlock();
   _this->cv_consumer.notify_all();
+#if defined(BENCHMARK)
   ++global::num_captured_packet;
+#endif
 }
 
 void hd::type::DeadParser::consumer_job() {
@@ -55,7 +57,9 @@ void hd::type::DeadParser::consumer_job() {
       cv_producer.notify_one();
     }
     mSink->consumeData({packetInfo});
+#if defined(BENCHMARK)
     ++global::num_consumed_packet;
+#endif
   }
 }
 
@@ -69,16 +73,20 @@ hd::type::DeadParser::~DeadParser() {
   cv_consumer.notify_all();
   using namespace global;
   timer->stop2();
+#if defined(BENCHMARK)
   hd_line(CYAN("num_captured_packet = "), num_captured_packet.load());
   hd_line(CYAN("num_dropped_packets = "), num_dropped_packets.load());
   hd_line(CYAN("num_consumed_packet = "), num_consumed_packet.load());
   hd_line(CYAN("num_written_csv = "), num_written_csv.load());
+#endif
   hd_debug(this->mPacketQueue.size());
   std::cout << "File Name: " << opt.pcap_file
+#if defined(BENCHMARK)
     << ", Packet Count: " << num_consumed_packet.load()
     << ", Time Consumption1: " << _timeConsumption_ms_s1 << " ms"
     << ", Time Consumption2: " << _timeConsumption_ms_s2 << " ms"
+#endif
     << std::endl;
-  /// 不要强制exit(0), 因为还有worker在死等。
+/// 不要强制exit(0), 因为还有worker在死等。
   // exit(EXIT_SUCCESS);
 }

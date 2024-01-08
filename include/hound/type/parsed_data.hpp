@@ -59,7 +59,9 @@ public:
 private:
   [[nodiscard("do not discard")]]
   bool processRawBytes(std::shared_ptr<byte_t> const& _byteArr) {
+#if defined(BENCHMARK)
     ++global::packet_index;
+#endif
     u_char* pointer = _byteArr.get();
     auto eth{reinterpret_cast<ether_header*>(pointer)};
     if (ntohs(eth->ether_type) == ETHERTYPE_VLAN) {
@@ -68,7 +70,9 @@ private:
     }
     auto const _ether_type = ntohs(eth->ether_type);
     if (_ether_type not_eq ETHERTYPE_IPV4) {
+#if defined(BENCHMARK)
       --global::num_consumed_packet;
+#endif
       if (_ether_type == ETHERTYPE_IPV6) {
         hd_debug("ETHERTYPE_IPV6");
       } else
@@ -86,7 +90,9 @@ private:
     if (_ipProtocol not_eq static_cast<uint8_t>(IPPROTO_UDP)
       and _ipProtocol not_eq static_cast<uint8_t>(IPPROTO_TCP)) {
       hd_debug(global::packet_index);
+#if defined(BENCHMARK)
       --global::num_consumed_packet;
+#endif
       return false;
     }
     this->mIpPair = std::minmax(_ipv4->ip_src.s_addr, _ipv4->ip_dst.s_addr);
