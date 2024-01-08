@@ -12,6 +12,7 @@ MESSAGE(STATUS "${BoldGreen}Binary Target:  ${TARGET}${ColorReset}")
 #@formatter:off
 # all public header for all source files
 INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/include)
+INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/include/yalanting)
 AUX_SOURCE_DIRECTORY(source               SOURCE_FILES)
 AUX_SOURCE_DIRECTORY(source/parser        SOURCE_FILES)
 AUX_SOURCE_DIRECTORY(source/entity        SOURCE_FILES)
