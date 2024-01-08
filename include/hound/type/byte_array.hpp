@@ -6,7 +6,6 @@
 #define HOUND_BYTE_ARRAY_HPP
 
 #include <cstdint>
-#include <string>
 
 namespace hd::type {
 using byte_t = uint8_t;

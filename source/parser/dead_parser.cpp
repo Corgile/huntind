@@ -5,6 +5,7 @@
 #include <hound/common/macro.hpp>
 #include <hound/parser/dead_parser.hpp>
 #include <hound/sink/impl/text_file_sink.hpp>
+#include <hound/sink/impl/json_file_sink.hpp>
 
 
 hd::type::DeadParser::DeadParser() {
@@ -14,7 +15,11 @@ hd::type::DeadParser::DeadParser() {
     mSink.reset(new BaseSink(global::opt.output_file));
     return;
   }
-  mSink.reset(new TextFileSink(global::opt.output_file));
+  if (global::opt.output_file.ends_with(".json")) {
+    mSink.reset(new JsonFileSink(global::opt.output_file));
+  } else {
+    mSink.reset(new TextFileSink(global::opt.output_file));
+  }
 }
 
 void hd::type::DeadParser::processFile() {
