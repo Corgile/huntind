@@ -21,7 +21,6 @@ struct capture_option final {
   int32_t num_packets{-1};
   int32_t packetTimeout{20};
   bool verbose{false};
-  bool unsign{false};
   bool include_ts{false};
   bool include_pktlen{false};
   bool include_5tpl{false};
