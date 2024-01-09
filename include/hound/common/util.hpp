@@ -171,7 +171,7 @@ static void ParseOptions(capture_option& arguments, int argc, char* argv[]) {
     case 'V': arguments.verbose = true;
       break;
     case 'm': arguments.separator = optarg;
-      std::sprintf(arguments.format, "%s%s", "%ld", optarg);
+      std::sprintf(arguments.format, "%s%s", "%u", optarg);
       break;
     case 'I': arguments.include_5tpl = true;
       break;
