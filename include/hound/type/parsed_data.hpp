@@ -45,7 +45,7 @@ public:
 private:
   [[nodiscard("do not discard")]]
   bool processRawBytes(std::shared_ptr<byte_t> const& _byteArr) {
-    u_char const* pointer = _byteArr.get();
+    byte_t const*&& pointer = _byteArr.get();
     auto eth{reinterpret_cast<ether_header const*>(pointer)};
     if (ntohs(eth->ether_type) == ETHERTYPE_VLAN) {
       pointer += static_cast<int>(sizeof(vlan_header));

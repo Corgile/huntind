@@ -34,7 +34,7 @@ void hd::type::DeadParser::consumer_job() {
   /// 采用标志变量keepRunning来控制detach的线程
   while (keepRunning) {
     std::unique_lock lock(this->mQueueLock);
-    this->cv_consumer.wait(lock, [this]-> bool {
+    this->cv_consumer.wait(lock, [this] {
       return not this->mPacketQueue.empty() or not keepRunning;
     });
     if (not keepRunning) break;
