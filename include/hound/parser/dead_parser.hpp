@@ -9,7 +9,6 @@
 #include <condition_variable>
 #include <hound/type/raw_packet_info.hpp>
 #include <hound/sink/base_sink.hpp>
-#include <hound/type/timer.hpp>
 
 namespace hd::type {
 class DeadParser final {
@@ -35,9 +34,9 @@ private:
   std::condition_variable cv_producer; // 生产者条件变量
   std::condition_variable cv_consumer; // 消费者条件变量
   mutable std::mutex mQueueLock;
+  mutable std::mutex cvMtx;
   double _timeConsumption_ms_s1 = 0.;
   double _timeConsumption_ms_s2 = 0.;
-  std::unique_ptr<Timer> timer;
 };
 }
 

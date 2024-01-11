@@ -8,41 +8,33 @@
 
 
 hd::type::DeadParser::DeadParser() {
-  this->timer = std::make_unique<Timer>(_timeConsumption_ms_s1, _timeConsumption_ms_s2);
   this->mHandle = util::OpenDeadHandle(global::opt, this->mLinkType);
-  if (global::opt.output_file.empty()) {
-    mSink.reset(new BaseSink(global::opt.output_file));
-    return;
-  }
-  mSink.reset(new TextFileSink(global::opt.output_file));
+  mSink.reset(new TextFileSink(global::opt.out));
 }
 
 void hd::type::DeadParser::processFile() {
   using namespace hd::global;
-  for (int i = 0; i < opt.workers; ++i) {
+  for (int i = 0; i < opt.worker; ++i) {
     std::thread(&DeadParser::consumer_job, this).detach();
   }
-  timer->start();
-  pcap_loop(mHandle, opt.num_packets, deadHandler, reinterpret_cast<byte_t*>(this));
-  timer->stop1();
+  pcap_loop(mHandle, opt.num, deadHandler, reinterpret_cast<byte_t*>(this));
 }
 
 void hd::type::DeadParser::deadHandler(byte_t* user_data, const pcap_pkthdr* pkthdr, const byte_t* packet) {
   using namespace hd::global;
   auto const _this{reinterpret_cast<DeadParser*>(user_data)};
-  constexpr int headers{IP4_PADSIZE + TCP_PADSIZE + UDP_PADSIZE};
-  std::unique_lock _accessToQueue(_this->mQueueLock);
-  _this->mPacketQueue.emplace(pkthdr, packet,util::min<int>(headers + opt.payload, pkthdr->caplen));
-  _accessToQueue.unlock();
+  {
+    std::scoped_lock queue_access(_this->mQueueLock);
+    _this->mPacketQueue.emplace(pkthdr, packet);
+  }
   _this->cv_consumer.notify_all();
-  ++global::num_captured_packet;
 }
 
 void hd::type::DeadParser::consumer_job() {
   /// 采用标志变量keepRunning来控制detach的线程
   while (keepRunning) {
     std::unique_lock lock(this->mQueueLock);
-    this->cv_consumer.wait(lock, [this] {
+    this->cv_consumer.wait(lock, [this]-> bool {
       return not this->mPacketQueue.empty() or not keepRunning;
     });
     if (not keepRunning) break;
@@ -51,11 +43,10 @@ void hd::type::DeadParser::consumer_job() {
     this->mPacketQueue.pop();
     lock.unlock();
     {
-      std::scoped_lock ___a(mProdLock);
+      std::scoped_lock mtCvMtx(mProdLock);
       cv_producer.notify_one();
     }
     mSink->consumeData({packetInfo});
-    ++global::num_consumed_packet;
   }
 }
 
@@ -67,18 +58,6 @@ hd::type::DeadParser::~DeadParser() {
   /// 再控制游离线程停止访问主线程的资源
   keepRunning.store(false);
   cv_consumer.notify_all();
-  using namespace global;
-  timer->stop2();
-  hd_line(CYAN("num_captured_packet = "), num_captured_packet.load());
-  hd_line(CYAN("num_dropped_packets = "), num_dropped_packets.load());
-  hd_line(CYAN("num_consumed_packet = "), num_consumed_packet.load());
-  hd_line(CYAN("num_written_csv = "), num_written_csv.load());
-  hd_debug(this->mPacketQueue.size());
-  std::cout << "File Name: " << opt.pcap_file
-    << ", Packet Count: " << num_consumed_packet.load()
-    << ", Time Consumption1: " << _timeConsumption_ms_s1 << " ms"
-    << ", Time Consumption2: " << _timeConsumption_ms_s2 << " ms"
-    << std::endl;
   /// 不要强制exit(0), 因为还有worker在死等。
   // exit(EXIT_SUCCESS);
 }

@@ -12,3 +12,5 @@ vendor/librdkafka
 vendor/modern-cpp-kafka
 vendor/nlohmann-json
 vendor/yalanting
+generated
+*.py

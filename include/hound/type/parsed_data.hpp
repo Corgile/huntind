@@ -12,11 +12,8 @@
 #include <netinet/udp.h>
 
 #include <hound/common/global.hpp>
-#include <hound/type/my_value_pair.hpp>
-#include <hound/type/byte_array.hpp>
 #include <hound/type/raw_packet_info.hpp>
 #include <hound/type/vlan_header.hpp>
-#include <hound/type/pcap_header.hpp>
 
 #define ETHERTYPE_IPV4 ETHERTYPE_IP
 
@@ -24,15 +21,10 @@ namespace hd::type {
 struct ParsedData final {
   /// \<源_宿> 五元组
   std::string m5Tuple;
-  /// 用作map key的排序五元组
-  std::string mFlowKey;
 
-  MyValuePair<in_addr_t> mIpPair;
-  MyValuePair<std::string> mPortPair;
-
-  std::string mTimestamp, mCapLen;
-  ByteArray mIP4Head, mTcpHead, mUdpHead, mPayload;
-  PcapHeader mPcapHead;
+  std::int32_t version{4};
+  std::uint32_t sPort{0}, dPort{0}, uSec{0}, Sec{0}, capLen{0}, pktCode{0};
+  in_addr_t sIP{}, dIP{};
 
 public:
   bool HasContent{true};
@@ -40,99 +32,66 @@ public:
   ParsedData() = delete;
 
   ~ParsedData() = default;
-
+  // version,sip,dip,sport,dport,relativeTime_us,packetCode,packetLen
+  // 4,50338693,2719456594,34422,6006,886,33,1400
+  // 3232237692
   ParsedData(raw_packet_info const& data) {
-    this->mPcapHead = {
-    data.info_hdr.ts.tv_sec,
-    data.info_hdr.ts.tv_usec,
-    data.info_hdr.caplen
-    };
-    this->mCapLen.assign(std::to_string(mPcapHead.caplen));
-    this->mTimestamp.assign(
-      std::to_string(mPcapHead.ts_sec)
-      .append(global::opt.separator)
-      .append(std::to_string(mPcapHead.ts_usec))
-    );
+    uSec = data.info_hdr.ts.tv_usec;
+    Sec = data.info_hdr.ts.tv_sec;
+    capLen = data.info_hdr.caplen;
     this->HasContent = processRawBytes(data.byte_arr);
   }
 
 private:
   [[nodiscard("do not discard")]]
   bool processRawBytes(std::shared_ptr<byte_t> const& _byteArr) {
-    ++global::packet_index;
-    u_char* pointer = _byteArr.get();
-    auto eth{reinterpret_cast<ether_header*>(pointer)};
+    u_char const* pointer = _byteArr.get();
+    auto eth{reinterpret_cast<ether_header const*>(pointer)};
     if (ntohs(eth->ether_type) == ETHERTYPE_VLAN) {
       pointer += static_cast<int>(sizeof(vlan_header));
-      eth = reinterpret_cast<ether_header*>(pointer);
+      eth = reinterpret_cast<ether_header const*>(pointer);
     }
-    auto const _ether_type = ntohs(eth->ether_type);
-    if (_ether_type not_eq ETHERTYPE_IPV4) {
-      --global::num_consumed_packet;
-      if (_ether_type == ETHERTYPE_IPV6) {
-        hd_debug("ETHERTYPE_IPV6");
-      } else
-      hd_debug("不是 ETHERTYPE_IPV4/6");
-      return false;
-    }
-    return processIPv4Packet(pointer + static_cast<int>(sizeof(ether_header)));
+    const auto _ether_type{ntohs(eth->ether_type)};
+    if (_ether_type not_eq ETHERTYPE_IPV4) return false;
+    constexpr int offset{sizeof(ether_header)};
+    return processIPv4Packet(pointer + offset);
   }
 
   [[nodiscard("do not discard")]]
-  bool processIPv4Packet(byte_t const* ipv4) {
-    auto _ipv4RawBytes = const_cast<u_char*>(ipv4);
-    ip const* _ipv4 = reinterpret_cast<ip*>(_ipv4RawBytes);
+  bool processIPv4Packet(byte_t const* ip4RawBytes) {
+    const auto _ipv4{reinterpret_cast<ip const*>(ip4RawBytes)};
     uint8_t const _ipProtocol{_ipv4->ip_p};
-    if (_ipProtocol not_eq static_cast<uint8_t>(IPPROTO_UDP)
-      and _ipProtocol not_eq static_cast<uint8_t>(IPPROTO_TCP)) {
+    this->pktCode = _ipProtocol;
+    if (_ipProtocol not_eq IPPROTO_UDP and _ipProtocol not_eq IPPROTO_TCP) {
       hd_debug(global::packet_index);
-      --global::num_consumed_packet;
       return false;
     }
-    this->mIpPair = std::minmax(_ipv4->ip_src.s_addr, _ipv4->ip_dst.s_addr);
-
-    m5Tuple.append(inet_ntoa(_ipv4->ip_src)).append("_")
-           .append(inet_ntoa(_ipv4->ip_dst)).append("_");
-
-    mFlowKey.append(inet_ntoa({mIpPair.minVal})).append("_")
-            .append(inet_ntoa({mIpPair.maxVal})).append("_");
-
+    this->sIP = _ipv4->ip_src.s_addr;
+    this->dIP = _ipv4->ip_dst.s_addr;
+    m5Tuple.append(inet_ntoa(_ipv4->ip_src)).append("-")
+           .append(inet_ntoa(_ipv4->ip_dst)).append("-");
     int32_t const _ipv4HL = _ipv4->ip_hl * 4;
-    this->mIP4Head = {_ipv4RawBytes, _ipv4HL};
-
-    byte_t* _tcpOrUdp{&_ipv4RawBytes[_ipv4HL]};
-    // TODO 策略
-    if (_ipProtocol == IPPROTO_TCP) {
-      tcphdr const* _tcp = reinterpret_cast<tcphdr*>(_tcpOrUdp);
-      std::string const sport = std::to_string(ntohs(_tcp->th_sport));
-      std::string const dport = std::to_string(ntohs(_tcp->th_dport));
-      m5Tuple.append(sport).append("_").append(dport).append("_TCP");
-      this->mPortPair = std::minmax(sport, dport);
-      mFlowKey.append(mPortPair.minVal).append("_")
-              .append(mPortPair.maxVal).append("_TCP");
-      int const _tcpHL = _tcp->th_off * 4;
-      // tcp head
-      this->mTcpHead = {_tcpOrUdp, _tcpHL};
-      // 处理payload
-      int const _byteLen = std::min(ntohs(_ipv4->ip_len) - _ipv4HL - _tcpHL, global::opt.payload);
-      this->mPayload = {&_ipv4RawBytes[_ipv4HL + _tcpHL], _byteLen};
-    }
-    if (_ipProtocol == IPPROTO_UDP) {
-      udphdr const* _udp = reinterpret_cast<udphdr*>(_tcpOrUdp);
-      std::string const sport = std::to_string(ntohs(_udp->uh_sport));
-      std::string const dport = std::to_string(ntohs(_udp->uh_dport));
-      m5Tuple.append(sport).append("_").append(dport).append("_UDP");
-      this->mPortPair = std::minmax(sport, dport);
-      mFlowKey.append(mPortPair.minVal).append("_")
-              .append(mPortPair.maxVal).append("_UDP");
-      int constexpr _udpHL = 8;
-      // udp head
-      this->mUdpHead = {_tcpOrUdp, _udpHL};
-      // 处理payload
-      int const _byteLen = std::min(ntohs(_ipv4->ip_len) - _ipv4HL - 8, global::opt.payload);
-      this->mPayload = {&_ipv4RawBytes[_ipv4HL + _udpHL], _byteLen};
-    }
+    byte_t const* _tcpOrUdp{&ip4RawBytes[_ipv4HL]};
+    func<IPPROTO_TCP, tcphdr>(_ipProtocol, _tcpOrUdp);
+    func<IPPROTO_UDP, udphdr>(_ipProtocol, _tcpOrUdp);
     return true;
+  }
+
+  template <uint8_t AssumedIpProtocol, typename Header>
+  void func(const uint8_t actual_ip_protocal, byte_t const* _tcpOrUdp) {
+    if (actual_ip_protocal not_eq AssumedIpProtocol) return;
+    auto tcpOrUdp = reinterpret_cast<Header const*>(_tcpOrUdp);
+    this->sPort = ntohs(tcpOrUdp->source);
+    this->dPort = ntohs(tcpOrUdp->dest);
+    std::string const sport{std::to_string(this->sPort)};
+    std::string const dport{std::to_string(this->dPort)};
+    m5Tuple.append(sport).append("-")
+           .append(dport).append("-")
+           .append(std::to_string(actual_ip_protocal));
+    pktCode = IPPROTO_UDP;
+    if (actual_ip_protocal == IPPROTO_TCP) {
+      pktCode = reinterpret_cast<tcphdr const*>(_tcpOrUdp)->th_flags;
+    }
   }
 };
 } // hd

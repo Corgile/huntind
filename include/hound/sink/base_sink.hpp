@@ -6,8 +6,6 @@
 #define HOUND_BASE_SINK_HPP
 
 #include <hound/type/parsed_data.hpp>
-#include <hound/common/core.hpp>
-#include <hound/common/global.hpp>
 #include <hound/type/synced_stream.hpp>
 
 namespace hd::type {
@@ -16,6 +14,9 @@ namespace hd::type {
  */
 class BaseSink {
   SyncedStream<std::ostream&> mConsole;
+
+  bool _firstone{false};
+  uint32_t sec, uSec;
 
 public:
   BaseSink(std::string const&) : mConsole(std::cout) {
@@ -28,34 +29,31 @@ public:
     // TODO: 异步
     if (not data.HasContent) return;
     std::string buffer;
-    this->fillCsvBuffer(data, buffer);
 #if defined(HD_DEV)
     hd_line(std::move(buffer));
 #else
-    mConsole << std::move(buffer);
+    mConsole << buffer;
 #endif
   }
 
   virtual ~BaseSink() = default;
 
 protected:
-  static void fillCsvBuffer(ParsedData const& data, std::string& buffer) {
-    using namespace global;
-    //@formatter:off
-    if (opt.include_5tpl)   buffer.append(data.m5Tuple).append(opt.separator);
-    if (opt.include_pktlen) buffer.append(data.mCapLen).append(opt.separator);
-    if (opt.include_ts)     buffer.append(data.mTimestamp).append(opt.separator);
-    //@formatter:on
-    fillRawBitVec(data, buffer);
-  }
-
-  static void fillRawBitVec(ParsedData const& data, std::string& buffer) {
-    using namespace global;
-    core::util::fill<IP4_PADSIZE>(opt.include_ip4, data.mIP4Head, buffer);
-    core::util::fill<TCP_PADSIZE>(opt.include_tcp, data.mTcpHead, buffer);
-    core::util::fill<UDP_PADSIZE>(opt.include_udp, data.mUdpHead, buffer);
-    core::util::fill(opt.payload > 0, data.mPayload, buffer);
-    buffer.pop_back();
+  void fillCsvBuffer(ParsedData const& data, std::string& buffer) {
+    if (not _firstone) {
+      sec = data.Sec;
+      uSec = data.uSec;
+    }
+    const uint32_t pkt_rtime = (data.Sec - sec) * 1000 + (data.uSec - uSec) / 1000;
+    buffer.append(std::to_string(data.version)).append(" ")
+          .append(std::to_string(data.sIP)).append(" ")
+          .append(std::to_string(data.dIP)).append(" ")
+          .append(std::to_string(data.sPort)).append(" ")
+          .append(std::to_string(data.dPort)).append(" ")
+          .append(std::to_string(pkt_rtime)).append(" ")
+          .append(std::to_string(data.pktCode)).append(" ")
+          .append(std::to_string(data.capLen));
+    _firstone = true;
   }
 };
 } // entity
