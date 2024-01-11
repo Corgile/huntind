@@ -27,7 +27,7 @@ private:
 private:
   pcap_t* mHandle{nullptr};
   uint32_t mLinkType{};
-  std::queue<raw_packet_info> mPacketQueue;
+  std::queue<raw_packet> mPacketQueue;
   std::atomic<bool> keepRunning{true};
   std::shared_ptr<BaseSink> mSink;
   mutable std::mutex mProdLock;

@@ -39,14 +39,14 @@ void hd::type::DeadParser::consumer_job() {
     });
     if (not keepRunning) break;
     if (this->mPacketQueue.empty()) continue;
-    raw_packet_info packetInfo{this->mPacketQueue.front()};
+    raw_packet _raw_packet = this->mPacketQueue.front();
     this->mPacketQueue.pop();
     lock.unlock();
     {
       std::scoped_lock mtCvMtx(mProdLock);
       cv_producer.notify_one();
     }
-    mSink->consumeData({packetInfo});
+    mSink->consumeData({_raw_packet});
   }
 }
 
