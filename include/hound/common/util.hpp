@@ -8,9 +8,7 @@
 #include <filesystem>
 #include <getopt.h>
 #include <memory>
-#include <string>
 #include <hound/common/macro.hpp>
-#include <hound/common/global.hpp>
 #include <hound/type/capture_option.hpp>
 #include <hound/type/parsed_data.hpp>
 #include <hound/type/deleters.hpp>
@@ -104,7 +102,6 @@ static void Doc() {
 
 namespace hd::util {
 namespace fs = std::filesystem;
-using namespace hd::global;
 using namespace hd::type;
 
 static void OpenDeadHandle(const capture_option& option, pcap_handle_t& handle, uint32_t& link_type) {
@@ -185,11 +182,6 @@ static void ParseOptions(capture_option& arg, const int argc, char* argv[]) {
     default: break;
     }
   }
-}
-
-template <typename T>
-static int min(T _a, T _b) {
-  return _a < _b ? _a : _b;
 }
 } // namespace hd::util
 #endif //HOUND_UTILS_HPP
