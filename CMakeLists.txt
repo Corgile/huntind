@@ -1,11 +1,23 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 3.25)
-PROJECT(huntd)
-
-SET(BINARY_TARGET hd-main)
+PROJECT(hound)
 SET(CMAKE_CXX_STANDARD 20)
+SET(TARGET hd-dead)
+# !>> vendor
+SET(VENDOR_PATH ${PROJECT_SOURCE_DIR}/vendor)
+SET(CMAKE_MODULE_PATH ${VENDOR_PATH}/cmake;${CMAKE_MODULE_PATH})
+INCLUDE(third-party)
+# !<< vendor
+MESSAGE(STATUS "${BoldGreen}Binary Target:  ${TARGET}${ColorReset}")
 
-# @formatter:off
-AUX_SOURCE_DIRECTORY(${PROJECT_SOURCE_DIR}      SOURCE_FILES)
-# @formatter:on
+#@formatter:off
+# all public header for all source files
+INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/include)
+INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/include/yalanting)
+AUX_SOURCE_DIRECTORY(source               SOURCE_FILES)
+AUX_SOURCE_DIRECTORY(source/parser        SOURCE_FILES)
+AUX_SOURCE_DIRECTORY(source/entity        SOURCE_FILES)
+#@formatter:on
 
-ADD_EXECUTABLE(${BINARY_TARGET} main.cpp ${SOURCE_FILES})
+ADD_EXECUTABLE(${TARGET} main.cpp ${SOURCE_FILES})
+TARGET_LINK_LIBRARIES(${TARGET} PRIVATE pcap)
+TARGET_LINK_LIBRARIES(${TARGET} PRIVATE dbg_macro)

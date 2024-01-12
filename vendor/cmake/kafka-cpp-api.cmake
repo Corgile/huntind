@@ -1,0 +1,1 @@
+include_directories(${VENDOR_PATH}/modern-cpp-kafka/include)

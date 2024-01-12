@@ -1,8 +1,15 @@
 .idea
 cmake-*
-vendor/librdkafka
+*.csv
+*.pcap
+*.pcapng
+pcap
+pcapfile
+*.json
 vendor/libpcap
 vendor/dbg-macro
+vendor/librdkafka
 vendor/modern-cpp-kafka
 vendor/nlohmann-json
 vendor/yalanting
+generated
