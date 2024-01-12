@@ -31,9 +31,8 @@ struct capture_option final {
 
   int32_t duration{-1};
   std::string kafka_config{};
-  std::string pcap_file;
   int packetTimeout{20};
-  std::string separator;
+  std::string separator{','};
   char format[8] = {'%', 'l', 'd', ','};
   bool write_file{false};
 

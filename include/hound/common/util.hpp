@@ -37,8 +37,6 @@ static option longopts[] = {
 /// packet timeout seconds(to determine whether to send)
 {"interval", required_argument, nullptr, 'E'},
 {"kafka", required_argument, nullptr, 'K'},
-/// pcap file path, required when processing a pcapng file.
-{"pcap-file", required_argument, nullptr, 'P'},
 {"sep", required_argument, nullptr, 'm'},
 {"index", required_argument, nullptr, 'I'},
 /// num of bits to convert as an integer
@@ -134,7 +132,6 @@ static void Doc() {
     << "\t-K, --kafka-conf              kafka 配置文件路径\n"
     << "\t-L, --min-packets=10          合并成流/json的时候，指定流的最 小 packet数量 (默认 10)\n"
     << "\t-R, --max-packets=100         合并成流/json的时候，指定流的最 大 packet数量 (默认 100)\n"
-    << "\t-P, --pcap-file=/path/pcap    pcap文件路径, 处理离线 pcap,pcapng 文件\n"
     << "\t-W, --write=/path/out         输出到文件, 需指定输出文件路径\n"
     << "\t-S, --stride=8                将 S 位二进制串转换为 uint 数值 (默认 8)\n"
     << "\t-p, --payload=0               包含 n 字节的 payload (默认 0)\n"
@@ -147,69 +144,63 @@ static void Doc() {
     << std::endl;
 }
 
-static void ParseOptions(capture_option &arguments, int argc, char *argv[]) {
+static void ParseOptions(capture_option &arg, int argc, char *argv[]) {
   int longind = 0, option, j;
   opterr = 0;
   while ((option = getopt_long(argc, argv, shortopts, longopts, &longind)) not_eq -1) {
     switch (option) {
-    case 'd': arguments.device = optarg;
+    case 'd': arg.device = optarg;
       break;
-    case 'D': arguments.duration = std::stoi(optarg);
+    case 'D': arg.duration = std::stoi(optarg);
       break;
-    case 'C': arguments.include_pktlen = true;
+    case 'C': arg.include_pktlen = true;
       break;
-    case 'F': arguments.filter = optarg;
+    case 'F': arg.filter = optarg;
       break;
-    case 'f': arguments.fill_bit = std::stoi(optarg);
+    case 'f': arg.fill_bit = std::stoi(optarg);
       break;
-    case 'N': arguments.num_packets = std::stoi(optarg);
+    case 'N': arg.num_packets = std::stoi(optarg);
       break;
-    case 'K': arguments.kafka_config = optarg;
-      if (arguments.kafka_config.empty()) {
+    case 'K': arg.kafka_config = optarg;
+      if (arg.kafka_config.empty()) {
         hd_line("-k, --kafka-config 缺少值");
         exit(EXIT_FAILURE);
       }
       break;
-    case 'p': arguments.payload = std::stoi(optarg);
+    case 'p': arg.payload = std::stoi(optarg);
       break;
-    case 'L': arguments.min_packets = std::stoi(optarg);
+    case 'L': arg.min_packets = std::stoi(optarg);
       break;
-    case 'R': arguments.max_packets = std::stoi(optarg);
+    case 'R': arg.max_packets = std::stoi(optarg);
       break;
-    case 'E': arguments.packetTimeout = std::stoi(optarg);
+    case 'E': arg.packetTimeout = std::stoi(optarg);
       break;
-    case 'T': arguments.include_ts = true;
+    case 'T': arg.include_ts = true;
       break;
-    case 'V': arguments.verbose = true;
+    case 'V': arg.verbose = true;
       break;
-    case 'm': arguments.separator = optarg;
-      std::sprintf(arguments.format, "%s%s", "%ld", optarg);
+    case 'm': arg.separator.assign(optarg);
+      std::sprintf(arg.format, "%s%s", "%ld", optarg);
       break;
-    case 'I': arguments.include_5tpl = true;
+    case 'I': arg.include_5tpl = true;
       break;
     case 'J': j = std::stoi(optarg);
       if (j < 1) {
         hd_line("worker 必须 >= 1");
         exit(EXIT_FAILURE);
       }
-      arguments.workers = j;
+      arg.workers = j;
       break;
-    case 'S': arguments.stride = std::stoi(optarg);
-      if (arguments.stride & arguments.stride - 1 or arguments.stride == 0) {
-        hd_line("-S,  --stride 只能是1,2,4,8,16,32,64, 现在是: ", arguments.stride);
+    case 'S': arg.stride = std::stoi(optarg);
+      if (arg.stride & arg.stride - 1 or arg.stride == 0) {
+        hd_line("-S,  --stride 只能是1,2,4,8,16,32,64, 现在是: ", arg.stride);
         exit(EXIT_FAILURE);
       }
       break;
-    case 'W': arguments.write_file = true;
-      arguments.output_file = optarg;
-      if (optarg == nullptr or arguments.output_file.empty()) {
+    case 'W': arg.write_file = true;
+      arg.output_file = optarg;
+      if (optarg == nullptr or arg.output_file.empty()) {
         hd_line("-W, --write 缺少值");
-        exit(EXIT_FAILURE);
-      }
-      break;
-    case 'P': arguments.pcap_file = optarg;
-      if (arguments.pcap_file.empty()) {
-        hd_line("-P, --pcap-file 缺少值");
         exit(EXIT_FAILURE);
       }
       break;
