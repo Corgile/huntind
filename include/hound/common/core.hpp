@@ -19,8 +19,8 @@ public:
   static void fill(bool const condition, const ByteArray& rawData, std::string& buffer) {
     if (not condition) return;
     if constexpr (PadBytes == -1) { // payload
-      ___fill(opt.stride, opt.payload, rawData, buffer);
-    } else ___fill(opt.stride, PadBytes, rawData, buffer);
+      _fill(opt.stride, opt.payload, rawData, buffer);
+    } else _fill(opt.stride, PadBytes, rawData, buffer);
   }
 
 private:
@@ -43,9 +43,8 @@ private:
     return buff;
   }
 
-  static void ___fill(int const width, int const _exceptedBytes, const ByteArray& raw, std::string& refout) {
+  static void _fill(int const width, int const _exceptedBytes, const ByteArray& raw, std::string& refout) {
     int i = 0;
-    uint64_t const* p = reinterpret_cast<uint64_t*>(raw.data);
     uint64_t const n = log2(width);
     uint64_t const s = log2(64 >> n);
     uint64_t const r = (64 >> n) - 1;
@@ -54,7 +53,7 @@ private:
     char buffer[22];
     for (; i < raw.byteLen << 3 >> n; ++i) {
       const uint64_t w = (i & r) << n;
-      const uint64_t _val = (f << w & p[i >> s]) >> w;//45 00   05 dc a9 93   20 00
+      const uint64_t _val = (f << w & raw.data[i >> s]) >> w;//45 00   05 dc a9 93   20 00
       std::sprintf(buffer, opt.format, _val);
       refout.append(buffer);
     }

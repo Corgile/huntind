@@ -8,10 +8,10 @@
 // @formatter:off
 void hd::type::capture_option::print() const {
   hd_info(CYAN("\n包含流量包的: "));
-  if (payload > 0)      hd_info(payload, " 字节payload");
-  if (include_pktlen)           hd_info(CYAN(",报文长度"));
+  if (payload > 0)       hd_info(payload, " 字节payload");
+  if (include_pktlen)    hd_info(CYAN(",报文长度"));
   if (include_ts)        hd_info(CYAN(",时间戳"));
-  if (num_packets > 0)  hd_line(CYAN(",读取包个数: "), num_packets);
+  if (num_packets > 0)   hd_line(CYAN(",读取包个数: "), num_packets);
   hd_line(CYAN("填充值: "), fill_bit);
   hd_info(CYAN("将每 "), stride, CYAN(" 位一组按"));
   if (unsign)           hd_line(YELLOW("无符号") CYAN("类型转换为10进制"));

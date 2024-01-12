@@ -10,7 +10,7 @@
 
 hd::type::DeadParser::DeadParser() {
   this->timer = std::make_unique<Timer>(_timeConsumption_ms_s1, _timeConsumption_ms_s2);
-  this->mHandle = util::OpenDeadHandle(global::opt, this->mLinkType);
+  util::OpenDeadHandle(global::opt, mHandle, mLinkType);
   if (global::opt.output_file.empty()) {
     mSink.reset(new BaseSink(global::opt.output_file));
     return;
@@ -28,16 +28,14 @@ void hd::type::DeadParser::processFile() {
     std::thread(&DeadParser::consumer_job, this).detach();
   }
   timer->start();
-  pcap_loop(mHandle, opt.num_packets, deadHandler, reinterpret_cast<byte_t *>(this));
+  pcap_loop(mHandle.get(), opt.num_packets, deadHandler, reinterpret_cast<byte_t*>(this));
   timer->stop1();
 }
 
-void hd::type::DeadParser::deadHandler(byte_t *user_data, const pcap_pkthdr *pkthdr, const byte_t *packet) {
-  auto const _this{reinterpret_cast<DeadParser *>(user_data)};
-  constexpr int hdr_size{TCP_PADSIZE + UDP_PADSIZE + IP4_PADSIZE};
+void hd::type::DeadParser::deadHandler(byte_t* user_data, const pcap_pkthdr* pkthdr, const byte_t* packet) {
+  auto const _this{reinterpret_cast<DeadParser*>(user_data)};
   std::unique_lock _accessToQueue(_this->mQueueLock);
-  _this->mPacketQueue.push(
-    {pkthdr, packet, util::min<int>(global::opt.payload + hdr_size, static_cast<int>(pkthdr->caplen))});
+  _this->mPacketQueue.emplace(pkthdr, packet);
   _accessToQueue.unlock();
   _this->cv_consumer.notify_all();
 #if defined(BENCHMARK)
@@ -54,11 +52,11 @@ void hd::type::DeadParser::consumer_job() {
     });
     if (not keepRunning) break;
     if (this->mPacketQueue.empty()) continue;
-    raw_packet_info packetInfo{this->mPacketQueue.front()};
+    raw_packet packetInfo{std::move(this->mPacketQueue.front())};
     this->mPacketQueue.pop();
     lock.unlock();
     {
-      std::scoped_lock ___a(mProdLock);
+      std::scoped_lock _a(mProdLock);
       cv_producer.notify_one();
     }
     mSink->consumeData({packetInfo});

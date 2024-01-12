@@ -11,14 +11,14 @@ namespace hd::type {
 using byte_t = uint8_t;
 
 struct ByteArray {
-  uint64_t* data;
+  uint64_t const* data{};
   int32_t byteLen = 0;
 
   ByteArray() = default;
 
   /// list initializer
-  ByteArray(byte_t* data, int32_t const byte_len)
-      : data(reinterpret_cast<uint64_t*>(data)),
+  ByteArray(byte_t const* data, int32_t const byte_len)
+      : data(reinterpret_cast<uint64_t const*>(data)),
         byteLen(byte_len) {
   }
 };

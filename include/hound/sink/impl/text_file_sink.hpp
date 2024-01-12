@@ -41,8 +41,8 @@ public:
   void consumeData(ParsedData const& data) override {
     if (not data.HasContent) return;
     std::string buffer;
-    this->fillCsvBuffer(data, buffer);
-    this->mOutFile << std::move(buffer);
+    fillCsvBuffer(data, buffer);
+    this->mOutFile << buffer;
 #if defined(BENCHMARK)
     ++global::num_written_csv;
 #endif

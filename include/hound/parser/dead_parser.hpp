@@ -10,6 +10,7 @@
 #include <hound/type/raw_packet_info.hpp>
 #include <hound/sink/base_sink.hpp>
 #include <hound/type/timer.hpp>
+#include <hound/type/deleters.hpp>
 
 namespace hd::type {
 class DeadParser final {
@@ -26,9 +27,9 @@ private:
   void consumer_job();
 
 private:
-  pcap_t* mHandle{nullptr};
+  pcap_handle_t mHandle{nullptr};
   uint32_t mLinkType{};
-  std::queue<raw_packet_info> mPacketQueue;
+  std::queue<raw_packet> mPacketQueue;
   std::atomic<bool> keepRunning{true};
   std::shared_ptr<BaseSink> mSink;
   mutable std::mutex mProdLock;

@@ -38,8 +38,8 @@ struct capture_option final {
   /// mode
   bool write_file{false};
   std::string pcap_file{};
-  char format[8] = {'%', 'l', 'd', ','};
-  std::string_view separator {","};
+  char format[3] = {'%', 'd', ','};
+  std::string separator {","};
 
 public:
   void print() const;
