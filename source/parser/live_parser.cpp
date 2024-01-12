@@ -14,13 +14,12 @@
 using namespace hd::global;
 
 hd::type::LiveParser::LiveParser() {
-  this->mHandle = util::OpenLiveHandle(opt);
-  if(not opt.kafka_config.empty()) {
+  util::OpenLiveHandle(opt, this->mHandle);
+  if (not opt.kafka_config.empty()) {
     mSink.reset(new KafkaSink(opt.kafka_config));
   } else {
     mSink.reset(new BaseSink());
   }
-
 }
 
 void hd::type::LiveParser::startCapture() {
@@ -35,12 +34,12 @@ void hd::type::LiveParser::startCapture() {
       this->stopCapture();
     }).detach();
   }
-  pcap_loop(mHandle, opt.num_packets, liveHandler, reinterpret_cast<byte_t *>(this));
+  pcap_loop(mHandle, opt.num_packets, liveHandler, reinterpret_cast<byte_t*>(this));
   pcap_close(mHandle);
 }
 
-void hd::type::LiveParser::liveHandler(byte_t *user_data, const pcap_pkthdr *pkthdr, const byte_t *packet) {
-  auto const _this{reinterpret_cast<LiveParser *>(user_data)};
+void hd::type::LiveParser::liveHandler(byte_t* user_data, const pcap_pkthdr* pkthdr, const byte_t* packet) {
+  auto const _this{reinterpret_cast<LiveParser*>(user_data)};
   std::unique_lock _accessToQueue(_this->mQueueLock);
   _this->mPacketQueue.emplace(pkthdr, packet, util::min(opt.payload + 120, static_cast<int>(pkthdr->caplen)));
   _this->cv_consumer.notify_all();

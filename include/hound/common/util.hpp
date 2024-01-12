@@ -61,10 +61,10 @@ static option longopts[] = {
 {"verbose", no_argument, nullptr, 'V'},
 {nullptr, 0, nullptr, 0}
 };
-static char const *shortopts = "J:P:W:F:f:N:E:K:D:S:L:R:p:CTVhIm:";
+static char const* shortopts = "J:P:W:F:f:N:E:K:D:S:L:R:p:CTVhIm:";
 #pragma endregion ShortAndLongOptions //@formatter:on
 
-static void SetFilter(pcap_t *handle) {
+static void SetFilter(pcap_t* handle) {
   if (opt.filter.empty() or handle == nullptr) { return; }
   constexpr bpf_u_int32 net{0};
   bpf_program fp{};
@@ -79,10 +79,10 @@ static void SetFilter(pcap_t *handle) {
   }
 }
 
-static pcap_t *OpenLiveHandle(capture_option &option) {
+static void OpenLiveHandle(capture_option& option, pcap_t* & handle) {
   /* getFlowId device */
   if (option.device.empty()) {
-    pcap_if_t *l;
+    pcap_if_t* l;
     int32_t const rv{pcap_findalldevs(&l, ByteBuffer)};
     if (rv == -1) {
       hd_line("找不到默认网卡设备", ByteBuffer);
@@ -93,7 +93,7 @@ static pcap_t *OpenLiveHandle(capture_option &option) {
   }
   hd_debug(option.device);
   /* open device */
-  auto const handle{pcap_open_live(option.device.c_str(), BUFSIZ, 1, 1000, ByteBuffer)};
+  handle = pcap_open_live(option.device.c_str(), BUFSIZ, 1, 1000, ByteBuffer);
   if (handle == nullptr) {
     hd_line("监听网卡设备失败: ", ByteBuffer);
     exit(EXIT_FAILURE);
@@ -103,20 +103,6 @@ static pcap_t *OpenLiveHandle(capture_option &option) {
   pcap_set_buffer_size(handle, 25 << 22);
   // link_type = pcap_datalink(handle);
   // hd_debug(link_type);
-  return handle;
-}
-
-static pcap_t *OpenDeadHandle(const capture_option &option, uint32_t &link_type) {
-  using offline = pcap_t* (*)(const char *, char *);
-  offline const open_offline{pcap_open_offline};
-  if (not fs::exists(option.pcap_file)) {
-    hd_line("无法打开文件 ", option.pcap_file);
-    exit(EXIT_FAILURE);
-  }
-  auto const handle{open_offline(option.pcap_file.c_str(), ByteBuffer)};
-  SetFilter(handle);
-  link_type = pcap_datalink(handle);
-  return handle;
 }
 
 static void Doc() {
@@ -144,7 +130,7 @@ static void Doc() {
     << std::endl;
 }
 
-static void ParseOptions(capture_option &arg, int argc, char *argv[]) {
+static void ParseOptions(capture_option& arg, int argc, char* argv[]) {
   int longind = 0, option, j;
   opterr = 0;
   while ((option = getopt_long(argc, argv, shortopts, longopts, &longind)) not_eq -1) {
