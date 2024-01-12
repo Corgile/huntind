@@ -51,13 +51,11 @@ static void SetFilter(pcap_t* handle) {
 }
 
 static pcap_t* OpenDeadHandle(const capture_option& option, uint32_t& link_type) {
-  using offline = pcap_t* (*)(const char*, char*);
-  offline const open_offline{pcap_open_offline};
   if (not fs::exists(option.pcap)) {
     hd_line("无法打开文件 ", option.pcap);
     exit(EXIT_FAILURE);
   }
-  auto const handle{open_offline(option.pcap.c_str(), ByteBuffer)};
+  auto const handle{pcap_open_offline(option.pcap.c_str(), ByteBuffer)};
   SetFilter(handle);
   link_type = pcap_datalink(handle);
   return handle;

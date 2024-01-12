@@ -6,6 +6,7 @@
 #include <hound/parser/dead_parser.hpp>
 #include <hound/sink/impl/text_file_sink.hpp>
 
+using byte_t = std::uint8_t;
 
 hd::type::DeadParser::DeadParser() {
   this->mHandle = util::OpenDeadHandle(global::opt, this->mLinkType);
