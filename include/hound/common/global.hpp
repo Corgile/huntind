@@ -11,7 +11,7 @@
 namespace hd::global {
 extern type::capture_option opt;
 extern std::string fillBit;
-extern std::unordered_map<std::string,std::string> _5tupleAttackTypeDic;
+extern std::unordered_map<std::string,std::string> id_type;
 }
 
 #endif //HOUND_GLOBAL_HPP

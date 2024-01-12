@@ -19,6 +19,8 @@ private:
   std::ofstream mDataFile;
   std::ofstream mLabelFile;
   std::mutex fileWriteAccess;
+  bool _firstone{false};
+  uint32_t sec{}, uSec{};
 
 public:
   explicit TextFileSink(const std::string& fileName) :
@@ -29,7 +31,7 @@ public:
     if (not exists(parent)) {
       create_directories(parent);
     }
-    bool const isGoodData = mDataFile.good();
+    bool const isGoodData  = mDataFile.good();
     bool const isGoodLabel = mLabelFile.good();
     if (not isGoodData or not isGoodLabel) {
       hd_line(RED("无法打开输出文件: "), fileName);
@@ -39,16 +41,27 @@ public:
 
   /// 写入文本文件(csv)
   void consumeData(ParsedData const& data) override {
+    using global::id_type;
     if (not data.HasContent) return;
-    if (not global::_5tupleAttackTypeDic.contains(data.m5Tuple)) return;
-    std::string buffer;
-    this->fillCsvBuffer(data, buffer);
+    if (not id_type.contains(data.m5Tuple)) return;
+    if (not _firstone) {
+      sec = data.Sec;
+      uSec = data.uSec;
+      _firstone = not _firstone;
+    }
+    const uint32_t pkt_rtime{(data.Sec - sec) * 1000 + (data.uSec - uSec) / 1000};
     {
       std::scoped_lock file(fileWriteAccess);
-      const auto benign = global::_5tupleAttackTypeDic.at(data.m5Tuple).compare("BENIGN");
-      if (benign == 0) this->mLabelFile << "0";
-      else this->mLabelFile << "1";
-      this->mDataFile << buffer << "\n";
+      this->mLabelFile << (id_type.at(data.m5Tuple) not_eq "BENIGN");
+      this->mDataFile
+        << data.version << ' '
+        << data.sIP << ' '
+        << data.dIP << ' '
+        << data.sPort << ' '
+        << data.dPort << ' '
+        << pkt_rtime << ' '
+        << data.pktCode << ' '
+        << data.capLen << '\n';
     }
   }
 

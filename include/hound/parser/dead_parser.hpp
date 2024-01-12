@@ -8,7 +8,7 @@
 #include <pcap/pcap.h>
 #include <condition_variable>
 #include <hound/type/raw_packet_info.hpp>
-#include <hound/sink/base_sink.hpp>
+#include <hound/sink/impl/text_file_sink.hpp>
 
 namespace hd::type {
 class DeadParser final {
@@ -29,7 +29,7 @@ private:
   uint32_t mLinkType{};
   std::queue<raw_packet> mPacketQueue;
   std::atomic<bool> keepRunning{true};
-  std::shared_ptr<BaseSink> mSink;
+  std::shared_ptr<TextFileSink> mSink;
   mutable std::mutex mProdLock;
   std::condition_variable cv_producer; // 生产者条件变量
   std::condition_variable cv_consumer; // 消费者条件变量

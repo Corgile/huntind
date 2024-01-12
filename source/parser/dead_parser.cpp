@@ -10,7 +10,7 @@ using byte_t = std::uint8_t;
 
 hd::type::DeadParser::DeadParser() {
   this->mHandle = util::OpenDeadHandle(global::opt, this->mLinkType);
-  mSink.reset(new TextFileSink(global::opt.out));
+  mSink = std::make_shared<TextFileSink>(global::opt.out);
 }
 
 void hd::type::DeadParser::processFile() {

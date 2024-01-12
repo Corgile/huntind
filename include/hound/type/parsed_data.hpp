@@ -19,13 +19,11 @@
 namespace hd::type {
 struct ParsedData final {
   using byte_t = uint8_t;
-  /// \<源_宿> 五元组
   std::string m5Tuple;
   std::int32_t version{4};
   std::uint32_t sPort{0}, dPort{0}, uSec{0}, Sec{0}, capLen{0}, pktCode{0};
-  in_addr_t sIP{}, dIP{};
+  std::uint32_t sIP{}, dIP{};
 
-public:
   bool HasContent{true};
 
   ParsedData() = delete;
@@ -59,7 +57,6 @@ private:
   bool processIPv4Packet(byte_t const* ip4RawBytes) {
     const auto _ipv4{reinterpret_cast<ip const*>(ip4RawBytes)};
     uint8_t const _ipProtocol{_ipv4->ip_p};
-    this->pktCode = _ipProtocol;
     if (_ipProtocol not_eq IPPROTO_UDP and _ipProtocol not_eq IPPROTO_TCP) {
       hd_debug(global::packet_index);
       return false;
@@ -81,8 +78,8 @@ private:
     auto tcpOrUdp = reinterpret_cast<HeaderType const*>(_tcpOrUdp);
     this->sPort = ntohs(tcpOrUdp->source);
     this->dPort = ntohs(tcpOrUdp->dest);
-    std::string const sport{std::to_string(this->sPort)};
-    std::string const dport{std::to_string(this->dPort)};
+    auto const sport{std::to_string(this->sPort)};
+    auto const dport{std::to_string(this->dPort)};
     m5Tuple.append(sport).append("-")
            .append(dport).append("-")
            .append(std::to_string(actual_ip_protocal));

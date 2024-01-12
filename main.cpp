@@ -8,7 +8,7 @@
 namespace hd::global {
 type::capture_option opt;
 std::string fillBit;
-std::unordered_map<std::string, std::string> _5tupleAttackTypeDic = {};
+std::unordered_map<std::string, std::string> id_type = {};
 }
 
 void static InitDict() {
@@ -34,7 +34,7 @@ void static InitDict() {
       << SourcePort << "-"
       << DestinationPort << "-" << Protocol;
     // 相信数据集对于同样的flowID, 其label不会不同， 所以直接覆盖
-    hd::global::_5tupleAttackTypeDic[std::move(key.str())].assign(Label);
+    hd::global::id_type[std::move(key.str())].assign(Label);
   }
 }
 
