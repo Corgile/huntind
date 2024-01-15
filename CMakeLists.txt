@@ -6,8 +6,10 @@ SET(TARGET hd-dead)
 SET(VENDOR_PATH ${PROJECT_SOURCE_DIR}/vendor)
 SET(CMAKE_MODULE_PATH ${VENDOR_PATH}/cmake;${CMAKE_MODULE_PATH})
 INCLUDE(third-party)
-# !<< vendor
-MESSAGE(STATUS "${BoldGreen}Binary Target:  ${TARGET}${ColorReset}")
+ADD_COMPILE_DEFINITIONS(HD_OFFLINE HD_WITH_KAFKA)
+# !<< vendor.
+
+MESSAGE(STATUS "${BG}Binary Target:  ${TARGET}${reset}")
 
 #@formatter:off
 # all public header for all source files
@@ -21,3 +23,6 @@ AUX_SOURCE_DIRECTORY(source/entity        SOURCE_FILES)
 ADD_EXECUTABLE(${TARGET} main.cpp ${SOURCE_FILES})
 TARGET_LINK_LIBRARIES(${TARGET} PRIVATE pcap)
 TARGET_LINK_LIBRARIES(${TARGET} PRIVATE dbg_macro)
+#IF (DEFINED HD_WITH_KAFKA)
+TARGET_LINK_LIBRARIES(${TARGET} PRIVATE rdkafka rdkafka++)
+#ENDIF ()

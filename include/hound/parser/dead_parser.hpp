@@ -2,8 +2,8 @@
 // Created by brian on 11/22/23.
 //
 
-#ifndef FC_REFACTORED_DEAD_PARSER_HPP
-#define FC_REFACTORED_DEAD_PARSER_HPP
+#ifndef HD_DEAD_PARSER_HPP
+#define HD_DEAD_PARSER_HPP
 
 #include <pcap/pcap.h>
 #include <condition_variable>
@@ -13,7 +13,7 @@
 #include <hound/type/deleters.hpp>
 
 namespace hd::type {
-class DeadParser final {
+class DeadParser {
 public:
   DeadParser();
 
@@ -43,4 +43,4 @@ private:
 }
 
 
-#endif //FC_REFACTORED_DEAD_PARSER_HPP
+#endif //HD_DEAD_PARSER_HPP

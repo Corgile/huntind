@@ -19,7 +19,7 @@ struct capture_option final {
   /// config
   int32_t payload{20};
   int32_t num_packets{-1};
-  int32_t packetTimeout{20};
+  int32_t flowTimeout{20};
   bool verbose{false};
   bool unsign{false};
   bool include_ts{false};
@@ -40,6 +40,8 @@ struct capture_option final {
   std::string pcap_file{};
   char format[3] = {'%', 'd', ','};
   std::string separator {","};
+  std::string kafka_config;
+  int duration{-1};
 
 public:
   void print() const;

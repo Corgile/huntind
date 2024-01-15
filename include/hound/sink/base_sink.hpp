@@ -25,14 +25,13 @@ public:
   }
 
   virtual void consumeData(ParsedData const& data) {
-    // TODO: 异步
     if (not data.HasContent) return;
     std::string buffer;
-    this->fillCsvBuffer(data, buffer);
+    fillCsvBuffer(data, buffer);
 #if defined(HD_DEV)
     hd_line(std::move(buffer));
 #else
-    mConsole << std::move(buffer);
+    mConsole << buffer;
 #endif
   }
 
@@ -55,7 +54,7 @@ protected:
     core::util::fill<TCP_PADSIZE>(opt.include_tcp, data.mTcpHead, buffer);
     core::util::fill<UDP_PADSIZE>(opt.include_udp, data.mUdpHead, buffer);
     core::util::fill(opt.payload > 0, data.mPayload, buffer);
-    buffer.pop_back();
+    buffer.pop_back(); //remove the trailing separator
   }
 };
 } // entity

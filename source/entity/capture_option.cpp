@@ -19,7 +19,9 @@ void hd::type::capture_option::print() const {
   hd_line(CYAN("包处理线程: "), workers);
   hd_line(CYAN("filter: "), filter);
   //@formatter:on
-  hd_line(CYAN("输入文件:  "), pcap_file);
+  if (not pcap_file.empty()) {
+    hd_line(CYAN("输入文件:  "), pcap_file);
+  }
   if (this->write_file and not output_file.empty()) {
     hd_line(CYAN("输出文件:  "), output_file);
   }
