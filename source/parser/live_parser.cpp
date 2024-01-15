@@ -38,7 +38,7 @@ void hd::type::LiveParser::liveHandler(byte_t* user_data, const pcap_pkthdr* pkt
   std::scoped_lock _accessToQueue(_this->mQueueLock);
   _this->mPacketQueue.emplace(pkthdr, packet);
   _this->cv_consumer.notify_all();
-#if defined(BENCHMARK)
+#if defined(HD_BENCHMARK)
   ++num_captured_packet;
 #endif // BENCHMARK
 }
@@ -55,7 +55,7 @@ void hd::type::LiveParser::consumer_job() {
     lock.unlock();
     cv_producer.notify_one();
     mSink->consumeData({front});
-#if defined(BENCHMARK)
+#if defined(HD_BENCHMARK)
     ++num_consumed_packet;
 #endif // defined(BENCHMARK)
   }
@@ -72,13 +72,13 @@ hd::type::LiveParser::~LiveParser() {
   while (not this->mPacketQueue.empty()) {
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
-#if defined(BENCHMARK)
-  using namespace global;
+  hd_debug(this->mPacketQueue.size());
+#if defined(HD_BENCHMARK)
+  using namespace hd::global;
   hd_line(CYAN("num_captured_packet = "), num_captured_packet.load());
   hd_line(CYAN("num_dropped_packets = "), num_dropped_packets.load());
   hd_line(CYAN("num_consumed_packet = "), num_consumed_packet.load());
   hd_line(CYAN("num_written_csv = "), num_written_csv.load());
 #endif //- #if defined(BENCHMARK)
-  hd_debug(this->mPacketQueue.size());
 }
 #endif

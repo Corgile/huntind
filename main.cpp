@@ -10,7 +10,7 @@
 namespace hd::global {
 type::capture_option opt;
 std::string fillBit;
-#if defined(BENCHMARK)
+#if defined(HD_BENCHMARK)
 std::atomic<int32_t> packet_index = 0;
 std::atomic<int32_t> num_captured_packet = 0;
 std::atomic<int32_t> num_dropped_packets = 0;

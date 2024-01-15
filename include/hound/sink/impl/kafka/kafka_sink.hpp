@@ -50,15 +50,11 @@ public:
     std::scoped_lock mapLock{mtxAccessToFlowTable};
     packet_list& _existing{mFlowTable[data.mFlowKey]};
     if (flow::IsFlowReady(_existing, packet)) {
-      {
-        std::scoped_lock queueLock(mtxAccessToQueue);
-        mSendQueue.emplace(data.mFlowKey, std::move(_existing));
-        cvMsgSender.notify_all();
-      }
-      {
-        std::scoped_lock lock(mtxAccessToLastArrived);
-        mLastArrived.erase(data.mFlowKey);
-      }
+      std::scoped_lock queueLock(mtxAccessToQueue);
+      mSendQueue.emplace(data.mFlowKey, std::move(_existing));
+      cvMsgSender.notify_all();
+      std::scoped_lock lock(mtxAccessToLastArrived);
+      mLastArrived.erase(data.mFlowKey);
     }
     _existing.emplace_back(std::move(packet));
     std::scoped_lock lock(mtxAccessToLastArrived);

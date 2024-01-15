@@ -23,7 +23,6 @@ static option longopts[] = {
 /// custom filter for libpcap
 {"filter", required_argument, nullptr, 'F'},
 {"fill", required_argument, nullptr, 'f'},
-{"duration", required_argument, nullptr, 'D'},
 {"num-packets", required_argument, nullptr, 'N'},
 /// min packets
 {"min", required_argument, nullptr, 'L'},
@@ -31,7 +30,10 @@ static option longopts[] = {
 {"max", required_argument, nullptr, 'R'},
 /// packet timeout seconds(to determine whether to send)
 {"timeout", required_argument, nullptr, 'E'},
+#if defined(HD_WITH_KAFKA)
+{"duration", required_argument, nullptr, 'D'},
 {"kafka", required_argument, nullptr, 'K'},
+#endif
 /// pcap file path, required when processing a pcapng file.
 {"pcap", required_argument, nullptr, 'P'},
 {"sep", required_argument, nullptr, 'm'},
@@ -59,7 +61,14 @@ static option longopts[] = {
 {"verbose", no_argument, nullptr, 'V'},
 {nullptr, 0, nullptr, 0}
 };
-static char const* shortopts = "hJ:P:D:K:W:F:f:N:S:L:R:p:CTUVIm:";
+static char const* shortopts = "hJ:"
+#if defined(HD_OFFLINE)
+  "P:"
+#endif
+#if defined(HD_WITH_KAFKA)
+  "D:K:"
+#endif
+  "W:F:f:N:S:L:R:p:CTUVIm:";
 #pragma endregion ShortAndLongOptions //@formatter:on
 
 static void SetFilter(pcap_t* handle) {
@@ -85,12 +94,16 @@ static void Doc() {
     << "\t-F, --filter=\"filter\"         pcap filter (https://linux.die.net/man/7/pcap-filter)\n"
     << "                              " RED("\t非常重要,必须设置并排除镜像流量服务器和kafka集群之间的流量,比如 \"not port 9092\"\n")
     << "\t-f, --fill=0                  空字节填充值 (默认 0)\n"
+#if defined(HD_WITH_KAFKA)
     << "\t-D, --duration=-1             抓包持续 (默认 non-stop 秒)\n"
-    << "\t-E, --timeout=20              流超时时长 (默认 20秒)\n"
     << "\t-K, --kafka                   kafka 配置文件路径\n"
+#endif
+    << "\t-E, --timeout=20              流超时时长 (默认 20秒)\n"
     << "\t-L, --min-packets=10          合并成流/json的时候，指定流的最 小 packet数量 (默认 10)\n"
     << "\t-R, --max-packets=100         合并成流/json的时候，指定流的最 大 packet数量 (默认 100)\n"
+#if defined(HD_OFFLINE)
     << "\t-P, --pcap-file=/path/pcap    pcap文件路径, 处理离线 pcap,pcapng 文件\n"
+#endif
     << "\t-W, --write=/path/out         输出到文件, 需指定输出文件路径\n"
     << "\t-S, --stride=8                将 S 位二进制串转换为 uint 数值 (默认 8)\n"
     << "\t-p, --payload=0               包含 n 字节的 payload (默认 0)\n"
@@ -158,8 +171,6 @@ static void ParseOptions(capture_option& arg, const int argc, char* argv[]) {
       break;
     case 'f': arg.fill_bit = std::stoi(optarg);
       break;
-    case 'D': arg.duration = std::stoi(optarg);
-      break;
     case 'N': arg.num_packets = std::stoi(optarg);
       break;
     case 'p': arg.payload = std::stoi(optarg);
@@ -182,12 +193,16 @@ static void ParseOptions(capture_option& arg, const int argc, char* argv[]) {
       break;
     case 'I': arg.include_5tpl = true;
       break;
+#if defined(HD_WITH_KAFKA)
+    case 'D': arg.duration = std::stoi(optarg);
+      break;
     case 'K': arg.kafka_config.assign(optarg);
       if (arg.kafka_config.empty()) {
         hd_line("-K, --kafka 缺少值");
         exit(EXIT_FAILURE);
       }
       break;
+#endif
     case 'J': j = std::stoi(optarg);
       if (j < 1) {
         hd_line("worker 必须 >= 1");
@@ -208,12 +223,14 @@ static void ParseOptions(capture_option& arg, const int argc, char* argv[]) {
         exit(EXIT_FAILURE);
       }
       break;
+#if defined(HD_OFFLINE)
     case 'P': arg.pcap_file.assign(optarg);
       if (arg.pcap_file.empty()) {
         hd_line("-P, --pcap-file 缺少值");
         exit(EXIT_FAILURE);
       }
       break;
+#endif
     case '?':
       hd_line("选项 ", '-', static_cast<char>(optopt), ":" RED(" 语法错误"));
       hd_line("使用 -h, --help 查看使用方法");

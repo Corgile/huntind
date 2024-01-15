@@ -5,7 +5,7 @@
 #ifndef HOUND_GLOBAL_HPP
 #define HOUND_GLOBAL_HPP
 #include <hound/type/capture_option.hpp>
-#if defined(BENCHMARK)
+#if defined(HD_BENCHMARK)
 #include <atomic>
 namespace hd::global {
 extern std::atomic<int32_t> packet_index;
