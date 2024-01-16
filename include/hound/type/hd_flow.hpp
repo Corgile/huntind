@@ -11,7 +11,7 @@
 #include <hound/type/pcap_header.hpp>
 #include <struct_json/json_writer.h>
 
-namespace hd::entity {
+namespace hd::type {
 struct hd_packet {
   __time_t ts_sec{};
   __suseconds_t ts_usec{};
@@ -20,11 +20,13 @@ struct hd_packet {
 
   hd_packet() = default;
 
-  explicit hd_packet(const type::PcapHeader& _pcapHead) {
+  explicit hd_packet(const PcapHeader& _pcapHead) {
     ts_sec = _pcapHead.ts_sec;
     ts_usec = _pcapHead.ts_usec;
     packet_len = _pcapHead.caplen;
   }
+
+  using list = std::vector<hd_packet>;
 };
 
 REFLECTION(hd_packet, ts_usec, ts_sec, packet_len, bitvec)
@@ -39,13 +41,13 @@ struct hd_flow {
       data(std::move(_data)) {
     count = static_cast<int>(data.size());
   }
-#ifdef HD_DEV
-  size_t size() const {
+#ifdef HD_DEBUG
+  [[nodiscard]] size_t size() const {
     auto s = flowId.size() + sizeof(struct hd_flow);
-    for (auto _packet : data) {
+    for (const auto& _packet : data) {
       s += sizeof(hd_packet) + _packet.bitvec.size();
     }
-    return s / 1024;
+    return s >> 10;
   }
 #endif
 

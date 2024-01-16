@@ -37,12 +37,12 @@ struct capture_option final {
 
   /// mode
   bool write_file{false};
-#if defined(HD_OFFLINE)
+#if defined(HD_DEAD)
   std::string pcap_file{};
 #endif
   char format[3] = {'%', 'd', ','};
   std::string separator {","};
-#if defined(HD_WITH_KAFKA)
+#if defined(HD_KAFKA)
   std::string kafka_config;
   int32_t duration{-1};
 #endif

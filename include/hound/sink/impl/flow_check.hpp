@@ -9,18 +9,18 @@
 #include <hound/type/hd_flow.hpp>
 #include <hound/common/global.hpp>
 
-#if defined(HD_WITH_KAFKA)
+#if defined(HD_KAFKA)
 #include <hound/sink/impl/kafka/kafka_config.hpp>
 #include <hound/sink/impl/kafka/callback/cb_hash_partitioner.hpp>
 #include <hound/sink/impl/kafka/callback/cb_producer_delivery_report.hpp>
 #include <hound/sink/impl/kafka/callback/cb_producer_event.hpp>
 #endif
 namespace flow {
-using namespace hd::entity;
+using namespace hd::type;
 using conf_uptr = std::unique_ptr<RdKafka::Conf>;
 using c_conf = kafka_config::connection_conf;
 
-#if defined(HD_WITH_KAFKA)
+#if defined(HD_KAFKA)
 static void InitGetConf(c_conf const& _conn, conf_uptr& _kafkaConf, conf_uptr& _topic) {
   using namespace RdKafka;
   std::string error_buffer;
@@ -60,7 +60,7 @@ static void LoadKafkaConfig(kafka_config& config, std::string const& fileName) {
 }
 
 namespace flow {
-using namespace hd::entity;
+using namespace hd::type;
 using namespace hd::global;
 
 static bool IsFlowReady(packet_list const& existing, hd_packet const& _newPacket) {

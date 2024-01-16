@@ -10,7 +10,7 @@
 
 #include <hound/sink/impl/kafka/constants.hpp>
 
-namespace hd::entity {
+namespace hd::type {
 struct kafka_config {
   /// 连接参数
   struct connection_conf {

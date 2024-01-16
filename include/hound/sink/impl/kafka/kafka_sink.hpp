@@ -5,7 +5,7 @@
 #ifndef HOUND_KAFKA_HPP
 #define HOUND_KAFKA_HPP
 
-#if defined(HD_WITH_KAFKA)
+#if defined(HD_KAFKA)
 
 #include <hound/sink/impl/kafka/kafka_config.hpp>
 #include <hound/sink/impl/kafka/connection_pool.hpp>
@@ -16,7 +16,7 @@
 #endif//LATENCY_TEST
 
 namespace hd::type {
-using namespace hd::entity;
+using namespace hd::type;
 using namespace hd::global;
 
 class KafkaSink final : public BaseSink {

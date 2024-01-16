@@ -2,7 +2,7 @@
 // hound / live_parser.cpp. 
 // Created by brian on 2024-01-12.
 //
-#if defined(HD_WITH_KAFKA)
+#if defined(HD_KAFKA)
 #include <hound/common/global.hpp>
 #include <hound/common/util.hpp>
 #include <hound/parser/live_parser.hpp>
@@ -38,8 +38,8 @@ void hd::type::LiveParser::liveHandler(byte_t* user_data, const pcap_pkthdr* pkt
   std::scoped_lock _accessToQueue(_this->mQueueLock);
   _this->mPacketQueue.emplace(pkthdr, packet);
   _this->cv_consumer.notify_all();
-#if defined(HD_BENCHMARK)
-  ++num_captured_packet;
+#if defined(HD_BENCH)
+  num_captured_packet.fetch_add(1);
 #endif // BENCHMARK
 }
 
@@ -55,7 +55,7 @@ void hd::type::LiveParser::consumer_job() {
     lock.unlock();
     cv_producer.notify_one();
     mSink->consumeData({front});
-#if defined(HD_BENCHMARK)
+#if defined(HD_BENCH)
     ++num_consumed_packet;
 #endif // defined(BENCHMARK)
   }
@@ -64,7 +64,7 @@ void hd::type::LiveParser::consumer_job() {
 
 void hd::type::LiveParser::stopCapture() {
   pcap_breakloop(this->mHandle.get());
-  keepRunning = false;
+  keepRunning.store(false);
   cv_consumer.notify_all();
 }
 
@@ -73,10 +73,10 @@ hd::type::LiveParser::~LiveParser() {
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
   hd_debug(this->mPacketQueue.size());
-#if defined(HD_BENCHMARK)
+#if defined(HD_BENCH)
   using namespace hd::global;
   hd_line(CYAN("num_captured_packet = "), num_captured_packet.load());
-  hd_line(CYAN("num_dropped_packets = "), num_dropped_packets.load());
+  hd_line(CYAN("num_dropped_packet = "), num_dropped_packet.load());
   hd_line(CYAN("num_consumed_packet = "), num_consumed_packet.load());
   hd_line(CYAN("num_written_csv = "), num_written_csv.load());
 #endif //- #if defined(BENCHMARK)

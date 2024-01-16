@@ -13,7 +13,7 @@
 
 #include <hound/sink/impl/kafka/kafka_connection.hpp>
 
-namespace hd::entity {
+namespace hd::type {
 class connection_pool {
 public:
   /// 获取连接池对象实例（懒汉式单例模式，在获取实例时才实例化对象）

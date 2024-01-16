@@ -5,7 +5,7 @@
 
 #ifndef LIVE_PARSER_HPP
 #define LIVE_PARSER_HPP
-#if defined(HD_WITH_KAFKA)
+#if defined(HD_KAFKA)
 #include <pcap/pcap.h>
 #include <atomic>
 #include <hound/type/raw_packet_info.hpp>

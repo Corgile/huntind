@@ -28,7 +28,7 @@ public:
     if (not data.HasContent) return;
     std::string buffer;
     fillCsvBuffer(data, buffer);
-#if defined(HD_DEV)
+#if defined(HD_DEBUG)
     hd_line(std::move(buffer));
 #else
     mConsole << buffer;

@@ -12,7 +12,7 @@
 #include <hound/sink/impl/kafka/kafka_config.hpp>
 
 
-namespace hd::entity {
+namespace hd::type {
 using namespace RdKafka;
 
 class kafka_connection {

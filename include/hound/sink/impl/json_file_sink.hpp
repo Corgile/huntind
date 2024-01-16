@@ -20,8 +20,6 @@ namespace hd::type {
 namespace fs = std::filesystem;
 
 class JsonFileSink final : public BaseSink {
-  using PacketList = std::vector<entity::hd_packet>;
-
 public:
   explicit JsonFileSink(std::string const& fileName) :
     mOutFile(fileName, std::ios::out) {
@@ -30,9 +28,9 @@ public:
       create_directories(parent);
     }
     bool const isGood{
-    mOutFile.invoke([](std::fstream const& stream) {
-      return stream.good();
-    })
+      mOutFile.invoke([](std::fstream const& stream) {
+        return stream.good();
+      })
     };
 
     if (not isGood) {
@@ -46,11 +44,11 @@ public:
   /// 写入json文件
   void consumeData(ParsedData const& data) override {
     if (not data.HasContent) return;
-    entity::hd_packet packet(data.mPcapHead);
+    hd_packet packet(data.mPcapHead);
     fillRawBitVec(data, packet.bitvec);
     std::scoped_lock mapLock(mAccessToFlowTable);
-    PacketList const packetList{mFlowTable[data.mFlowKey]};
-    if (flow::IsFlowReady(packetList, packet)) {
+    hd_packet::list const _existing{mFlowTable[data.mFlowKey]};
+    if (flow::IsFlowReady(_existing, packet)) {
       this->appendToFile(data.mFlowKey, std::move(mFlowTable.at(data.mFlowKey)));
     }
     mFlowTable.at(data.mFlowKey).emplace_back(std::move(packet));
@@ -80,7 +78,7 @@ protected:
   template <typename ...Args>
   void appendToFile(Args&& ...args) {
     std::string content;
-    entity::hd_flow flow(std::forward<Args>(args) ...);
+    hd_flow flow(std::forward<Args>(args) ...);
     struct_json::to_json(flow, content);
     content.append(",");
     mOutFile << content;
@@ -88,7 +86,7 @@ protected:
 
 private:
   SyncedStream<std::fstream> mOutFile;
-  std::map<std::string, PacketList> mFlowTable;
+  std::map<std::string, hd_packet::list> mFlowTable{};
   std::mutex mAccessToFlowTable;
 };
 } // entity

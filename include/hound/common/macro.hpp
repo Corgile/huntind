@@ -48,7 +48,7 @@ hd::macro::printL(__VA_ARGS__); \
 
 
 /// 仅在开发阶段作为调试使用
-#if defined(HD_DEV)
+#if defined(HD_DEBUG)
 #ifndef hd_debug
 #define hd_debug(...)  dbg(__VA_ARGS__)
 #endif
@@ -57,7 +57,7 @@ hd::macro::printL(__VA_ARGS__); \
 #define hd_line(...)   dbg(__VA_ARGS__)
 #endif//-hd_line
 
-#else//- not HD_DEV
+#else//- not HD_DEBUG
 #define hd_debug(...)
 
 #ifndef hd_line

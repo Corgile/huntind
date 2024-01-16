@@ -19,13 +19,13 @@ void hd::type::capture_option::print() const {
   hd_line(CYAN("包处理线程: "), workers);
   hd_line(CYAN("pcap包过滤表达式: "), filter);
 
-#if defined(HD_WITH_KAFKA)
+#if defined(HD_KAFKA)
   hd_line(CYAN("抓包持续: "), duration, CYAN(" 秒"));
   hd_line(CYAN("kafka 配置: "), kafka_config);
 #endif
 
   //@formatter:on
-#if defined(HD_OFFLINE)
+#if defined(HD_DEAD)
   if (not pcap_file.empty())
     hd_line(CYAN("输入文件:  "), pcap_file);
 #endif

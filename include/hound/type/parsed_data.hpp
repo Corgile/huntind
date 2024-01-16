@@ -59,7 +59,7 @@ public:
 private:
   [[nodiscard("do not discard")]]
   bool processRawBytes(std::unique_ptr<byte_t, raw_packet::deleter> const& _byteArr) {
-#if defined(HD_BENCHMARK)
+#if defined(HD_BENCH)
     ++global::packet_index;
 #endif
     byte_t const* pointer = _byteArr.get();
@@ -70,7 +70,7 @@ private:
     }
     auto const _ether_type = ntohs(eth->ether_type);
     if (_ether_type not_eq ETHERTYPE_IPV4) {
-#if defined(HD_BENCHMARK)
+#if defined(HD_BENCH)
       --global::num_consumed_packet;
 #endif
       if (_ether_type == ETHERTYPE_IPV6) {
@@ -89,7 +89,7 @@ private:
     uint8_t const _ipProtocol{_ipv4->ip_p};
     if (_ipProtocol not_eq IPPROTO_UDP and _ipProtocol not_eq IPPROTO_TCP) {
       hd_debug(global::packet_index);
-#if defined(HD_BENCHMARK)
+#if defined(HD_BENCH)
       --global::num_consumed_packet;
 #endif
       return false;

@@ -5,12 +5,12 @@
 #ifndef HOUND_GLOBAL_HPP
 #define HOUND_GLOBAL_HPP
 #include <hound/type/capture_option.hpp>
-#if defined(HD_BENCHMARK)
+#if defined(HD_BENCH)
 #include <atomic>
 namespace hd::global {
 extern std::atomic<int32_t> packet_index;
 extern std::atomic<int32_t> num_captured_packet;
-extern std::atomic<int32_t> num_dropped_packets;
+extern std::atomic<int32_t> num_dropped_packet;
 extern std::atomic<int32_t> num_consumed_packet;
 extern std::atomic<int32_t> num_written_csv;
 }
