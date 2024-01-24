@@ -33,14 +33,14 @@ void hd::type::LiveParser::startCapture() {
   pcap_loop(mHandle.get(), opt.num_packets, liveHandler, reinterpret_cast<byte_t*>(this));
 }
 
-void hd::type::LiveParser::liveHandler(byte_t* user_data, const pcap_pkthdr* pkthdr, const byte_t* packet) {
+void hd::type::LiveParser::liveHandler(byte_t* user_data, pcap_pkthdr const* pkthdr, byte_t const* packet) {
   auto const _this{reinterpret_cast<LiveParser*>(user_data)};
   std::scoped_lock _accessToQueue(_this->mQueueLock);
   _this->mPacketQueue.emplace(pkthdr, packet);
   _this->cv_consumer.notify_all();
 #if defined(HD_BENCH)
   num_captured_packet.fetch_add(1);
-#endif // BENCHMARK
+#endif // HD_BENCH
 }
 
 void hd::type::LiveParser::consumer_job() {
@@ -56,8 +56,8 @@ void hd::type::LiveParser::consumer_job() {
     cv_producer.notify_one();
     mSink->consumeData({front});
 #if defined(HD_BENCH)
-    ++num_consumed_packet;
-#endif // defined(BENCHMARK)
+    num_consumed_packet.fetch_add(1);
+#endif // defined(HD_BENCH)
   }
   hd_line(YELLOW("Worker ["), std::this_thread::get_id(), YELLOW("] 退出"));
 }
@@ -79,6 +79,6 @@ hd::type::LiveParser::~LiveParser() {
   hd_line(CYAN("num_dropped_packet = "), num_dropped_packet.load());
   hd_line(CYAN("num_consumed_packet = "), num_consumed_packet.load());
   hd_line(CYAN("num_written_csv = "), num_written_csv.load());
-#endif //- #if defined(BENCHMARK)
+#endif //- #if defined(HD_BENCH)
 }
 #endif

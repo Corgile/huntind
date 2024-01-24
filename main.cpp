@@ -26,7 +26,7 @@ int main(const int argc, char* argv[]) {
   if (opt.unsign or opt.stride == 1) opt.fill_bit = 0;
   fillBit = std::to_string(opt.fill_bit).append(opt.separator);
 #if defined(HD_DEAD)
-  if(not opt.pcap_file.empty()) {
+  if (not opt.pcap_file.empty()) {
     DeadParser deadParser;
     deadParser.processFile();
   }
@@ -38,7 +38,7 @@ int main(const int argc, char* argv[]) {
     auto handler = [](int const signal) -> void {
       if (signal == SIGINT) {
         _live_parser->stopCapture();
-        auto const more = max_ - ++ctrlc;
+        auto const more{max_ - ++ctrlc};
         if (more > 0) {
           hd_line(RED("\n再按 "), more, RED(" 次 [Ctrl-C] 退出"));
         }

@@ -43,7 +43,7 @@ public:
     std::string buffer;
     fillCsvBuffer(data, buffer);
     this->mOutFile << buffer;
-#if defined(BENCHMARK)
+#if defined(HD_BENCH)
     ++global::num_written_csv;
 #endif
   }
