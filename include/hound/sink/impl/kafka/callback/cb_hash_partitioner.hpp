@@ -5,7 +5,7 @@
 #ifndef HOUND_HASH_PARTITIONER_CB_HPP
 #define HOUND_HASH_PARTITIONER_CB_HPP
 
-#include <librdkafka/rdkafkacpp.h>
+#include <rdkafkacpp.h>
 
 // 生产者自定义分区策略回调：partitioner_cb
 class HashPartitionerCb : public RdKafka::PartitionerCb {

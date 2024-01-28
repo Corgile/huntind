@@ -8,8 +8,7 @@ pcapfile
 *.json
 vendor/libpcap
 vendor/dbg-macro
-vendor/librdkafka
-vendor/modern-cpp-kafka
+vendor/librdkafka-2.3.0
 vendor/nlohmann-json
 vendor/yalanting
 generated

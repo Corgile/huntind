@@ -5,7 +5,7 @@
 #ifndef HOUND_KAFKA_CONNECTION_HPP
 #define HOUND_KAFKA_CONNECTION_HPP
 
-#include <librdkafka/rdkafkacpp.h>
+#include <rdkafkacpp.h>
 #include <string>
 
 #include <hound/common/macro.hpp>
