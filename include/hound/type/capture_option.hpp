@@ -30,7 +30,7 @@ struct capture_option final {
   int32_t stride{8};
   int32_t workers{1};
   std::string device{};
-  std::string filter{"(tcp or udp)"};
+  std::string filter{"ip or vlan"};
   std::string output_file{};
   int32_t min_packets{10};
   int32_t max_packets{100};
