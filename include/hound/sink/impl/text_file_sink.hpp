@@ -41,9 +41,8 @@ public:
 
   /// 写入文本文件(csv)
   void consumeData(ParsedData const& data) override {
-    using global::id_type;
+    using global::attacks;
     if (not data.HasContent) return;
-    if (not id_type.contains(data.m5Tuple)) return;
     if (not _firstone) {
       sec = data.Sec;
       uSec = data.uSec;
@@ -52,7 +51,7 @@ public:
     const uint32_t pkt_rtime{(data.Sec - sec) * 1000 + (data.uSec - uSec) / 1000};
     {
       std::scoped_lock file(fileWriteAccess);
-      this->mLabelFile << (id_type.at(data.m5Tuple) not_eq "BENIGN");
+      this->mLabelFile << (attacks.contains(data.m5Tuple));
       this->mDataFile
         << data.version << ' '
         << data.sIP << ' '
