@@ -10,6 +10,7 @@
 
 #include <hound/common/macro.hpp>
 #include <hound/sink/impl/kafka/kafka_config.hpp>
+#include <hound/sink/compress.hpp>
 
 
 namespace hd::entity {
@@ -42,7 +43,7 @@ public:
       int32_t counter = 0;
       std::thread([&counter, this] {
         while (running) {
-          std::this_thread::sleep_for(std::chrono::seconds(10));
+          std::this_thread::sleep_for(std::chrono::seconds(20));
           this->mPartionToFlush.store(counter++ % mMaxPartition);
           counter %= mMaxPartition;
         }
@@ -55,12 +56,14 @@ public:
    * @param payload, _key
    */
   void pushMessage(const std::string& payload, const std::string& _key) const {
+    std::string out;
+    zstd::compress(payload, out);
     ErrorCode const errorCode = mProducer->produce(
       this->mTopicPtr.get(),
       this->mPartionToFlush,
       Producer::RK_MSG_COPY,
-      const_cast<char*>(payload.c_str()),
-      payload.size(),
+      out.data(),
+      out.size(),
       &_key,
       nullptr);
     // mProducer->poll(10'000); // timeout ms.
