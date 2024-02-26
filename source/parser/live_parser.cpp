@@ -35,8 +35,8 @@ void hd::type::LiveParser::startCapture() {
       this->stopCapture();
     }).detach();
   }
-  pcap_loop(mHandle, opt.num_packets, liveHandler, reinterpret_cast<byte_t*>(this));
-  pcap_close(mHandle);
+  pcap_loop(mHandle.get(), opt.num_packets, liveHandler, reinterpret_cast<byte_t*>(this));
+  pcap_close(mHandle.get());
 }
 
 void hd::type::LiveParser::liveHandler(byte_t* user_data, const pcap_pkthdr* pkthdr, const byte_t* packet) {
@@ -70,7 +70,7 @@ void hd::type::LiveParser::consumer_job() {
 }
 
 void hd::type::LiveParser::stopCapture() {
-  pcap_breakloop(this->mHandle);
+  pcap_breakloop(this->mHandle.get());
   keepRunning = false;
   cv_consumer.notify_all();
 }

@@ -59,6 +59,19 @@ public:
       delete conn;
     }
     hd_debug(__PRETTY_FUNCTION__);
+    {
+      // ProducerDeliveryReportCb
+      DeliveryReportCb* buff_1;
+      EventCb* buff_2;
+      PartitionerCb* buff_3;
+      _serverConf->get(buff_1);
+      _serverConf->get(buff_2);
+      _topicConf->get(buff_3);
+
+      delete buff_1;
+      delete buff_2;
+      delete buff_3;
+    }
   }
 
 private:
@@ -68,11 +81,11 @@ private:
     for (int i = 0; i < _config.pool.init_size; ++i) {
       _connectionQue.emplace(new kafka_connection(_config.conn, _serverConf, _topicConf));
       ++_connectionCnt;
-      /// 启动一个新的线程，作为连接的生产者. 守护线程
-      std::thread(&connection_pool::produceConnectionTask, this).detach();
-      /// 启动一个新的定时线程，扫描超过maxIdleTime时间的空闲连接，并对其进行回收
-      std::thread(&connection_pool::scannerConnectionTask, this).detach();
     }
+    /// 启动一个新的线程，作为连接的生产者. 守护线程
+    std::thread(&connection_pool::produceConnectionTask, this).detach();
+    /// 启动一个新的定时线程，扫描超过maxIdleTime时间的空闲连接，并对其进行回收
+    std::thread(&connection_pool::scannerConnectionTask, this).detach();
   }
 
   /// 运行在独立的线程中，专门负责生产新连接
@@ -105,13 +118,14 @@ private:
       if (_finished) break;
       std::unique_lock lock(_queueMutex);
       while (_connectionCnt > _config.pool.init_size) {
-        auto const connection = _connectionQue.front();
+        kafka_connection* connection = _connectionQue.front();
         if (connection->getAliveTime() < _config.conn.max_idle * 1000) break;
         _connectionQue.pop();
         --_connectionCnt;
         // 调用~Connection()释放连接
         delete connection;
       }
+      lock.unlock();
     }
     hd_debug("scannerConnectionTask 结束");
   }

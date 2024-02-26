@@ -23,8 +23,8 @@ private:
   int mMaxPartition{0};            // 分区数量
   std::atomic_bool running{true};
 
-  std::unique_ptr<Topic> mTopicPtr{};                  // Topic对象
-  std::unique_ptr<Producer> mProducer{};          // Producer对象
+  std::unique_ptr<Topic> mTopicPtr;                  // Topic对象
+  std::unique_ptr<Producer> mProducer;          // Producer对象
 
 public:
   /**
@@ -75,6 +75,7 @@ public:
   }
 
   ~kafka_connection() {
+    running.store(false);
     while (mProducer->outq_len() > 0) {
       hd_line(YELLOW("Connection "),
               std::this_thread::get_id(),
@@ -82,7 +83,6 @@ public:
               mProducer->outq_len());
       mProducer->flush(5000);
     }
-    running.store(false);
   }
 
   /// 刷新连接的起始空闲时刻

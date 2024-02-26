@@ -10,6 +10,7 @@
 #include <hound/type/raw_packet_info.hpp>
 #include <hound/sink/base_sink.hpp>
 #include <condition_variable>
+#include <hound/type/deleters.hpp>
 
 namespace hd::type {
 
@@ -30,7 +31,7 @@ private:
   void consumer_job();
 
 private:
-  pcap_t* mHandle{nullptr};
+  pcap_handle_t mHandle{nullptr};
   uint32_t mLinkType{};
   std::queue<raw_packet_info> mPacketQueue;
   std::atomic<bool> keepRunning{true};

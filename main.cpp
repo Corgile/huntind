@@ -22,7 +22,7 @@ int main(const int argc, char* argv[]) {
   hd::util::ParseOptions(opt, argc, argv);
   if (opt.stride == 1) opt.fill_bit = 0;
   fillBit = std::to_string(opt.fill_bit).append(opt.separator);
-  static std::unique_ptr<LiveParser> _live_parser{nullptr};
+
   static int ctrlc = 0, max_ = 5;
   auto handler = [](int const signal) -> void {
     if (signal == SIGINT) {
@@ -45,7 +45,7 @@ int main(const int argc, char* argv[]) {
   std::signal(SIGINT, handler);
   std::signal(SIGTERM, handler);
   std::signal(SIGKILL, handler);
-  _live_parser = std::make_unique<LiveParser>();
-  _live_parser->startCapture();
+  LiveParser _live_parser;
+  _live_parser.startCapture();
   return 0;
 }

@@ -33,6 +33,7 @@ public:
     for (int i = 0; i < opt.workers; ++i) {
       std::thread(&KafkaSink::sendingJob, this).detach();
     }
+    // mem leak, why?
     std::thread(&KafkaSink::cleanerJob, this).detach();
     std::thread(&KafkaSink::cleanerJob, this).detach();
   }
