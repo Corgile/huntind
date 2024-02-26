@@ -32,7 +32,7 @@ public:
 #if defined(HD_DEV)
     hd_line(std::move(buffer));
 #else
-    mConsole << std::move(buffer);
+    mConsole << buffer;
 #endif
   }
 

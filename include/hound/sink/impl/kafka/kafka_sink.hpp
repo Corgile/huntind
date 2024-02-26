@@ -22,7 +22,7 @@ using PacketList = std::vector<hd_packet>;
 
 class KafkaSink final : public BaseSink {
 public:
-  explicit KafkaSink(std::string const &fileName)
+  explicit KafkaSink(std::string const& fileName)
 #ifdef LATENCY_TEST
     : mTimestampLog("./flow-message-timestamp.csv", std::ios::out | std::ios::app)
 #endif
@@ -44,14 +44,15 @@ public:
     hd_debug(this->mFlowTable.size());
   }
 
-  void consumeData(ParsedData const &data) override {
+  void consumeData(ParsedData const& data) override {
     if (not data.HasContent) return;
     hd_packet packet{data.mPcapHead};
     this->fillRawBitVec(data, packet.bitvec);
     std::scoped_lock mapLock{mtxAccessToFlowTable};
-    PacketList &_existing{mFlowTable[data.mFlowKey]};
+    PacketList& _existing{mFlowTable[data.mFlowKey]};
     if (flow::IsFlowReady(_existing, packet)) {
       std::scoped_lock queueLock(mtxAccessToQueue);
+      // send queue放整个data
       mSendQueue.emplace(data.mFlowKey, std::move(_existing));
       cvMsgSender.notify_all();
       std::scoped_lock lock(mtxAccessToLastArrived);
@@ -86,8 +87,8 @@ private:
       std::unique_lock lock2(mtxAccessToLastArrived);
       long const now = flow::timestampNow<std::chrono::seconds>();
       for (auto it = mLastArrived.begin(); it != mLastArrived.end();) {
-        const auto &key = it->first;
-        const auto &timestamp = it->second;
+        const auto& key = it->first;
+        const auto& timestamp = it->second;
         if (now - timestamp < opt.flowTimeout) {
           ++it;
           continue;
@@ -109,7 +110,7 @@ private:
     hd_debug(YELLOW("void cleanerJob() 结束"));
   }
 
-  void send(const hd_flow &flow) {
+  void send(const hd_flow& flow) {
     if (flow.count < opt.min_packets) return;
     std::string payload;
     struct_json::to_json(flow, payload);
@@ -137,7 +138,7 @@ private:
 
   void sendTheRest() {
     if (mFlowTable.empty()) return;
-    for (auto &[k, list] : mFlowTable) {
+    for (auto& [k, list] : mFlowTable) {
       this->send({k, list});
     }
     mFlowTable.clear();

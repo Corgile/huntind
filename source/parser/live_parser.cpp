@@ -10,15 +10,16 @@
 #include <hound/sink/impl/json_file_sink.hpp>
 
 #include <hound/sink/impl/kafka/kafka_sink.hpp>
+#include <memory>
 
 using namespace hd::global;
 
 hd::type::LiveParser::LiveParser() {
   util::OpenLiveHandle(opt, this->mHandle);
   if (not opt.kafka_config.empty()) {
-    mSink.reset(new KafkaSink(opt.kafka_config));
+    mSink = std::make_shared<KafkaSink>(opt.kafka_config);
   } else {
-    mSink.reset(new BaseSink());
+    mSink = std::make_shared<BaseSink>();
   }
 }
 

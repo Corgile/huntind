@@ -23,14 +23,14 @@ int main(const int argc, char* argv[]) {
   if (opt.stride == 1) opt.fill_bit = 0;
   fillBit = std::to_string(opt.fill_bit).append(opt.separator);
   static std::unique_ptr<LiveParser> _live_parser{nullptr};
-  static int ctrlc = 0, max__ = 5;
+  static int ctrlc = 0, max_ = 5;
   auto handler = [](int const signal) -> void {
     if (signal == SIGINT) {
-      auto const more = max__ - ++ctrlc;
+      auto const more = max_ - ++ctrlc;
       if (more > 0) {
         hd_line(RED("\n再按 "), more, RED(" 次 [Ctrl-C] 退出"));
       }
-      if (ctrlc >= max__) {
+      if (ctrlc >= max_) {
         exit(EXIT_FAILURE);
       }
     }
