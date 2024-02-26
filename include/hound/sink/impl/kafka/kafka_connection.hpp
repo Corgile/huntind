@@ -56,14 +56,14 @@ public:
    * @param payload, _key
    */
   void pushMessage(const std::string_view payload, const std::string& _key) const {
-    // std::string out;
-    // zstd::compress(payload, out);
+    std::string out;
+    zstd::compress(payload, out);
     ErrorCode const errorCode = mProducer->produce(
       this->mTopicPtr.get(),
       this->mPartionToFlush,
       Producer::RK_MSG_COPY,
-      (void*)payload.data(),
-      payload.size(),
+      out.data(),
+      out.size(),
       &_key,
       nullptr);
     // mProducer->poll(10'000); // timeout ms.
