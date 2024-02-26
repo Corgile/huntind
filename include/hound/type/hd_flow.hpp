@@ -13,9 +13,9 @@
 
 namespace hd::entity {
 struct hd_packet {
-  __time_t ts_sec;
-  __suseconds_t ts_usec;
-  bpf_u_int32 packet_len;
+  __time_t ts_sec{};
+  __suseconds_t ts_usec{};
+  bpf_u_int32 packet_len{};
   std::string bitvec;
 
   hd_packet() = default;
@@ -31,7 +31,7 @@ REFLECTION(hd_packet, ts_usec, ts_sec, packet_len, bitvec)
 
 struct hd_flow {
   std::string flowId;
-  int32_t count;
+  size_t count{};
   std::vector<hd_packet> data;
 
   hd_flow(std::string flowId, std::vector<hd_packet> _data)

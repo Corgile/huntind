@@ -13,14 +13,14 @@
 #include <stdexcept>
 
 namespace zstd {
-void static compress(const std::string& src, std::string& dst) {
+void static compress(const std::string_view src, std::string& dst) {
   const size_t _dst_capacity = ZSTD_compressBound(src.size());
   dst.resize(_dst_capacity);
   const size_t c_size = ZSTD_compress(&dst[0], _dst_capacity, &src[0], src.size(), 12);
   dst.resize(c_size);
 }
 
-void static decompress(const std::string& src, std::string& dst) {
+void static decompress(const std::string_view src, std::string& dst) {
   const size_t d_buff_size = ZSTD_getFrameContentSize(&src[0], src.size());
   if (d_buff_size == ZSTD_CONTENTSIZE_ERROR or d_buff_size == ZSTD_CONTENTSIZE_UNKNOWN) [[unlikely]] {
     throw std::runtime_error("Unable to determine decompressed size. At L:71");
@@ -32,7 +32,7 @@ void static decompress(const std::string& src, std::string& dst) {
 }//zstd
 
 namespace zlib {
-static void compress(const std::string& str, std::string& out, int const level = Z_BEST_COMPRESSION) {
+static void compress(const std::string_view str, std::string& out, int const level = Z_BEST_COMPRESSION) {
   z_stream zs{};
   if (deflateInit2(&zs, level, Z_DEFLATED, 31, 9, Z_DEFAULT_STRATEGY) != Z_OK) {
     throw std::runtime_error("deflateInit2 failed while compressing.");
@@ -60,7 +60,7 @@ static void compress(const std::string& str, std::string& out, int const level =
   }
 }
 
-void static decompress(const std::string& input, std::string& out) {
+void static decompress(const std::string_view input, std::string& out) {
   z_stream zs{};
   if (inflateInit2(&zs, 15 + 32) != Z_OK) {
     throw std::runtime_error("inflateInit2 failed while decompressing.");
