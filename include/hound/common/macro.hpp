@@ -13,10 +13,8 @@ static std::mutex coutMutex;
 
 template <typename ...T>
 static void printL(T ...args) {
-  std::lock_guard lock(coutMutex);
   ((std::cout << args), ...);
 }
-} // namespace hd::macro
 
 #pragma region 常量宏
 #ifndef XXX_PADSIZE
@@ -40,16 +38,18 @@ static void printL(T ...args) {
 #endif //HD_ANSI_COLOR
 
 #ifndef hd_info
-#define hd_info(...)       			\
-do {                     				\
-hd::macro::printL(__VA_ARGS__); \
+#define hd_info(...)       			        \
+do {                     				        \
+std::lock_guard lock(macro::coutMutex); \
+hd::macro::printL(__VA_ARGS__);         \
 } while (false)
 #endif//-hd_info
 
 #ifndef hd_line
-#define hd_line(...)       			      \
-do {                     				      \
-hd::macro::printL(__VA_ARGS__, "\n"); \
+#define hd_line(...)       			            \
+do {                     				            \
+std::lock_guard lock(hd::macro::coutMutex); \
+hd::macro::printL(__VA_ARGS__, "\n");       \
 } while (false)
 #endif//-hd_line
 
@@ -63,5 +63,5 @@ hd::macro::printL(__VA_ARGS__, "\n"); \
 #endif//- hd_debug
 
 #pragma endregion 功能性宏
-
+} // namespace hd::macro
 #endif //HOUND_MACROS_HPP

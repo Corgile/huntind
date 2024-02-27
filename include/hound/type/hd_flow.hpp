@@ -9,7 +9,7 @@
 #include <vector>
 #include <pcap/bpf.h>
 #include <hound/type/pcap_header.hpp>
-#include <struct_json/json_writer.h>
+#include <ylt/struct_json/json_writer.h>
 
 namespace hd::entity {
 struct hd_packet {
@@ -18,7 +18,7 @@ struct hd_packet {
   bpf_u_int32 packet_len{};
   std::string bitvec;
 
-  hd_packet() = default;
+  hd_packet();
 
   explicit hd_packet(const type::PcapHeader& _pcapHead) {
     ts_sec = _pcapHead.ts_sec;

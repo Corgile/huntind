@@ -54,9 +54,8 @@ public:
     cv.notify_all();
     _finished = true;
     while (not _connectionQue.empty()) {
-      auto const conn = _connectionQue.front();
+      delete _connectionQue.front();
       _connectionQue.pop();
-      delete conn;
     }
     hd_debug(__PRETTY_FUNCTION__);
     {
@@ -116,16 +115,15 @@ private:
       }
       // 扫描整个队列，释放多余的连接
       if (_finished) break;
-      std::unique_lock lock(_queueMutex);
+
       while (_connectionCnt > _config.pool.init_size) {
+        std::scoped_lock lock(_queueMutex);
         kafka_connection* connection = _connectionQue.front();
         if (connection->getAliveTime() < _config.conn.max_idle * 1000) break;
+        delete connection;
         _connectionQue.pop();
         --_connectionCnt;
-        // 调用~Connection()释放连接
-        delete connection;
       }
-      lock.unlock();
     }
     hd_debug("scannerConnectionTask 结束");
   }

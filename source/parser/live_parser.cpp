@@ -36,7 +36,7 @@ void hd::type::LiveParser::startCapture() {
     }).detach();
   }
   pcap_loop(mHandle.get(), opt.num_packets, liveHandler, reinterpret_cast<byte_t*>(this));
-  pcap_close(mHandle.get());
+  // pcap_close(mHandle.get());
 }
 
 void hd::type::LiveParser::liveHandler(byte_t* user_data, const pcap_pkthdr* pkthdr, const byte_t* packet) {

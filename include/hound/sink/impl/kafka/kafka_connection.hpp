@@ -11,6 +11,7 @@
 #include <hound/common/macro.hpp>
 #include <hound/sink/impl/kafka/kafka_config.hpp>
 #include <hound/sink/compress.hpp>
+// #include <my-timer.hpp>
 
 
 namespace hd::entity {
@@ -22,9 +23,8 @@ private:
   std::atomic_int mPartionToFlush{0};            // 分区编号
   int mMaxPartition{0};            // 分区数量
   std::atomic_bool running{true};
-
-  std::unique_ptr<Topic> mTopicPtr;                  // Topic对象
-  std::unique_ptr<Producer> mProducer;          // Producer对象
+  Topic* mTopicPtr;
+  Producer* mProducer;
 
 public:
   /**
@@ -35,10 +35,9 @@ public:
                    std::unique_ptr<Conf> const& topic) {
     std::string errstr;
     this->mMaxPartition = conn.partition;
-    auto const _producer{Producer::create(kafkaConf.get(), errstr)};
-    auto const _topic{Topic::create(_producer, conn.topic_str, topic.get(), errstr)};
-    this->mTopicPtr.reset(_topic);
-    this->mProducer.reset(_producer);
+    // TODO: Producer::create 疑似存在内存泄漏
+    this->mProducer = Producer::create(kafkaConf.get(), errstr);
+    this->mTopicPtr = Topic::create(mProducer, conn.topic_str, topic.get(), errstr);
     if (this->mMaxPartition > 1) {
       int32_t counter = 0;
       std::thread([&counter, this] {
@@ -57,9 +56,12 @@ public:
    */
   void pushMessage(const std::string_view payload, const std::string& _key) const {
     std::string out;
+    // {
+    // xhl::Timer t("压缩");
     zstd::compress(payload, out);
+    // }
     ErrorCode const errorCode = mProducer->produce(
-      this->mTopicPtr.get(),
+      this->mTopicPtr,
       this->mPartionToFlush,
       Producer::RK_MSG_COPY,
       out.data(),
@@ -83,6 +85,9 @@ public:
               mProducer->outq_len());
       mProducer->flush(5000);
     }
+    // 有先后之分，先topic 再producer
+    delete mTopicPtr;
+    delete mProducer;
   }
 
   /// 刷新连接的起始空闲时刻

@@ -8,11 +8,12 @@ SET(CMAKE_MODULE_PATH ${VENDOR_PATH}/cmake;${CMAKE_MODULE_PATH})
 INCLUDE(third-party)
 # !<< vendor
 MESSAGE(STATUS "${BoldGreen}Binary Target:  ${TARGET}${ColorReset}")
-
+#ADD_COMPILE_DEFINITIONS(HD_DEV BENCHMARK)
 #@formatter:off
 # all public header for all source files
 INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/include)
-INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/include/yalanting)
+INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/include/yalanting/include)
+INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/include/yalanting/include/ylt/thirdparty)
 AUX_SOURCE_DIRECTORY(source               SOURCE_FILES)
 AUX_SOURCE_DIRECTORY(source/parser        SOURCE_FILES)
 AUX_SOURCE_DIRECTORY(source/entity        SOURCE_FILES)

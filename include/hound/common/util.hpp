@@ -85,8 +85,7 @@ static void OpenLiveHandle(capture_option& option, pcap_handle_t& handle) {
   /* getFlowId device */
   if (option.device.empty()) {
     pcap_if_t* l;
-    int32_t const rv{pcap_findalldevs(&l, ByteBuffer)};
-    if (rv == -1) {
+    if (int32_t const rv{pcap_findalldevs(&l, ByteBuffer)}; rv == -1) {
       hd_line("找不到默认网卡设备", ByteBuffer);
       exit(EXIT_FAILURE);
     }
@@ -95,7 +94,7 @@ static void OpenLiveHandle(capture_option& option, pcap_handle_t& handle) {
   }
   hd_debug(option.device);
   /* open device */
-  handle.reset(pcap_open_live(option.device.c_str(), BUFSIZ, 1, 1000, ByteBuffer), pcap_deleter());
+  handle.reset(pcap_open_live(option.device.c_str(), BUFSIZ, 1, 1000, ByteBuffer));
   if (handle == nullptr) {
     hd_line("监听网卡设备失败: ", ByteBuffer);
     exit(EXIT_FAILURE);

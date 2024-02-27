@@ -10,7 +10,7 @@
 #include <fstream>
 #include <filesystem>
 
-#include <struct_json/json_writer.h>
+#include <ylt/struct_json/json_writer.h>
 #include <hound/type/hd_flow.hpp>
 #include <hound/type/synced_stream.hpp>
 #include <hound/sink/base_sink.hpp>

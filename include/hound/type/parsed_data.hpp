@@ -69,22 +69,24 @@ private:
 #if defined(BENCHMARK)
       ++global::num_consumed_packet;
 #endif // defined(BENCHMARK)
+#if defined(HD_DEV)
       if (_ether_type == ETHERTYPE_IPV6) {
         hd_debug("ETHERTYPE_IPV6");
       } else
       hd_debug("不是 ETHERTYPE_IP");
+#endif
       return false;
     }
     return processIPv4Packet(pointer + static_cast<int>(sizeof(ether_header)));
   }
 
   [[nodiscard("do not discard")]]
-  bool processIPv4Packet(char const* ipv4) {
-    auto _ipv4 = reinterpret_cast<ip const*>(ipv4);
+  bool processIPv4Packet(char const* _ip_bytes) {
+    auto _ipv4 = reinterpret_cast<ip const*>(_ip_bytes);
     uint8_t const _ipProtocol{_ipv4->ip_p};
     if (_ipProtocol not_eq IPPROTO_UDP and _ipProtocol not_eq IPPROTO_TCP) {
-      hd_debug(global::packet_index);
 #if defined(BENCHMARK)
+      hd_debug(global::packet_index);
       ++global::num_consumed_packet;
 #endif // defined(BENCHMARK)
       return false;
@@ -98,42 +100,33 @@ private:
             .append(inet_ntoa({mIpPair.maxVal})).append("_");
 
     size_t const _ipv4HL = _ipv4->ip_hl * 4;
-    this->mIP4Head = {ipv4, _ipv4HL};
+    this->mIP4Head = {_ip_bytes, _ipv4HL};
 
-    auto* _tcpOrUdp{&ipv4[_ipv4HL]};
-    // TODO 策略
-    if (_ipProtocol == IPPROTO_TCP) {
-      const auto _tcp = reinterpret_cast<tcphdr const*>(_tcpOrUdp);
-      std::string const sport{std::to_string(ntohs(_tcp->th_sport))};
-      std::string const dport{std::to_string(ntohs(_tcp->th_dport))};
-      m5Tuple.append(sport).append("_").append(dport).append("_TCP");
-      this->mPortPair = std::minmax(sport, dport);
-      mFlowKey.append(mPortPair.minVal).append("_")
-              .append(mPortPair.maxVal).append("_TCP");
-      size_t const _tcpHL = _tcp->th_off * 4;
-      // tcp head
-      this->mTcpHead = {_tcpOrUdp, _tcpHL};
-      // 处理payload
-      size_t const _byteLen = std::min(ntohs(_ipv4->ip_len) - _ipv4HL - _tcpHL,
-                                       static_cast<size_t>(global::opt.payload));
-      this->mPayload = {&ipv4[_ipv4HL + _tcpHL], _byteLen};
-    }
-    if (_ipProtocol == IPPROTO_UDP) {
-      const auto _udp = reinterpret_cast<udphdr const*>(_tcpOrUdp);
-      std::string const sport{std::to_string(ntohs(_udp->uh_sport))};
-      std::string const dport{std::to_string(ntohs(_udp->uh_dport))};
-      m5Tuple.append(sport).append("_").append(dport).append("_UDP");
-      this->mPortPair = std::minmax(sport, dport);
-      mFlowKey.append(mPortPair.minVal).append("_")
-              .append(mPortPair.maxVal).append("_UDP");
-      int constexpr _udpHL = 8;
-      // udp head
-      this->mUdpHead = {_tcpOrUdp, _udpHL};
-      // 处理payload
-      size_t const _byteLen{std::min(ntohs(_ipv4->ip_len) - _ipv4HL - 8, static_cast<size_t>(global::opt.payload))};
-      this->mPayload = {&ipv4[_ipv4HL + _udpHL], _byteLen};
-    }
+    func<IPPROTO_TCP, tcphdr>(_ipProtocol, _ipv4, mTcpHead, &_ip_bytes[_ipv4HL], "_TCP");
+    func<IPPROTO_UDP, udphdr>(_ipProtocol, _ipv4, mUdpHead, &_ip_bytes[_ipv4HL], "_UDP");
     return true;
+  }
+
+  template <uint8_t AssumedIpProtocol, typename HeaderType>
+  void func(const uint8_t actual_protocol, ip const* _ipv4, std::string_view& head_buff,
+            char const* trans_header, const std::string_view suffix) {
+    if (AssumedIpProtocol not_eq actual_protocol) return;
+    auto const* _tcp = reinterpret_cast<HeaderType const*>(trans_header);
+    std::string const sport = std::to_string(ntohs(_tcp->source));
+    std::string const dport = std::to_string(ntohs(_tcp->dest));
+    m5Tuple.append(sport).append("_").append(dport).append(suffix);
+    this->mPortPair = std::minmax(sport, dport);
+    mFlowKey.append(mPortPair.minVal).append("_")
+            .append(mPortPair.maxVal).append(suffix);
+    size_t tl_hl = 8; // Transport layer header length, 8 for udp
+    if (actual_protocol == IPPROTO_TCP) {
+      tl_hl = reinterpret_cast<tcphdr const*>(trans_header)->doff * 4;
+    }
+    // Transport layer head
+    head_buff = {trans_header, tl_hl};
+    const int available = ntohs(_ipv4->ip_len) - _ipv4->ip_hl * 4 - tl_hl;
+    size_t const payload_len = std::min(available, global::opt.payload);
+    this->mPayload = {&trans_header[tl_hl], payload_len};
   }
 };
 } // hd

@@ -29,12 +29,10 @@ public:
   {
     kafka_config kafkaConfig;
     flow::LoadKafkaConfig(kafkaConfig, fileName);
-    this->mConnectionPool.reset(connection_pool::create(kafkaConfig));
+    this->mConnectionPool = connection_pool::create(kafkaConfig);
     for (int i = 0; i < opt.workers; ++i) {
       std::thread(&KafkaSink::sendingJob, this).detach();
     }
-    // mem leak, why?
-    std::thread(&KafkaSink::cleanerJob, this).detach();
     std::thread(&KafkaSink::cleanerJob, this).detach();
   }
 
@@ -43,12 +41,13 @@ public:
     cvMsgSender.notify_all();
     hd_debug(__PRETTY_FUNCTION__);
     hd_debug(this->mFlowTable.size());
+    delete mConnectionPool;
   }
 
   void consumeData(ParsedData const& data) override {
     if (not data.HasContent) return;
     hd_packet packet{data.mPcapHead};
-    this->fillRawBitVec(data, packet.bitvec);
+    fillRawBitVec(data, packet.bitvec);
     std::scoped_lock mapLock{mtxAccessToFlowTable};
     PacketList& _existing{mFlowTable[data.mFlowKey]};
     if (flow::IsFlowReady(_existing, packet)) {
@@ -80,26 +79,24 @@ private:
     hd_debug(YELLOW("void sendingJob() 结束"));
   }
 
+  /// \brief 将mFlowTable里面超过timeout但是数量不足的flow删掉
   void cleanerJob() {
+    // MEM-LEAK valgrind reports a mem-leak somewhere here, but why....
     while (mIsRunning) {
       std::this_thread::sleep_for(std::chrono::seconds(10));
       if (not mIsRunning) break;
       std::unique_lock lock1(mtxAccessToFlowTable);
       std::unique_lock lock2(mtxAccessToLastArrived);
       long const now = flow::timestampNow<std::chrono::seconds>();
-      for (auto it = mLastArrived.begin(); it != mLastArrived.end();) {
-        const auto& key = it->first;
-        const auto& timestamp = it->second;
-        if (now - timestamp < opt.flowTimeout) {
-          ++it;
-          continue;
-        }
-        auto _list{mFlowTable.at(key)}; // [] 会创建很多空列表
-        if (_list.size() >= opt.min_packets) {
-          std::scoped_lock queueLock(mtxAccessToQueue);
-          mSendQueue.emplace(key, std::move(_list));
-          ++it;
-        } else {
+      for (auto it = mLastArrived.begin(); it not_eq mLastArrived.end(); ++it) {
+        const auto& [key, timestamp] = *it;
+        if (now - timestamp >= opt.flowTimeout) {
+          if (auto const _list = mFlowTable.at(key); _list.size() >= opt.min_packets) {
+            std::scoped_lock queueLock(mtxAccessToQueue);
+            mSendQueue.emplace(key, _list);
+            ++it;
+          }
+          mFlowTable.at(key).clear();
           mFlowTable.erase(key);
           it = mLastArrived.erase(it); // 更新迭代器
         }
@@ -155,7 +152,7 @@ private:
   std::queue<hd_flow> mSendQueue;
   std::condition_variable cvMsgSender;
 
-  std::unique_ptr<connection_pool> mConnectionPool;
+  connection_pool* mConnectionPool;
   std::atomic_bool mIsRunning{true};
 #ifdef LATENCY_TEST
   std::ofstream mTimestampLog;

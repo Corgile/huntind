@@ -16,36 +16,34 @@ std::atomic<int32_t> num_written_csv = 0;
 #endif
 }
 
+static void quit_guard(const int max_, int& ctrlc) {
+  auto const more = max_ - ++ctrlc;
+  if (more > 0) {
+    hd_line(RED("\n如果没有立即停止就再按 "), more, RED(" 次 [Ctrl-C] 强制退出"));
+  }
+  if (ctrlc >= max_) {
+    exit(EXIT_FAILURE);
+  }
+}
+
 int main(const int argc, char* argv[]) {
   using namespace hd::global;
   using namespace hd::type;
   hd::util::ParseOptions(opt, argc, argv);
   if (opt.stride == 1) opt.fill_bit = 0;
   fillBit = std::to_string(opt.fill_bit).append(opt.separator);
-
+  static LiveParser _live_parser;
   static int ctrlc = 0, max_ = 5;
   auto handler = [](int const signal) -> void {
-    if (signal == SIGINT) {
-      auto const more = max_ - ++ctrlc;
-      if (more > 0) {
-        hd_line(RED("\n再按 "), more, RED(" 次 [Ctrl-C] 退出"));
-      }
-      if (ctrlc >= max_) {
-        exit(EXIT_FAILURE);
-      }
-    }
-    if (signal == SIGTERM) {
-      hd_line(RED("\n[SIGTERM] received. 即将退出..."));
-    }
-    if (signal == SIGKILL) {
-      hd_line(RED("\n[SIGKILL] received. 即将退出..."));
-    }
+    hd_line(RED("\n正在退出..."));
+    _live_parser.stopCapture();
+    quit_guard(max_, ctrlc);
   };
   std::signal(SIGSTOP, handler);
   std::signal(SIGINT, handler);
   std::signal(SIGTERM, handler);
   std::signal(SIGKILL, handler);
-  LiveParser _live_parser;
+
   _live_parser.startCapture();
   return 0;
 }

@@ -12,6 +12,6 @@ struct pcap_deleter {
   // invalid write & read & free
   void operator()(pcap_t* pointer) const { pcap_close(pointer); }
 };
-using pcap_handle_t = std::shared_ptr<pcap_t>;
+using pcap_handle_t = std::unique_ptr<pcap_t, pcap_deleter>;
 
 #endif //DELETERS_HPP

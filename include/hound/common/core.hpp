@@ -15,7 +15,7 @@ using namespace hd::global;
 class util {
 public:
   template <int32_t PadBytes = -1>
-  static void fill(bool const condition, const std::string_view rawData, std::string &buffer) {
+  static void fill(bool const condition, const std::string_view rawData, std::string& buffer) {
     if (not condition) return;
     if constexpr (PadBytes == -1) { // payload
       ___fill(opt.stride, opt.payload, rawData, buffer);
@@ -42,7 +42,7 @@ private:
     return buff;
   }
 
-  static void ___fill(int const width, int const _exceptedBytes, const std::string_view raw, std::string &refout) {
+  static void ___fill(int const width, int const _exceptedBytes, const std::string_view raw, std::string& refout) {
     int i = 0;
     auto const p = reinterpret_cast<uint64_t const*>(raw.data());
     uint64_t const n = log2(width);
@@ -53,6 +53,7 @@ private:
     char buffer[22];
     for (; i < raw.length() << 3 >> n; ++i) {
       const uint64_t w = (i & r) << n;
+      // invalid read
       const uint64_t _val = (f << w & p[i >> s]) >> w; //45 00   05 dc a9 93   20 00
       std::sprintf(buffer, opt.format, _val);
       refout.append(buffer);
