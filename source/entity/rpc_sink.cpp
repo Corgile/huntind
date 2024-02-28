@@ -15,9 +15,9 @@ hd::type::RpcSink::RpcSink() {
   auto v = server.async_start();
 }
 
-void hd::type::RpcSink::consumeData(hd::type::ParsedData const& data) {
+void hd::type::RpcSink::consumeData(ParsedData const& data) {
   if (not data.HasContent) return;
-  hd::entity::hd_packet packet{data.mPcapHead};
+  hd_packet packet{data.mPcapHead};
   core::util::fillRawBitVec(data, packet.bitvec);
   std::scoped_lock mapLock{mtxAccessToFlowTable};
   packet_list& _existing{mFlowTable[data.mFlowKey]};
@@ -25,7 +25,7 @@ void hd::type::RpcSink::consumeData(hd::type::ParsedData const& data) {
     std::scoped_lock queueLock(service::mtx_queue_access);
     // send queue 放整个 data
     service::rpc_msg_queue.emplace(data.mFlowKey, std::move(_existing));
-    cvMsgSender.notify_all();
+    dbg("emplaced!");
     std::scoped_lock lock(mtxAccessToLastArrived);
     mLastArrived.erase(data.mFlowKey);
   }
@@ -44,7 +44,6 @@ std::string hd::type::RpcSink::serialize(const hd_flow& flow) {
 
 hd::type::RpcSink::~RpcSink() {
   mIsRunning = false;
-  cvMsgSender.notify_all();
   hd_debug(__PRETTY_FUNCTION__);
   hd_debug(this->mFlowTable.size());
 }
@@ -54,8 +53,8 @@ void hd::type::RpcSink::cleanerJob() {
   while (mIsRunning) {
     std::this_thread::sleep_for(std::chrono::seconds(5));
     if (not mIsRunning) break;
-    std::unique_lock lock1(mtxAccessToFlowTable);
-    std::unique_lock lock2(mtxAccessToLastArrived);
+    std::scoped_lock lock1(mtxAccessToFlowTable);
+    std::scoped_lock lock2(mtxAccessToLastArrived);
     long const now = flow::timestampNow<std::chrono::seconds>();
     for (auto it = mLastArrived.begin(); it not_eq mLastArrived.end(); ++it) {
       const auto& [key, timestamp] = *it;
@@ -75,7 +74,6 @@ void hd::type::RpcSink::cleanerJob() {
         it = mLastArrived.erase(it); // 更新迭代器
       }
     }
-    cvMsgSender.notify_all();
     hd_debug(this->mFlowTable.size());
     hd_debug(this->mSendQueue.size());
   }

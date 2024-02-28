@@ -12,14 +12,13 @@ using namespace hd::global;
 
 hd::type::LiveParser::LiveParser() {
   util::OpenLiveHandle(opt, this->mHandle);
-  mSink = std::make_shared<BaseSink>();
+  for (int i = 0; i < opt.workers; ++i) {
+    std::thread(&LiveParser::consumer_job, this).detach();
+  }
 }
 
 void hd::type::LiveParser::startCapture() {
   using namespace hd::global;
-  for (int i = 0; i < opt.workers; ++i) {
-    std::thread(&LiveParser::consumer_job, this).detach();
-  }
   if (opt.duration > 0) {
     /// canceler thread
     std::thread([this] {
@@ -53,14 +52,15 @@ void hd::type::LiveParser::consumer_job() {
     this->mPacketQueue.pop();
     lock.unlock();
     cv_producer.notify_one();
-    mSink->consumeData({front});
+    server.consumeData({front});
+    // server->consumeData({front});
 #if defined(BENCHMARK)
     ++num_consumed_packet;
 #endif // defined(BENCHMARK)
   }
   const std::thread::id this_id = std::this_thread::get_id();
   const auto id_numeric = std::hash<std::thread::id>{}(this_id);
-  std::printf("%s%lu%s\n", YELLOW("Worker ["),id_numeric, YELLOW("] 退出"));
+  std::printf("%s%lu%s\n", YELLOW("Worker ["), id_numeric, YELLOW("] 退出"));
 }
 
 void hd::type::LiveParser::stopCapture() {

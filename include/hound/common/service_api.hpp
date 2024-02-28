@@ -6,6 +6,7 @@
 #ifndef SERVICE_API_HPP
 #define SERVICE_API_HPP
 
+#include <dbg.h>
 #include <string>
 #include <ylt/struct_json/json_writer.h>
 #include <hound/sink/rpc_sink.hpp>

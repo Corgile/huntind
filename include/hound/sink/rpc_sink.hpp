@@ -41,10 +41,6 @@ private:
   std::mutex mtxAccessToLastArrived;
   std::unordered_map<std::string, long> mLastArrived;
 
-  std::mutex mtxAccessToQueue;
-  std::queue<hd_flow> mSendQueue;
-  std::condition_variable cvMsgSender{};
-
   std::atomic_bool mIsRunning{true};
 };
 } // entity

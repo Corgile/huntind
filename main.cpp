@@ -19,7 +19,7 @@ std::atomic<int32_t> num_written_csv = 0;
 static void quit_guard(const int max_, int& ctrlc) {
   auto const more = max_ - ++ctrlc;
   if (more > 0) {
-    std::printf("%s%d%s\n", RED("\n如果没有立即停止就再按 "), more, RED(" 次 [Ctrl-C] 强制退出"));
+    std::printf("%s%d%s\n", RED("如果没有立即停止就再按 "), more, RED(" 次 [Ctrl-C] 强制退出"));
   }
   if (ctrlc >= max_) {
     exit(EXIT_FAILURE);

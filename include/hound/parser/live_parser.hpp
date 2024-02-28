@@ -14,9 +14,7 @@
 #include <hound/type/deleters.hpp>
 #include <hound/sink/json_file_sink.hpp>
 
-
 namespace hd::type {
-
 class LiveParser {
 public:
   explicit LiveParser();
@@ -28,7 +26,6 @@ public:
   ~LiveParser();
 
 private:
-
   static void liveHandler(u_char*, const pcap_pkthdr*, const u_char*);
 
   void consumer_job();
@@ -38,14 +35,13 @@ private:
   uint32_t mLinkType{};
   std::queue<raw_packet_info> mPacketQueue;
   std::atomic<bool> keepRunning{true};
-  std::shared_ptr<BaseSink> mSink;
+  BaseSink console;
+  RpcSink server;
   std::condition_variable cv_producer;      // 生产者条件变量
   std::condition_variable cv_consumer;      // 消费者条件变量
 
   mutable std::mutex mQueueLock;
-
 };
-
 } // entity
 
 #endif //FC_REFACTORED_LIVE_PARSER_HPP
