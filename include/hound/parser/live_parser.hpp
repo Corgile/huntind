@@ -8,9 +8,12 @@
 #include <pcap/pcap.h>
 #include <atomic>
 #include <hound/type/raw_packet_info.hpp>
-#include <hound/sink/base_sink.hpp>
 #include <condition_variable>
+#include <hound/sink/rpc_sink.hpp>
+#include <hound/sink/base_sink.hpp>
 #include <hound/type/deleters.hpp>
+#include <hound/sink/json_file_sink.hpp>
+
 
 namespace hd::type {
 

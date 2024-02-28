@@ -9,6 +9,7 @@
 #include <getopt.h>
 #include <memory>
 #include <string>
+
 #include <hound/common/macro.hpp>
 #include <hound/common/global.hpp>
 #include <hound/type/capture_option.hpp>
@@ -65,17 +66,17 @@ static option longopts[] = {
 static char const* shortopts = "J:P:W:F:f:N:E:K:D:S:L:R:p:CTVhIm:";
 #pragma endregion ShortAndLongOptions //@formatter:on
 
-static void SetFilter(pcap_handle_t& handle) {
+static void SetFilter(pcap_handle_t const& handle) {
   if (opt.filter.empty() or handle == nullptr) { return; }
   constexpr bpf_u_int32 net{0};
   bpf_program fp{};
   hd_debug(opt.filter);
   if (pcap_compile(handle.get(), &fp, opt.filter.c_str(), 0, net) == -1) {
-    hd_line("解析 Filter 失败: ", opt.filter, "\n", pcap_geterr(handle.get()));
+    std::printf("%s%s\n", RED("解析 Filter 失败: "), pcap_geterr(handle.get()));
     exit(EXIT_FAILURE);
   }
   if (pcap_setfilter(handle.get(), &fp) == -1) {
-    hd_line("设置 Filter 失败: ", pcap_geterr(handle.get()));
+    std::printf("%s%s\n", RED("设置 Filter 失败: "), pcap_geterr(handle.get()));
     exit(EXIT_FAILURE);
   }
   pcap_freecode(&fp);
@@ -86,7 +87,7 @@ static void OpenLiveHandle(capture_option& option, pcap_handle_t& handle) {
   if (option.device.empty()) {
     pcap_if_t* l;
     if (int32_t const rv{pcap_findalldevs(&l, ByteBuffer)}; rv == -1) {
-      hd_line("找不到默认网卡设备", ByteBuffer);
+      std::printf("%s%s\n", RED("找不到默认网卡设备: "), ByteBuffer);
       exit(EXIT_FAILURE);
     }
     option.device = l->name;
@@ -96,7 +97,7 @@ static void OpenLiveHandle(capture_option& option, pcap_handle_t& handle) {
   /* open device */
   handle.reset(pcap_open_live(option.device.c_str(), BUFSIZ, 1, 1000, ByteBuffer));
   if (handle == nullptr) {
-    hd_line("监听网卡设备失败: ", ByteBuffer);
+    std::printf("%s%s\n", RED("监听网卡设备失败: "), ByteBuffer);
     exit(EXIT_FAILURE);
   }
   SetFilter(handle);
@@ -150,7 +151,7 @@ static void ParseOptions(capture_option& arg, int argc, char* argv[]) {
       break;
     case 'K': arg.kafka_config = optarg;
       if (arg.kafka_config.empty()) {
-        hd_line("-k, --kafka-config 缺少值");
+        std::printf("%s\n", RED("-k, --kafka-config 缺少值"));
         exit(EXIT_FAILURE);
       }
       break;
@@ -173,27 +174,26 @@ static void ParseOptions(capture_option& arg, int argc, char* argv[]) {
       break;
     case 'J': j = std::stoi(optarg);
       if (j < 1) {
-        hd_line("worker 必须 >= 1");
+        std::printf("%s\n", RED("worker 必须 >= 1"));
         exit(EXIT_FAILURE);
       }
       arg.workers = j;
       break;
     case 'S': arg.stride = std::stoi(optarg);
       if (arg.stride & arg.stride - 1 or arg.stride == 0) {
-        hd_line("-S,  --stride 只能是1,2,4,8,16,32,64, 现在是: ", arg.stride);
+        std::printf("%s%s\n", RED("-S,  --stride 只能是1,2,4,8,16,32,64, 现在是"), optarg);
         exit(EXIT_FAILURE);
       }
       break;
     case 'W': arg.write_file = true;
       arg.output_file = optarg;
       if (optarg == nullptr or arg.output_file.empty()) {
-        hd_line("-W, --write 缺少值");
+        std::printf("%s\n", RED("-W, --write 缺少值"));
         exit(EXIT_FAILURE);
       }
       break;
-    case '?':
-      hd_line("选项 ", '-', static_cast<char>(optopt), ":" RED(" 语法错误"));
-      hd_line("使用 -h, --help 查看使用方法");
+    case '?': std::printf("选项 -%c%s\n", optopt, RED(" 有语法错误"));
+      std::printf("%s\n", "使用 -h, --help 查看使用方法");
       exit(EXIT_FAILURE);
     case 'h': Doc();
       exit(EXIT_SUCCESS);

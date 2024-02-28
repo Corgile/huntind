@@ -11,20 +11,20 @@
 #include <filesystem>
 
 #include <ylt/struct_json/json_writer.h>
+#include <hound/common/core.hpp>
+#include <hound/common/flow_check.hpp>
+
 #include <hound/type/hd_flow.hpp>
 #include <hound/type/synced_stream.hpp>
-#include <hound/sink/base_sink.hpp>
-#include <hound/sink/impl/flow_check.hpp>
 
 namespace hd::type {
 namespace fs = std::filesystem;
 
-class JsonFileSink final : public BaseSink {
+class JsonFileSink final {
   using PacketList = std::vector<entity::hd_packet>;
 
 public:
-  explicit JsonFileSink(std::string const& fileName) :
-    mOutFile(fileName, std::ios::out) {
+  explicit JsonFileSink(std::string const& fileName) : mOutFile(fileName, std::ios::out) {
     auto const parent{absolute(fs::path(fileName)).parent_path()};
     if (not exists(parent)) {
       create_directories(parent);
@@ -36,7 +36,7 @@ public:
     };
 
     if (not isGood) {
-      hd_line(RED("无法打开输出文件: "), fileName);
+      std::printf("%s%s\n",RED("无法打开输出文件: "), fileName.c_str());
       exit(EXIT_FAILURE);
     }
     mOutFile << "[";
@@ -44,10 +44,10 @@ public:
   }
 
   /// 写入json文件
-  void consumeData(ParsedData const& data) override {
+  void consumeData(ParsedData const& data) {
     if (not data.HasContent) return;
     entity::hd_packet packet(data.mPcapHead);
-    this->fillRawBitVec(data, packet.bitvec);
+    core::util::fillRawBitVec(data, packet.bitvec);
     std::scoped_lock mapLock(mAccessToFlowTable);
     PacketList const packetList{mFlowTable[data.mFlowKey]};
     if (flow::IsFlowReady(packetList, packet)) {
@@ -56,7 +56,7 @@ public:
     mFlowTable.at(data.mFlowKey).emplace_back(std::move(packet));
   }
 
-  ~JsonFileSink() override {
+  ~JsonFileSink() {
     for (auto& [id, _list] : this->mFlowTable) {
       if (_list.size() >= global::opt.min_packets) {
         this->appendToFile(id, _list);

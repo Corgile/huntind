@@ -3,24 +3,16 @@
 //
 // #include <thread>
 
+#include <hound/parser/live_parser.hpp>
 #include <hound/common/global.hpp>
 #include <hound/common/util.hpp>
-#include <hound/parser/live_parser.hpp>
-
-#include <hound/sink/impl/json_file_sink.hpp>
-
-#include <hound/sink/impl/kafka/kafka_sink.hpp>
 #include <memory>
 
 using namespace hd::global;
 
 hd::type::LiveParser::LiveParser() {
   util::OpenLiveHandle(opt, this->mHandle);
-  if (not opt.kafka_config.empty()) {
-    mSink = std::make_shared<KafkaSink>(opt.kafka_config);
-  } else {
-    mSink = std::make_shared<BaseSink>();
-  }
+  mSink = std::make_shared<BaseSink>();
 }
 
 void hd::type::LiveParser::startCapture() {
@@ -35,11 +27,11 @@ void hd::type::LiveParser::startCapture() {
       this->stopCapture();
     }).detach();
   }
-  pcap_loop(mHandle.get(), opt.num_packets, liveHandler, reinterpret_cast<byte_t*>(this));
+  pcap_loop(mHandle.get(), opt.num_packets, liveHandler, reinterpret_cast<u_char*>(this));
   // pcap_close(mHandle.get());
 }
 
-void hd::type::LiveParser::liveHandler(byte_t* user_data, const pcap_pkthdr* pkthdr, const byte_t* packet) {
+void hd::type::LiveParser::liveHandler(u_char* user_data, const pcap_pkthdr* pkthdr, const u_char* packet) {
   auto const _this{reinterpret_cast<LiveParser*>(user_data)};
   std::unique_lock _accessToQueue(_this->mQueueLock);
   _this->mPacketQueue.emplace(pkthdr, packet, util::min(opt.payload + 120, static_cast<int>(pkthdr->caplen)));
@@ -66,7 +58,9 @@ void hd::type::LiveParser::consumer_job() {
     ++num_consumed_packet;
 #endif // defined(BENCHMARK)
   }
-  hd_line(YELLOW("Worker ["), std::this_thread::get_id(), YELLOW("] 退出"));
+  const std::thread::id this_id = std::this_thread::get_id();
+  const auto id_numeric = std::hash<std::thread::id>{}(this_id);
+  std::printf("%s%lu%s\n", YELLOW("Worker ["),id_numeric, YELLOW("] 退出"));
 }
 
 void hd::type::LiveParser::stopCapture() {
@@ -83,10 +77,10 @@ hd::type::LiveParser::~LiveParser() {
   /// 再控制游离线程停止访问主线程的资源
 #if defined(BENCHMARK)
   using namespace global;
-  hd_line(CYAN("num_captured_packet = "), num_captured_packet.load());
-  hd_line(CYAN("num_dropped_packets = "), num_dropped_packets.load());
-  hd_line(CYAN("num_consumed_packet = "), num_consumed_packet.load());
-  hd_line(CYAN("num_written_csv = "), num_written_csv.load());
+  std::printf("%s%d\n", CYAN("num_captured_packet = "), num_captured_packet.load());
+  std::printf("%s%d\n", CYAN("num_dropped_packets = "), num_dropped_packets.load());
+  std::printf("%s%d\n", CYAN("num_consumed_packet = "), num_consumed_packet.load());
+  std::printf("%s%d\n", CYAN("num_written_csv = "), num_written_csv.load());
 #endif //- #if defined(BENCHMARK)
   hd_debug(this->mPacketQueue.size());
 }

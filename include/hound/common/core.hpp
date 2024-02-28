@@ -6,7 +6,8 @@
 #define HOUND_CORE_FUNC_HPP
 
 #include <string>
-#include <hound/common/global.hpp>
+#include <hound/common/macro.hpp>
+#include <hound/type/parsed_data.hpp>
 
 namespace hd::core {
 using namespace hd::type;
@@ -14,15 +15,24 @@ using namespace hd::global;
 
 class util {
 public:
+  static void fillRawBitVec(ParsedData const& data, std::string& buffer) {
+    using namespace global;
+    core::util::fill<IP4_PADSIZE>(true, data.mIP4Head, buffer);
+    core::util::fill<TCP_PADSIZE>(true, data.mTcpHead, buffer);
+    core::util::fill<UDP_PADSIZE>(true, data.mUdpHead, buffer);
+    core::util::fill(opt.payload > 0, data.mPayload, buffer);
+    buffer.pop_back();
+  }
+
+private:
   template <int32_t PadBytes = -1>
   static void fill(bool const condition, const std::string_view rawData, std::string& buffer) {
     if (not condition) return;
     if constexpr (PadBytes == -1) { // payload
-      ___fill(opt.stride, opt.payload, rawData, buffer);
-    } else ___fill(opt.stride, PadBytes, rawData, buffer);
+      _fill(opt.stride, opt.payload, rawData, buffer);
+    } else _fill(opt.stride, PadBytes, rawData, buffer);
   }
 
-private:
   static uint64_t log2(int v) {
     int n = 0;
     while (v > 1) {
@@ -42,7 +52,7 @@ private:
     return buff;
   }
 
-  static void ___fill(int const width, int const _exceptedBytes, const std::string_view raw, std::string& refout) {
+  static void _fill(int const width, int const _exceptedBytes, const std::string_view raw, std::string& refout) {
     int i = 0;
     auto const p = reinterpret_cast<uint64_t const*>(raw.data());
     uint64_t const n = log2(width);
