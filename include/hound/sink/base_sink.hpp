@@ -18,17 +18,15 @@ class BaseSink {
   SyncedStream<std::ostream&> mConsole;
 
 public:
-  BaseSink(std::string const&) : mConsole(std::cout) {
-  }
+  BaseSink(std::string const&) : mConsole(std::cout) {}
 
-  BaseSink() : mConsole(std::cout) {
-  }
+  BaseSink() : mConsole(std::cout) {}
 
   virtual void consumeData(ParsedData const& data) {
     // TODO: 异步
     if (not data.HasContent) return;
     std::string buffer;
-    service::fillCsvBuffer(data, buffer);
+    core::util::fillCsvBuffer(data, buffer);
 #if defined(HD_DEV)
     hd_line(std::move(buffer));
 #else

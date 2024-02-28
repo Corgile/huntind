@@ -15,12 +15,22 @@ using namespace hd::global;
 
 class util {
 public:
+  static void fillCsvBuffer(ParsedData const& data, std::string& buffer) {
+    using namespace global;
+    //@formatter:off
+    if (opt.include_5tpl)   buffer.append(data.m5Tuple).append(opt.separator);
+    if (opt.include_pktlen) buffer.append(data.mCapLen).append(opt.separator);
+    if (opt.include_ts)     buffer.append(data.mTimestamp).append(opt.separator);
+    //@formatter:on
+    fillRawBitVec(data, buffer);
+  }
+
   static void fillRawBitVec(ParsedData const& data, std::string& buffer) {
     using namespace global;
     core::util::fill<IP4_PADSIZE>(true, data.mIP4Head, buffer);
     core::util::fill<TCP_PADSIZE>(true, data.mTcpHead, buffer);
     core::util::fill<UDP_PADSIZE>(true, data.mUdpHead, buffer);
-    core::util::fill(opt.payload > 0, data.mPayload, buffer);
+    fill(opt.payload > 0, data.mPayload, buffer);
     buffer.pop_back();
   }
 

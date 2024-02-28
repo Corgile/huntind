@@ -5,7 +5,6 @@
 #ifndef HOUND_FLOW_CHECK_HPP
 #define HOUND_FLOW_CHECK_HPP
 
-#include <librdkafka/rdkafkacpp.h>
 #include <hound/type/hd_flow.hpp>
 #include <hound/common/global.hpp>
 
@@ -20,7 +19,7 @@ static bool IsFlowReady(PacketList const& existing, hd_packet const& newPacket) 
     existing.back().ts_sec - newPacket.ts_sec >= opt.flowTimeout;
 }
 
-template <typename TimeUnit>
+template <typename TimeUnit = std::chrono::seconds>
 static long timestampNow() {
   auto const now = std::chrono::system_clock::now();
   auto const duration = now.time_since_epoch();
