@@ -11,12 +11,33 @@
 namespace flow {
 using namespace hd::entity;
 using namespace hd::global;
-using PacketList = std::vector<hd_packet>;
+using packet_list = std::vector<hd_packet>;
 
-static bool IsFlowReady(PacketList const& existing, hd_packet const& newPacket) {
-  if (existing.size() < opt.min_packets) return false;
-  return existing.size() == opt.max_packets or
-    existing.back().ts_sec - newPacket.ts_sec >= opt.flowTimeout;
+enum status {
+  /// 未超时，并且长度还不满足最小发送长度
+  GROWING,
+  /// 超时,判断长度后再发送/丢弃
+  TIMEOUT,
+  /// 可以发送
+  READY,
+};
+
+inline bool _isTimeout(packet_list const& existing, hd_packet const& new_) {
+  if(existing.empty()) return false;
+  return existing.back().ts_sec - new_.ts_sec >= opt.flowTimeout;
+}
+
+inline bool _isTimeout(packet_list const& existing, long now) {
+  return existing.back().ts_sec - now >= opt.flowTimeout;
+}
+
+inline bool _isLengthSatisfited(packet_list const& existing) {
+  return existing.size() >= opt.min_packets and existing.size() <= opt.max_packets;
+}
+
+static bool IsFlowReady(packet_list const& existing, hd_packet const& new_) {
+  if (existing.size() == opt.max_packets) return true;
+  return _isTimeout(existing, new_) and _isLengthSatisfited(existing);
 }
 
 template <typename TimeUnit = std::chrono::seconds>

@@ -8,7 +8,6 @@
 
 #include <dbg.h>
 #include <string>
-#include <ylt/struct_json/json_writer.h>
 #include <hound/sink/rpc_sink.hpp>
 
 namespace service {
@@ -17,7 +16,8 @@ inline std::mutex mtx_queue_access;
 
 inline std::string sendingJob() {
   std::unique_lock lock(mtx_queue_access);
-  auto front{rpc_msg_queue.front()};
+  if (rpc_msg_queue.empty()) return "空队列";
+  auto const front{rpc_msg_queue.front()};
   rpc_msg_queue.pop();
   lock.unlock();
   return hd::type::RpcSink::serialize(front);

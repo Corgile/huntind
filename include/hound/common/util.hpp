@@ -5,7 +5,6 @@
 #ifndef HOUND_UTILS_HPP
 #define HOUND_UTILS_HPP
 
-#include <filesystem>
 #include <getopt.h>
 #include <memory>
 #include <string>
@@ -14,7 +13,6 @@
 #include <hound/common/global.hpp>
 #include <hound/type/capture_option.hpp>
 #include <hound/type/deleters.hpp>
-#include <hound/type/parsed_data.hpp>
 
 namespace hd::util {
 namespace fs = std::filesystem;
@@ -66,7 +64,7 @@ static option longopts[] = {
 static char const* shortopts = "J:P:W:F:f:N:E:K:D:S:L:R:p:CTVhIm:";
 #pragma endregion ShortAndLongOptions //@formatter:on
 
-static void SetFilter(pcap_handle_t const& handle) {
+inline void SetFilter(pcap_handle_t const& handle) {
   if (opt.filter.empty() or handle == nullptr) { return; }
   constexpr bpf_u_int32 net{0};
   bpf_program fp{};
@@ -107,7 +105,7 @@ static void OpenLiveHandle(capture_option& option, pcap_handle_t& handle) {
   // hd_debug(link_type);
 }
 
-static void Doc() {
+inline void Doc() {
   std::cout << "\t用法: \n";
   std::cout
     << "\t-J, --workers=1               处理流量包的线程数 (默认 1)\n"
