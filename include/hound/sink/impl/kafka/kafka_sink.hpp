@@ -47,20 +47,15 @@ public:
   void consumeData(ParsedData const& data) override {
     if (not data.HasContent) return;
     hd_packet packet{data.mPcapHead};
-    fillRawBitVec(data, packet.bitvec);
-    std::scoped_lock mapLock{mtxAccessToFlowTable};
-    PacketList& _existing{mFlowTable[data.mFlowKey]};
+    core::util::fillRawBitVec(data, packet.bitvec);
+    std::scoped_lock mapLock{accessToFlowTable};
+    packet_list& _existing{mFlowTable[data.mFlowKey]};
     if (flow::IsFlowReady(_existing, packet)) {
-      std::scoped_lock queueLock(mtxAccessToQueue);
-      // send queue放整个data
-      mSendQueue.emplace(data.mFlowKey, std::move(_existing));
-      cvMsgSender.notify_all();
-      std::scoped_lock lock(mtxAccessToLastArrived);
-      mLastArrived.erase(data.mFlowKey);
+      std::scoped_lock queueLock(service::mtx_queue_access);
+      service::rpc_msg_queue.emplace(data.mFlowKey, std::move(_existing));
     }
     _existing.emplace_back(std::move(packet));
-    std::scoped_lock lock(mtxAccessToLastArrived);
-    mLastArrived.insert_or_assign(data.mFlowKey, packet.ts_sec);
+    assert(_existing.size() <= opt.max_packets);
   }
 
 private:
@@ -86,7 +81,6 @@ private:
       std::this_thread::sleep_for(std::chrono::seconds(10));
       if (not mIsRunning) break;
       std::unique_lock lock1(mtxAccessToFlowTable);
-      std::unique_lock lock2(mtxAccessToLastArrived);
       long const now = flow::timestampNow<std::chrono::seconds>();
       for (auto it = mLastArrived.begin(); it not_eq mLastArrived.end(); ++it) {
         const auto& [key, timestamp] = *it;
@@ -145,8 +139,6 @@ private:
 private:
   std::mutex mtxAccessToFlowTable;
   std::unordered_map<std::string, PacketList> mFlowTable;
-  std::mutex mtxAccessToLastArrived;
-  std::unordered_map<std::string, long> mLastArrived;
 
   std::mutex mtxAccessToQueue;
   std::queue<hd_flow> mSendQueue;
