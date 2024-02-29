@@ -24,11 +24,11 @@ enum status {
 
 inline bool _isTimeout(packet_list const& existing, hd_packet const& new_) {
   if(existing.empty()) return false;
-  return existing.back().ts_sec - new_.ts_sec >= opt.flowTimeout;
+  return new_.ts_sec - existing.back().ts_sec  >= opt.flowTimeout;
 }
 
 inline bool _isTimeout(packet_list const& existing, long now) {
-  return existing.back().ts_sec - now >= opt.flowTimeout;
+  return now - existing.back().ts_sec >= opt.flowTimeout;
 }
 
 inline bool _isLengthSatisfited(packet_list const& existing) {
