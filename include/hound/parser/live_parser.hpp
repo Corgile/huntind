@@ -10,7 +10,7 @@
 #include <hound/type/raw_packet_info.hpp>
 #include <condition_variable>
 #include <hound/sink/rpc_sink.hpp>
-#include <hound/sink/base_sink.hpp>
+// #include <hound/sink/console_sink.hpp>
 #include <hound/type/deleters.hpp>
 #include <hound/sink/json_file_sink.hpp>
 
@@ -35,7 +35,7 @@ private:
   uint32_t mLinkType{};
   std::queue<raw_packet_info> mPacketQueue;
   std::atomic<bool> keepRunning{true};
-  BaseSink console;
+  // ConsoleSink console;
   RpcSink server;
   std::condition_variable cv_producer;      // 生产者条件变量
   std::condition_variable cv_consumer;      // 消费者条件变量

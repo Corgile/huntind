@@ -6,9 +6,9 @@
 #define HOUND_CORO_RPC_HPP
 
 #include <mutex>
-#include <thread>
 #include <hound/common/core.hpp>
 #include <hound/common/flow_check.hpp>
+#include <ylt/coro_rpc/coro_rpc_server.hpp>
 
 namespace hd::type {
 using namespace hd::entity;
@@ -35,8 +35,7 @@ private:
 private:
   std::mutex accessToFlowTable;
   std::unordered_map<std::string, packet_list> mFlowTable;
-  // std::mutex accessToLastArrived;
-  // std::unordered_map<std::string, long> mLastArrived;
+  std::unique_ptr<coro_rpc::coro_rpc_server> mInternalRpcServer;
 
   std::atomic_bool mIsRunning{true};
 };

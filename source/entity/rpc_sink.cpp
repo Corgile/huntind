@@ -6,13 +6,12 @@
 #include <hound/sink/rpc_sink.hpp>
 #include <hound/common/service_api.hpp>
 #include <hound/type/hd_flow.hpp>
-#include <ylt/coro_rpc/coro_rpc_server.hpp>
 
 hd::type::RpcSink::RpcSink() {
   std::thread(&RpcSink::cleanerJob, this).detach();
-  static coro_rpc::coro_rpc_server server(/*thread_num =*/10, /*port =*/9000);
-  server.register_handler<service::sendingJob>();
-  auto v = server.async_start();
+  mInternalRpcServer = std::make_unique<coro_rpc::coro_rpc_server>(/*thread_num =*/opt.threads, /*port =*/opt.port);
+  mInternalRpcServer->register_handler<service::sendingJob>();
+  auto v = mInternalRpcServer->async_start();
   easylog::set_min_severity(easylog::Severity::WARN);
   easylog::set_async(true);
 }
@@ -41,8 +40,6 @@ std::string hd::type::RpcSink::serialize(const hd_flow& flow) {
 
 hd::type::RpcSink::~RpcSink() {
   mIsRunning = false;
-  hd_debug(__PRETTY_FUNCTION__);
-  hd_debug(this->mFlowTable.size());
   for (auto it = mFlowTable.begin(); it not_eq mFlowTable.end();) {
     const auto& [key, _packets] = *it;
     if (flow::_isLengthSatisfited(_packets)) {
@@ -51,11 +48,12 @@ hd::type::RpcSink::~RpcSink() {
     }
     it = mFlowTable.erase(it);
   }
-  dbg("剩余: ", mFlowTable.size());
   while (not service::rpc_msg_queue.empty()) {
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
   }
-  dbg("剩余: ", service::rpc_msg_queue.size());
+  hd_debug(this->mFlowTable.size());
+  hd_debug(service::rpc_msg_queue.size());
+  mInternalRpcServer->stop();
 }
 
 void hd::type::RpcSink::cleanerJob() {
@@ -76,11 +74,8 @@ void hd::type::RpcSink::cleanerJob() {
         service::rpc_msg_queue.emplace(key, _packets);
       }
       it = mFlowTable.erase(it);
-      dbg("erased!");
     }
-    dbg(mFlowTable.size());
     hd_debug(this->mFlowTable.size());
-    hd_debug(this->mSendQueue.size());
   }
   hd_debug(YELLOW("void cleanerJob() 结束"));
 }

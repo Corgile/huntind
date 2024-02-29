@@ -14,13 +14,13 @@ namespace hd::type {
 /**
  * 默认流量处理：打印控制台
  */
-class BaseSink {
+class ConsoleSink {
   SyncedStream<std::ostream&> mConsole;
 
 public:
-  BaseSink(std::string const&) : mConsole(std::cout) {}
+  ConsoleSink(std::string const&) : mConsole(std::cout) {}
 
-  BaseSink() : mConsole(std::cout) {}
+  ConsoleSink() : mConsole(std::cout) {}
 
   virtual void consumeData(ParsedData const& data) {
     // TODO: 异步
@@ -28,13 +28,13 @@ public:
     std::string buffer;
     core::util::fillCsvBuffer(data, buffer);
 #if defined(HD_DEV)
-    hd_line(std::move(buffer));
+    hd_debug(std::move(buffer));
 #else
     mConsole << buffer;
 #endif
   }
 
-  virtual ~BaseSink() = default;
+  virtual ~ConsoleSink() = default;
 };
 } // entity
 

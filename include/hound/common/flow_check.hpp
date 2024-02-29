@@ -13,15 +13,6 @@ using namespace hd::entity;
 using namespace hd::global;
 using packet_list = std::vector<hd_packet>;
 
-enum status {
-  /// 未超时，并且长度还不满足最小发送长度
-  GROWING,
-  /// 超时,判断长度后再发送/丢弃
-  TIMEOUT,
-  /// 可以发送
-  READY,
-};
-
 inline bool _isTimeout(packet_list const& existing, hd_packet const& new_) {
   if(existing.empty()) return false;
   return new_.ts_sec - existing.back().ts_sec  >= opt.flowTimeout;

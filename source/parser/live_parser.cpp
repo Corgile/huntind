@@ -52,6 +52,7 @@ void hd::type::LiveParser::consumer_job() {
     this->mPacketQueue.pop();
     lock.unlock();
     cv_producer.notify_one();
+    hd_debug(mPacketQueue.size());
     server.consumeData({front});
     // server->consumeData({front});
 #if defined(BENCHMARK)

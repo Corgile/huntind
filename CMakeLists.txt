@@ -1,14 +1,14 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 3.25)
 PROJECT(hound)
 SET(CMAKE_CXX_STANDARD 20)
-SET(TARGET hd-kafka)
+SET(TARGET hd-rpc)
 # !>> vendor
 SET(VENDOR_PATH ${PROJECT_SOURCE_DIR}/vendor)
 SET(CMAKE_MODULE_PATH ${VENDOR_PATH}/cmake;${CMAKE_MODULE_PATH})
 INCLUDE(third-party)
 # !<< vendor
 MESSAGE(STATUS "${BoldGreen}Binary Target:  ${TARGET}${ColorReset}")
-#ADD_COMPILE_DEFINITIONS(HD_DEV BENCHMARK)
+ADD_COMPILE_DEFINITIONS(HD_DEV)
 #@formatter:off
 # all public header for all source files
 INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/include)

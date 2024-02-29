@@ -18,6 +18,8 @@ void hd::type::capture_option::print() const {
   std::printf("%s%s\n", YELLOW("无符号"), CYAN("类型转换为10进制;"));
   std::printf("%s%d\n", CYAN("包处理线程: "), workers);
   std::printf("%s%s\n",CYAN("包过滤表达式: "), filter.c_str());
+  std::printf("%s%d\n",CYAN("rpc服务器线程数: "), threads);
+  std::printf("%s%d\n",CYAN("rpc服务器端口号: "), port);
   //@formatter:on
   if (this->write_file and not output_file.empty()) {
     std::printf("%s%s", CYAN("输出文件:  "), output_file.c_str());
