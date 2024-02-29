@@ -13,6 +13,8 @@ hd::type::RpcSink::RpcSink() {
   static coro_rpc::coro_rpc_server server(/*thread_num =*/10, /*port =*/9000);
   server.register_handler<service::sendingJob>();
   auto v = server.async_start();
+  easylog::set_min_severity(easylog::Severity::WARN);
+  easylog::set_async(true);
 }
 
 void hd::type::RpcSink::consumeData(ParsedData const& data) {
@@ -47,6 +49,19 @@ hd::type::RpcSink::~RpcSink() {
   mIsRunning = false;
   hd_debug(__PRETTY_FUNCTION__);
   hd_debug(this->mFlowTable.size());
+  for (auto it = mFlowTable.begin(); it not_eq mFlowTable.end();) {
+    const auto& [key, _packets] = *it;
+    if (flow::_isLengthSatisfited(_packets)) {
+      std::scoped_lock queueLock(service::mtx_queue_access);
+      service::rpc_msg_queue.emplace(key, _packets);
+    }
+    it = mFlowTable.erase(it);
+  }
+  dbg("剩余: ", mFlowTable.size());
+  while (not service::rpc_msg_queue.empty()) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+  }
+  dbg("剩余: ", service::rpc_msg_queue.size());
 }
 
 void hd::type::RpcSink::cleanerJob() {
