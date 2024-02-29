@@ -25,16 +25,10 @@ void hd::type::RpcSink::consumeData(ParsedData const& data) {
   packet_list& _existing{mFlowTable[data.mFlowKey]};
   if (flow::IsFlowReady(_existing, packet)) {
     std::scoped_lock queueLock(service::mtx_queue_access);
-    // send queue 放整个 data
     service::rpc_msg_queue.emplace(data.mFlowKey, std::move(_existing));
-    dbg("emplaced!");
-    // std::scoped_lock lock(accessToLastArrived);
-    // mLastArrived.erase(data.mFlowKey);
   }
   _existing.emplace_back(std::move(packet));
   assert(_existing.size() <= opt.max_packets);
-  // std::scoped_lock lock(accessToLastArrived);
-  // mLastArrived.insert_or_assign(data.mFlowKey, packet.ts_sec);
 }
 
 std::string hd::type::RpcSink::serialize(const hd_flow& flow) {
@@ -67,19 +61,24 @@ hd::type::RpcSink::~RpcSink() {
 void hd::type::RpcSink::cleanerJob() {
   // MEM-LEAK valgrind reports a mem-leak somewhere here, but why....
   while (mIsRunning) {
-    std::this_thread::sleep_for(std::chrono::seconds(opt.flowTimeout));
+    std::this_thread::sleep_for(std::chrono::seconds(5));
     if (not mIsRunning) break;
     std::scoped_lock lock1(accessToFlowTable);
     long const now = flow::timestampNow<std::chrono::seconds>();
-    for (auto it = mFlowTable.begin(); it not_eq mFlowTable.end(); ++it) {
+    for (auto it = mFlowTable.begin(); it not_eq mFlowTable.end();) {
       const auto& [key, _packets] = *it;
-      if (not flow::_isTimeout(_packets, now)) continue;
+      if (not flow::_isTimeout(_packets, now)) {
+        ++it;
+        continue;
+      }
       if (flow::_isLengthSatisfited(_packets)) {
         std::scoped_lock queueLock(service::mtx_queue_access);
         service::rpc_msg_queue.emplace(key, _packets);
       }
       it = mFlowTable.erase(it);
+      dbg("erased!");
     }
+    dbg(mFlowTable.size());
     hd_debug(this->mFlowTable.size());
     hd_debug(this->mSendQueue.size());
   }

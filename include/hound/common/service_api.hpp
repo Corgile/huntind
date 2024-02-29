@@ -16,7 +16,7 @@ inline std::mutex mtx_queue_access;
 
 inline std::string sendingJob() {
   std::unique_lock lock(mtx_queue_access);
-  if (rpc_msg_queue.empty()) return "空队列";
+  if (rpc_msg_queue.empty()) return {};
   auto const front{rpc_msg_queue.front()};
   rpc_msg_queue.pop();
   lock.unlock();
