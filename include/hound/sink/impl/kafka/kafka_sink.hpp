@@ -32,11 +32,11 @@ public:
   }
 
   ~KafkaSink() override {
-    hd_debug(__PRETTY_FUNCTION__);
+    hd_debug("执行函数: ", __PRETTY_FUNCTION__);
     mIsRunning = false;
     cvMsgSender.notify_all();
     sendTheRest();
-    hd_debug(this->mFlowTable.size());
+    hd_debug("mFlowTable.size(): ", this->mFlowTable.size());
     delete mConnectionPool;
   }
 
@@ -70,7 +70,7 @@ private:
       /// 异步发送
       std::ignore = std::async(std::launch::async, &KafkaSink::send, this, front);
     }
-    hd_debug(YELLOW("void sendingJob() 结束"));
+    hd_debug("函数: ", YELLOW("void sendingJob() 结束"));
   }
 
   /// \brief 将mFlowTable里面超过timeout但是数量不足的flow删掉
@@ -92,12 +92,11 @@ private:
         }
         it = mFlowTable.erase(it);
       }
-      // hd_debug(this->mFlowTable.size());
     }
-    hd_debug(YELLOW("void cleanerJob() 结束"));
+    hd_debug("函数: ", YELLOW("void cleanerJob() 结束"));
   }
 
-  bool isAttack(const hd_flow& _flow, float const threshold) {
+  static bool isAttack(const hd_flow& _flow, float const threshold) {
     std::vector<torch::Tensor> tensors;
     tensors.reserve(100);
     for (const auto& _packet : _flow.data) {
@@ -115,10 +114,12 @@ private:
     for (int i = 0; i < max_indices.size(0); ++i) {
       attacks += max_indices[i].item<long>() != 0;
     }
-    return static_cast<float>(attacks) / static_cast<float>(_flow.count) >= threshold;
+    auto const rate = static_cast<float>(attacks) / static_cast<float>(_flow.count);
+    hd_debug("报警率: ", rate);
+    return rate >= threshold;
   }
 
-  void send(const hd_flow& _flow) {
+  void send(const hd_flow& _flow) const {
     if (_flow.count < opt.min_packets) return;
     if (not isAttack(_flow, 0.4f)) return;
     std::string payload;

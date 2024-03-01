@@ -7,14 +7,12 @@
 
 #include <mutex>
 
-
 namespace hd::type {
 template <typename StreamType>
 class SyncedStream {
 public:
   SyncedStream(const std::string& filename, std::ios_base::openmode mode)
-    : mOutStream(filename, mode) {
-  }
+    : mOutStream(filename, mode) {}
 
   template <typename ...Args>
   SyncedStream(const std::string& filename, std::ios_base::openmode mode, Args&& ...args) {
@@ -22,8 +20,7 @@ public:
   }
 
   SyncedStream(StreamType&& stream)
-    : mOutStream(std::forward<StreamType>(stream)) {
-  }
+    : mOutStream(std::forward<StreamType>(stream)) {}
 
   /// 同步访问流对象的成员函数
   template <typename Func, typename ...Args>

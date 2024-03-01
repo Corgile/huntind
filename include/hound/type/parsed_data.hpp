@@ -71,9 +71,9 @@ private:
 #endif // defined(BENCHMARK)
 #if defined(HD_DEV)
       if (_ether_type == ETHERTYPE_IPV6) {
-        hd_debug("ETHERTYPE_IPV6");
+        hd_debug("不支持： ", "ETHERTYPE_IPV6");
       } else
-      hd_debug("不是 ETHERTYPE_IP");
+      hd_debug("不支持: ", "不是 ETHERTYPE_IP");
 #endif
       return false;
     }

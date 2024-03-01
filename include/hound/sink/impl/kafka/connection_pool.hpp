@@ -57,7 +57,7 @@ public:
       delete _connectionQue.front();
       _connectionQue.pop();
     }
-    hd_debug(__PRETTY_FUNCTION__);
+    hd_debug("执行函数: ", __PRETTY_FUNCTION__);
     {
       // ProducerDeliveryReportCb
       DeliveryReportCb* buff_1;
@@ -102,7 +102,7 @@ private:
       }
       cv.notify_all();
     }
-    hd_debug("produceConnectionTask 结束");
+    hd_debug("函数: ", "produceConnectionTask 结束");
   }
 
   /// 扫描超过maxIdleTime时间的空闲连接，进行对于连接的回收
@@ -125,7 +125,7 @@ private:
         --_connectionCnt;
       }
     }
-    hd_debug("scannerConnectionTask 结束");
+    hd_debug("函数: ", "scannerConnectionTask 结束");
   }
 
   kafka_config _config;

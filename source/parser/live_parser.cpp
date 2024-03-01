@@ -88,5 +88,5 @@ hd::type::LiveParser::~LiveParser() {
   hd_line(CYAN("num_consumed_packet = "), num_consumed_packet.load());
   hd_line(CYAN("num_written_csv = "), num_written_csv.load());
 #endif //- #if defined(BENCHMARK)
-  hd_debug(this->mPacketQueue.size());
+  hd_debug("mPacketQueue.size(): ", this->mPacketQueue.size());
 }

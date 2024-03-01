@@ -73,7 +73,7 @@ public:
       });
       mOutFile << "]";
     }
-    hd_debug(mFlowTable.size());
+    hd_debug("mFlowTable.size(): ", mFlowTable.size());
   }
 
 protected:

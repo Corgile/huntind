@@ -22,31 +22,32 @@ using namespace hd::type;
 inline char ByteBuffer[PCAP_ERRBUF_SIZE];
 
 #pragma region ShortAndLongOptions
+//@formatter:off
 static option longopts[] = {
-/// specify which network interface to capture
+  /// specify which network interface to capture
   {"device", required_argument, nullptr, 'd'},
   {"workers", required_argument, nullptr, 'J'},
   {"duration", required_argument, nullptr, 'D'},
-/// custom filter for libpcap
+  /// custom filter for libpcap
   {"filter", required_argument, nullptr, 'F'},
   {"fill", required_argument, nullptr, 'f'},
   {"num", required_argument, nullptr, 'N'},
-/// min packets
+  /// min packets
   {"min-packets", required_argument, nullptr, 'L'},
-/// max packets
+  /// max packets
   {"max-packets", required_argument, nullptr, 'R'},
-/// packet timeout seconds(to determine whether to send)
+  /// packet timeout seconds(to determine whether to send)
   {"interval", required_argument, nullptr, 'E'},
   {"kafka", required_argument, nullptr, 'K'},
   {"model", required_argument, nullptr, 'M'},
   {"sep", required_argument, nullptr, 'm'},
   {"index", required_argument, nullptr, 'I'},
-/// num of bits to convert as an integer
+  /// num of bits to convert as an integer
   {"stride", required_argument, nullptr, 'S'},
-/// dump output into a csv_path file
+  /// dump output into a csv_path file
   {"write", required_argument, nullptr, 'W'},
   {"payload", required_argument, nullptr, 'p'},
-/// no argument
+  /// no argument
 #if defined(HD_FUTURE_SUPPORT)
     {"radiotap",    no_argument,       nullptr, 'r'},
     {"wlan",        no_argument,       nullptr, 'w'},
@@ -66,11 +67,11 @@ static option longopts[] = {
 static char const* shortopts = "J:P:W:F:f:N:E:K:M:D:S:L:R:p:CTVhIm:";
 #pragma endregion ShortAndLongOptions //@formatter:on
 
-inline void SetFilter(pcap_handle_t& handle) {
+inline void SetFilter(pcap_handle_t const& handle) {
   if (opt.filter.empty() or handle == nullptr) { return; }
   constexpr bpf_u_int32 net{0};
   bpf_program fp{};
-  hd_debug(opt.filter);
+  hd_debug("包过滤表达式: ", opt.filter);
   if (pcap_compile(handle.get(), &fp, opt.filter.c_str(), 0, net) == -1) {
     hd_line("解析 Filter 失败: ", opt.filter, "\n", pcap_geterr(handle.get()));
     exit(EXIT_FAILURE);
@@ -93,7 +94,7 @@ static void OpenLiveHandle(capture_option& option, pcap_handle_t& handle) {
     option.device = l->name;
     pcap_freealldevs(l);
   }
-  hd_debug(option.device);
+  hd_debug("网卡: ", option.device);
   /* open device */
   handle.reset(pcap_open_live(option.device.c_str(), BUFSIZ, 1, 1000, ByteBuffer));
   if (handle == nullptr) {
@@ -210,6 +211,7 @@ static void ParseOptions(capture_option& arg, int argc, char* argv[]) {
   }
 }
 
+// BUG: 不要修改numbers.
 inline void csvToArr(const char* numbers, int64_t* _array, size_t size = 128) {
   const char* token = strtok(const_cast<char*>(numbers), ",");
   size_t index = 0;
