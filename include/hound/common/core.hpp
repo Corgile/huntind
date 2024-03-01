@@ -14,15 +14,34 @@ using namespace hd::global;
 
 class util {
 public:
+  static void fillCsvBuffer(ParsedData const& data, std::string& buffer) {
+    using namespace global;
+    //@formatter:off
+    if (opt.include_5tpl)   buffer.append(data.m5Tuple).append(opt.separator);
+    if (opt.include_pktlen) buffer.append(data.mCapLen).append(opt.separator);
+    if (opt.include_ts)     buffer.append(data.mTimestamp).append(opt.separator);
+    //@formatter:on
+    fillRawBitVec(data, buffer);
+  }
+
+  static void fillRawBitVec(ParsedData const& data, std::string& buffer) {
+    using namespace global;
+    core::util::fill<IP4_PADSIZE>(true, data.mIP4Head, buffer);
+    core::util::fill<TCP_PADSIZE>(true, data.mTcpHead, buffer);
+    core::util::fill<UDP_PADSIZE>(true, data.mUdpHead, buffer);
+    fill(opt.payload > 0, data.mPayload, buffer);
+    buffer.pop_back();
+  }
+
+private:
   template <int32_t PadBytes = -1>
   static void fill(bool const condition, const std::string_view rawData, std::string& buffer) {
     if (not condition) return;
     if constexpr (PadBytes == -1) { // payload
-      ___fill(opt.stride, opt.payload, rawData, buffer);
-    } else ___fill(opt.stride, PadBytes, rawData, buffer);
+      _fill(opt.stride, opt.payload, rawData, buffer);
+    } else _fill(opt.stride, PadBytes, rawData, buffer);
   }
 
-private:
   static uint64_t log2(int v) {
     int n = 0;
     while (v > 1) {
@@ -42,7 +61,7 @@ private:
     return buff;
   }
 
-  static void ___fill(int const width, int const _exceptedBytes, const std::string_view raw, std::string& refout) {
+  static void _fill(int const width, int const _exceptedBytes, const std::string_view raw, std::string& refout) {
     int i = 0;
     auto const p = reinterpret_cast<uint64_t const*>(raw.data());
     uint64_t const n = log2(width);

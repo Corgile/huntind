@@ -13,7 +13,6 @@
 #include <hound/sink/compress.hpp>
 // #include <my-timer.hpp>
 
-
 namespace hd::entity {
 using namespace RdKafka;
 
@@ -58,14 +57,14 @@ public:
     std::string out;
     // {
     // xhl::Timer t("压缩");
-    zstd::compress(payload, out);
+    // zstd::compress(payload, out);
     // }
     ErrorCode const errorCode = mProducer->produce(
       this->mTopicPtr,
       this->mPartionToFlush,
       Producer::RK_MSG_COPY,
-      out.data(),
-      out.size(),
+      (void*)payload.data(),
+      payload.size(),
       &_key,
       nullptr);
     // mProducer->poll(10'000); // timeout ms.

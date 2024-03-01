@@ -26,12 +26,12 @@ struct capture_option final {
   std::string device{};
   std::string filter{};
   std::string output_file{};
+  std::string model_path{};
   int32_t min_packets{10};
   int32_t max_packets{100};
 
   int32_t duration{-1};
   std::string kafka_config{};
-  int packetTimeout{20};
   std::string separator{','};
   char format[8] = {'%', 'l', 'd', ','};
   bool write_file{false};
