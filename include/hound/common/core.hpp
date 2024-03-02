@@ -8,6 +8,8 @@
 #include <string>
 #include <hound/common/global.hpp>
 
+struct hd::type::ParsedData;
+
 namespace hd::core {
 using namespace hd::type;
 using namespace hd::global;
