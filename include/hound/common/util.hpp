@@ -69,7 +69,7 @@ inline void SetFilter(pcap_handle_t const& handle) {
   if (opt.filter.empty() or handle == nullptr) { return; }
   constexpr bpf_u_int32 net{0};
   bpf_program fp{};
-  hd_debug(opt.filter);
+  hd_debug("包过滤表达式: ", opt.filter);
   if (pcap_compile(handle.get(), &fp, opt.filter.c_str(), 0, net) == -1) {
     std::printf("%s%s\n", RED("解析 Filter 失败: "), pcap_geterr(handle.get()));
     exit(EXIT_FAILURE);
@@ -92,7 +92,7 @@ static void OpenLiveHandle(capture_option& option, pcap_handle_t& handle) {
     option.device = l->name;
     pcap_freealldevs(l);
   }
-  hd_debug(option.device);
+  hd_debug("网卡: ", option.device);
   /* open device */
   handle.reset(pcap_open_live(option.device.c_str(), BUFSIZ, 1, 1000, ByteBuffer));
   if (handle == nullptr) {

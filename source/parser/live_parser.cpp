@@ -52,7 +52,7 @@ void hd::type::LiveParser::consumer_job() {
     this->mPacketQueue.pop();
     lock.unlock();
     cv_producer.notify_one();
-    hd_debug(mPacketQueue.size());
+    hd_debug("raw包队列: ", mPacketQueue.size());
     server.consumeData({front});
     // server->consumeData({front});
 #if defined(BENCHMARK)
@@ -83,5 +83,5 @@ hd::type::LiveParser::~LiveParser() {
   std::printf("%s%d\n", CYAN("num_consumed_packet = "), num_consumed_packet.load());
   std::printf("%s%d\n", CYAN("num_written_csv = "), num_written_csv.load());
 #endif //- #if defined(BENCHMARK)
-  hd_debug(this->mPacketQueue.size());
+  hd_debug("raw包队列剩余: ", this->mPacketQueue.size());
 }

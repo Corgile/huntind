@@ -28,7 +28,7 @@ public:
     std::string buffer;
     core::util::fillCsvBuffer(data, buffer);
 #if defined(HD_DEV)
-    hd_debug(std::move(buffer));
+    hd_debug("", std::move(buffer));
 #else
     mConsole << buffer;
 #endif

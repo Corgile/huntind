@@ -6,7 +6,7 @@
 #ifndef SERVICE_API_HPP
 #define SERVICE_API_HPP
 
-#include <dbg.h>
+#include <dbg/dbg.hpp>
 #include <string>
 #include <hound/sink/rpc_sink.hpp>
 

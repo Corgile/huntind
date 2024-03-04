@@ -70,9 +70,9 @@ private:
 #endif // defined(BENCHMARK)
 #if defined(HD_DEV)
       if (_ether_type == ETHERTYPE_IPV6) {
-        hd_debug("ETHERTYPE_IPV6");
+        hd_debug("不支持: ", "ETHERTYPE_IPV6");
       } else
-      hd_debug("不是 ETHERTYPE_IP");
+      hd_debug("不支持: ", "不是 ETHERTYPE_IP");
 #endif
       return false;
     }
@@ -85,7 +85,7 @@ private:
     uint8_t const _ipProtocol{_ipv4->ip_p};
     if (_ipProtocol not_eq IPPROTO_UDP and _ipProtocol not_eq IPPROTO_TCP) {
 #if defined(BENCHMARK)
-      hd_debug(global::packet_index);
+      hd_debug("index: ", global::packet_index);
       ++global::num_consumed_packet;
 #endif // defined(BENCHMARK)
       return false;

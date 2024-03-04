@@ -51,8 +51,8 @@ hd::type::RpcSink::~RpcSink() {
   while (not service::rpc_msg_queue.empty()) {
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
   }
-  hd_debug(this->mFlowTable.size());
-  hd_debug(service::rpc_msg_queue.size());
+  hd_debug("当前： ", this->mFlowTable.size());
+  hd_debug("发送队列: ", service::rpc_msg_queue.size());
   mInternalRpcServer->stop();
 }
 
@@ -75,7 +75,7 @@ void hd::type::RpcSink::cleanerJob() {
       }
       it = mFlowTable.erase(it);
     }
-    hd_debug(this->mFlowTable.size());
+    hd_debug("当前: ", this->mFlowTable.size());
   }
-  hd_debug(YELLOW("void cleanerJob() 结束"));
+  hd_debug("函数 ", YELLOW("void cleanerJob() 结束"));
 }
