@@ -16,7 +16,7 @@ public:
                          int32_t partition_cnt, void* msg_opaque) override {
     char msg[128] = {0};
     // 用于自定义分区策略：这里用 hash。例：轮询方式：p_id++ % partition_cnt
-    int32_t const partition_id =
+    auto const partition_id =
       static_cast<int32_t>(generate_hash(key->c_str(), key->size()) % partition_cnt);
     sprintf(msg,
             "HashPartitionerCb:topic:[%s], flowId:[%s], partition_cnt:[%d], "

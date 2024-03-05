@@ -21,7 +21,8 @@
 
 namespace hd::type {
 struct ParsedData final {
-  /// \<源_宿> 五元组 /// 用作map key的排序五元组
+  /// \<源_宿> 五元组
+  /// 用作map key的排序五元组
   std::string m5Tuple, mFlowKey, mTimestamp, mCapLen;;
 
   MyValuePair<in_addr_t> mIpPair{};
@@ -39,15 +40,15 @@ public:
 
   ParsedData(raw_packet_info const& data) {
     this->mPcapHead = {
-    data.info_hdr.ts.tv_sec,
-    data.info_hdr.ts.tv_usec,
-    data.info_hdr.caplen
+      data.info_hdr.ts.tv_sec,
+      data.info_hdr.ts.tv_usec,
+      data.info_hdr.caplen
     };
     this->mCapLen.assign(std::to_string(mPcapHead.caplen));
     this->mTimestamp.assign(
       std::to_string(mPcapHead.ts_sec)
-      .append(global::opt.separator)
-      .append(std::to_string(mPcapHead.ts_usec))
+        .append(global::opt.separator)
+        .append(std::to_string(mPcapHead.ts_usec))
     );
     this->HasContent = processRawBytes(data.byte_arr);
   }
@@ -58,11 +59,11 @@ private:
 #if defined(BENCHMARK)
     ++global::packet_index;
 #endif // defined(BENCHMARK)
-    char* pointer = _byteArr.get();
-    auto eth{reinterpret_cast<ether_header*>(pointer)};
+    char *pointer = _byteArr.get();
+    auto eth{reinterpret_cast<ether_header *>(pointer)};
     if (ntohs(eth->ether_type) == ETHERTYPE_VLAN) {
       pointer += static_cast<int>(sizeof(vlan_header));
-      eth = reinterpret_cast<ether_header*>(pointer);
+      eth = reinterpret_cast<ether_header *>(pointer);
     }
     auto const _ether_type = ntohs(eth->ether_type);
     if (_ether_type not_eq ETHERTYPE_IPV4) {
@@ -73,7 +74,7 @@ private:
       if (_ether_type == ETHERTYPE_IPV6) {
         hd_debug("不支持： ", "ETHERTYPE_IPV6");
       } else
-      hd_debug("不支持: ", "不是 ETHERTYPE_IP");
+        hd_debug("不支持: ", "不是 ETHERTYPE_IP");
 #endif
       return false;
     }
@@ -81,8 +82,8 @@ private:
   }
 
   [[nodiscard("do not discard")]]
-  bool processIPv4Packet(char const* _ip_bytes) {
-    auto _ipv4 = reinterpret_cast<ip const*>(_ip_bytes);
+  bool processIPv4Packet(char const *_ip_bytes) {
+    auto _ipv4 = reinterpret_cast<ip const *>(_ip_bytes);
     uint8_t const _ipProtocol{_ipv4->ip_p};
     if (_ipProtocol not_eq IPPROTO_UDP and _ipProtocol not_eq IPPROTO_TCP) {
 #if defined(BENCHMARK)
@@ -94,10 +95,10 @@ private:
     this->mIpPair = std::minmax(_ipv4->ip_src.s_addr, _ipv4->ip_dst.s_addr);
 
     m5Tuple.append(inet_ntoa(_ipv4->ip_src)).append("_")
-           .append(inet_ntoa(_ipv4->ip_dst)).append("_");
+      .append(inet_ntoa(_ipv4->ip_dst)).append("_");
 
     mFlowKey.append(inet_ntoa({mIpPair.minVal})).append("_")
-            .append(inet_ntoa({mIpPair.maxVal})).append("_");
+      .append(inet_ntoa({mIpPair.maxVal})).append("_");
 
     size_t const _ipv4HL = _ipv4->ip_hl * 4;
     this->mIP4Head = {_ip_bytes, _ipv4HL};
@@ -107,20 +108,20 @@ private:
     return true;
   }
 
-  template <uint8_t AssumedIpProtocol, typename HeaderType>
-  void func(const uint8_t actual_protocol, ip const* _ipv4, std::string_view& head_buff,
-            char const* trans_header, const std::string_view suffix) {
+  template<uint8_t AssumedIpProtocol, typename HeaderType>
+  void func(const uint8_t actual_protocol, ip const *_ipv4, std::string_view& head_buff,
+            char const *trans_header, const std::string_view suffix) {
     if (AssumedIpProtocol not_eq actual_protocol) return;
-    auto const* _tcp = reinterpret_cast<HeaderType const*>(trans_header);
+    auto const *_tcp = reinterpret_cast<HeaderType const *>(trans_header);
     std::string const sport = std::to_string(ntohs(_tcp->source));
     std::string const dport = std::to_string(ntohs(_tcp->dest));
     m5Tuple.append(sport).append("_").append(dport).append(suffix);
     this->mPortPair = std::minmax(sport, dport);
     mFlowKey.append(mPortPair.minVal).append("_")
-            .append(mPortPair.maxVal).append(suffix);
+      .append(mPortPair.maxVal).append(suffix);
     size_t tl_hl = 8; // Transport layer header length, 8 for udp
     if (actual_protocol == IPPROTO_TCP) {
-      tl_hl = reinterpret_cast<tcphdr const*>(trans_header)->doff * 4;
+      tl_hl = reinterpret_cast<tcphdr const *>(trans_header)->doff * 4;
     }
     // Transport layer head
     head_buff = {trans_header, tl_hl};
