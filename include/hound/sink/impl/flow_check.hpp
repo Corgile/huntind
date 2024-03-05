@@ -18,7 +18,33 @@
 namespace flow {
 using namespace hd::entity;
 using namespace hd::global;
-using PacketList = std::vector<hd_packet>;
+using packet_list = std::vector<hd_packet>;
+
+template<typename TimeUnit = std::chrono::seconds>
+static long timestampNow() {
+  auto const now = std::chrono::system_clock::now();
+  auto const duration = now.time_since_epoch();
+  return std::chrono::duration_cast<TimeUnit>(duration).count();
+}
+
+inline bool _isTimeout(packet_list const& existing, hd_packet const& new_) {
+  if (existing.empty()) return false;
+  return new_.ts_sec - existing.back().ts_sec >= opt.flowTimeout;
+}
+
+inline bool _isTimeout(packet_list const& existing) {
+  long const now = flow::timestampNow<std::chrono::seconds>();
+  return now - existing.back().ts_sec >= opt.flowTimeout;
+}
+
+inline bool _isLengthSatisfited(packet_list const& existing) {
+  return existing.size() >= opt.min_packets and existing.size() <= opt.max_packets;
+}
+
+static bool IsFlowReady(packet_list const& existing, hd_packet const& new_) {
+  if (existing.size() == opt.max_packets) return true;
+  return _isTimeout(existing, new_) and _isLengthSatisfited(existing);
+}
 
 static void LoadKafkaConfig(kafka_config& config, std::string const& fileName) {
   std::ifstream config_file(fileName);
@@ -36,19 +62,6 @@ static void LoadKafkaConfig(kafka_config& config, std::string const& fileName) {
     config.put(key, value);
     hd_line(BLUE("加载配置: "), key, "=", value);
   }
-}
-
-static bool IsFlowReady(PacketList const& existing, hd_packet const& newPacket) {
-  if (existing.size() < opt.min_packets) return false;
-  return existing.size() == opt.max_packets or
-    existing.back().ts_sec - newPacket.ts_sec >= opt.flowTimeout;
-}
-
-template <typename TimeUnit>
-static long timestampNow() {
-  auto const now = std::chrono::system_clock::now();
-  auto const duration = now.time_since_epoch();
-  return std::chrono::duration_cast<TimeUnit>(duration).count();
 }
 
 static void InitGetConf(kafka_config::_conn const& conn,

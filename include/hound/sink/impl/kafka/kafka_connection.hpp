@@ -10,7 +10,7 @@
 
 #include <hound/common/macro.hpp>
 #include <hound/sink/impl/kafka/kafka_config.hpp>
-#include <hound/sink/compress.hpp>
+//#include <hound/sink/compress.hpp>
 // #include <my-timer.hpp>
 
 
@@ -41,8 +41,9 @@ public:
     if (this->mMaxPartition > 1) {
       int32_t counter = 0;
       std::thread([&counter, this] {
+        using namespace std::chrono_literals;
         while (running) {
-          std::this_thread::sleep_for(std::chrono::seconds(20));
+          std::this_thread::sleep_for(20s);
           this->mPartionToFlush.store(counter++ % mMaxPartition);
           counter %= mMaxPartition;
         }
@@ -52,45 +53,35 @@ public:
 
   /**
    * @brief push Message to Kafka
-   * @param payload, _key
+   * @param payload: 就是 payload
+   * @param _key: 就是 flowId
    */
   void pushMessage(const std::string_view payload, const std::string& _key) const {
-    std::string out;
-    // {
-    // xhl::Timer t("压缩");
-    zstd::compress(payload, out);
-    // }
     ErrorCode const errorCode = mProducer->produce(
-      this->mTopicPtr,
-      this->mPartionToFlush,
-      Producer::RK_MSG_COPY,
-      out.data(),
-      out.size(),
-      &_key,
-      nullptr);
-    // mProducer->poll(10'000); // timeout ms.
+      this->mTopicPtr, this->mPartionToFlush,
+      Producer::RK_MSG_COPY, (void*) payload.data(),
+      payload.size(), &_key, nullptr
+    );
     if (errorCode == ERR_NO_ERROR) return;
     hd_line(RED("发送失败: "), err2str(errorCode), CYAN(", 长度: "), payload.size());
-    // kafka 队列满，等待 5000 ms
     if (errorCode not_eq ERR__QUEUE_FULL) return;
-    mProducer->poll(5000);
+    // kafka 队列满，等待 5000 ms
+    mProducer->poll(5'000);
   }
 
   ~kafka_connection() {
     running.store(false);
     while (mProducer->outq_len() > 0) {
-      hd_line(YELLOW("Connection "),
-              std::this_thread::get_id(),
-              RED(" Waiting for queue len: "),
-              mProducer->outq_len());
-      mProducer->flush(5000);
+      hd_line(YELLOW("kafka连接["), std::this_thread::get_id(),
+              YELLOW("]的缓冲队列: "), mProducer->outq_len());
+      mProducer->flush(5'000);
     }
-    // 有先后之分，先topic 再producer
+    /// 有先后之分，先topic 再producer
     delete mTopicPtr;
     delete mProducer;
   }
 
-  /// 刷新连接的起始空闲时刻
+  /// 刷新连接的起始空闲时刻 <br>
   /// 在归还回空闲连接队列之前要记录一下连接开始空闲的时刻
   void refreshAliveTime() { _aliveTime = clock(); }
 

@@ -47,7 +47,7 @@ public:
   void consumeData(ParsedData const& data) override {
     if (not data.HasContent) return;
     entity::hd_packet packet(data.mPcapHead);
-    this->fillRawBitVec(data, packet.bitvec);
+    hd::core::util::fillRawBitVec(data, packet.bitvec);
     std::scoped_lock mapLock(mAccessToFlowTable);
     PacketList const packetList{mFlowTable[data.mFlowKey]};
     if (flow::IsFlowReady(packetList, packet)) {
@@ -73,7 +73,7 @@ public:
       });
       mOutFile << "]";
     }
-    hd_debug(mFlowTable.size());
+    hd_debug("剩余: ", mFlowTable.size());
   }
 
 protected:

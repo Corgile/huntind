@@ -9,6 +9,7 @@
 #include <fstream>
 #endif
 
+#include <future>
 #include <hound/sink/impl/kafka/kafka_config.hpp>
 #include <hound/sink/impl/kafka/connection_pool.hpp>
 #include <hound/sink/impl/kafka/kafka_connection.hpp>
@@ -18,15 +19,11 @@ namespace hd::type {
 using namespace hd::entity;
 using namespace hd::global;
 
-using PacketList = std::vector<hd_packet>;
+using packet_list = std::vector<hd_packet>;
 
 class KafkaSink final : public BaseSink {
 public:
-  explicit KafkaSink(std::string const& fileName)
-#ifdef LATENCY_TEST
-    : mTimestampLog("./flow-message-timestamp.csv", std::ios::out | std::ios::app)
-#endif
-  {
+  explicit KafkaSink(std::string const& fileName) {
     kafka_config kafkaConfig;
     flow::LoadKafkaConfig(kafkaConfig, fileName);
     this->mConnectionPool = connection_pool::create(kafkaConfig);
@@ -39,8 +36,13 @@ public:
   ~KafkaSink() override {
     mIsRunning = false;
     cvMsgSender.notify_all();
-    hd_debug(__PRETTY_FUNCTION__);
-    hd_debug(this->mFlowTable.size());
+#pragma region 发送剩下的流数据
+    for (auto it = mFlowTable.begin(); it not_eq mFlowTable.end();) {
+      this->send({it->first, it->second});
+      it = mFlowTable.erase(it);
+    }
+    hd_debug("剩余 ", this->mFlowTable.size());
+#pragma endregion
     delete mConnectionPool;
   }
 
@@ -48,58 +50,55 @@ public:
     if (not data.HasContent) return;
     hd_packet packet{data.mPcapHead};
     core::util::fillRawBitVec(data, packet.bitvec);
-    std::scoped_lock mapLock{accessToFlowTable};
+    std::scoped_lock mapLock{mtxAccessToFlowTable};
     packet_list& _existing{mFlowTable[data.mFlowKey]};
     if (flow::IsFlowReady(_existing, packet)) {
-      std::scoped_lock queueLock(service::mtx_queue_access);
-      service::rpc_msg_queue.emplace(data.mFlowKey, std::move(_existing));
+      std::scoped_lock queueLock(mtxAccessToQueue);
+      mSendQueue.emplace(data.mFlowKey, std::move(_existing));
     }
     _existing.emplace_back(std::move(packet));
     assert(_existing.size() <= opt.max_packets);
+    cvMsgSender.notify_all();
   }
 
 private:
   void sendingJob() {
     while (mIsRunning) {
       std::unique_lock lock(mtxAccessToQueue);
-      cvMsgSender.wait(lock, [&]()-> bool {
+      cvMsgSender.wait(lock, [&]() -> bool {
         return not this->mSendQueue.empty() or not mIsRunning;
       });
       if (not mIsRunning) break;
       auto front{this->mSendQueue.front()};
       this->mSendQueue.pop();
       lock.unlock();
-      this->send(front);
+      std::ignore = std::async(std::launch::async, &KafkaSink::send, this, front);
     }
-    hd_debug(YELLOW("void sendingJob() 结束"));
+    hd_debug(YELLOW("函数 "), YELLOW("void sendingJob() 结束"));
   }
 
   /// \brief 将mFlowTable里面超过timeout但是数量不足的flow删掉
   void cleanerJob() {
     // MEM-LEAK valgrind reports a mem-leak somewhere here, but why....
     while (mIsRunning) {
-      std::this_thread::sleep_for(std::chrono::seconds(10));
+      std::this_thread::sleep_for(std::chrono::seconds(5));
       if (not mIsRunning) break;
-      std::unique_lock lock1(mtxAccessToFlowTable);
-      long const now = flow::timestampNow<std::chrono::seconds>();
-      for (auto it = mLastArrived.begin(); it not_eq mLastArrived.end(); ++it) {
-        const auto& [key, timestamp] = *it;
-        if (now - timestamp >= opt.flowTimeout) {
-          if (auto const _list = mFlowTable.at(key); _list.size() >= opt.min_packets) {
-            std::scoped_lock queueLock(mtxAccessToQueue);
-            mSendQueue.emplace(key, _list);
-            ++it;
-          }
-          mFlowTable.at(key).clear();
-          mFlowTable.erase(key);
-          it = mLastArrived.erase(it); // 更新迭代器
+      std::scoped_lock lock1(mtxAccessToFlowTable);
+      for (auto it = mFlowTable.begin(); it not_eq mFlowTable.end();) {
+        const auto& [key, _packets] = *it;
+        if (not flow::_isTimeout(_packets)) {
+          ++it;
+          continue;
         }
+        if (flow::_isLengthSatisfited(_packets)) {
+          std::scoped_lock queueLock(mtxAccessToQueue);
+          mSendQueue.emplace(key, _packets);
+        }
+        it = mFlowTable.erase(it);
       }
-      cvMsgSender.notify_all();
-      hd_debug(this->mFlowTable.size());
-      hd_debug(this->mSendQueue.size());
+      hd_debug("当前: ", this->mFlowTable.size());
     }
-    hd_debug(YELLOW("void cleanerJob() 结束"));
+    hd_debug("函数 ", YELLOW("void cleanerJob() 结束"));
   }
 
   void send(const hd_flow& flow) {
@@ -107,38 +106,12 @@ private:
     std::string payload;
     struct_json::to_json(flow, payload);
     std::shared_ptr const connection{mConnectionPool->get_connection()};
-#ifdef LATENCY_TEST
-    {
-      const auto& _front = flow.data.front();
-      auto usec = std::to_string(_front.ts_usec / 1000);
-      while (usec.length() < 3) usec.insert(usec.begin(), 1, '0');
-      auto uniqueFlowId = flow.flowId;
-      uniqueFlowId
-        .append("#")
-        .append(std::to_string(_front.ts_sec))
-        .append(usec);
-      connection->pushMessage(payload, uniqueFlowId);
-      std::scoped_lock lock(mFileAccess);
-      mTimestampLog << uniqueFlowId << ","
-        << _front.ts_sec << usec << ","
-        << flow::timestampNow<std::chrono::milliseconds>() << "\n";
-    }
-#else//not def LATENCY_TEST
     connection->pushMessage(payload, flow.flowId);
-#endif//LATENCY_TEST
-  }
-
-  void sendTheRest() {
-    if (mFlowTable.empty()) return;
-    for (auto& [k, list] : mFlowTable) {
-      this->send({k, list});
-    }
-    mFlowTable.clear();
   }
 
 private:
   std::mutex mtxAccessToFlowTable;
-  std::unordered_map<std::string, PacketList> mFlowTable;
+  std::unordered_map<std::string, packet_list> mFlowTable;
 
   std::mutex mtxAccessToQueue;
   std::queue<hd_flow> mSendQueue;

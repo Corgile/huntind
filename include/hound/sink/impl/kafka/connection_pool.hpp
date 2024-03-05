@@ -33,14 +33,13 @@ public:
   std::shared_ptr<kafka_connection> get_connection() {
     std::unique_lock lock(_queueMutex);
     cv.wait_for(lock, std::chrono::seconds(_config.conn.timeout_sec),
-                [&]()-> bool { return not _connectionQue.empty(); });
+                [&]() -> bool { return not _connectionQue.empty(); });
     if (_connectionQue.empty()) {
       std::printf("%s", "获取连接失败，等待空闲连接超时.\n");
       return nullptr;
     }
     std::shared_ptr<kafka_connection> connection(
-      _connectionQue.front(),
-      [&](kafka_connection* p_con)-> void {
+      _connectionQue.front(), [&](kafka_connection* p_con) -> void {
         std::unique_lock _lock(_queueMutex);
         p_con->refreshAliveTime();
         _connectionQue.push(p_con);
@@ -57,7 +56,6 @@ public:
       delete _connectionQue.front();
       _connectionQue.pop();
     }
-    hd_debug(__PRETTY_FUNCTION__);
     {
       // ProducerDeliveryReportCb
       DeliveryReportCb* buff_1;
@@ -94,7 +92,7 @@ private:
   void produceConnectionTask() {
     while (not _finished) {
       std::unique_lock lock(_queueMutex);
-      cv.wait(lock, [&]()-> bool { return _connectionQue.empty() or _finished; });
+      cv.wait(lock, [&]() -> bool { return _connectionQue.empty() or _finished; });
       if (_finished) break;
       if (_connectionCnt < _config.pool.max_size) {
         _connectionQue.push(new kafka_connection(_config.conn, _serverConf, _topicConf));
@@ -102,18 +100,17 @@ private:
       }
       cv.notify_all();
     }
-    hd_debug("produceConnectionTask 结束");
+    hd_debug(YELLOW("函数 "), YELLOW("produceConnectionTask 结束"));
   }
 
   /// 扫描超过maxIdleTime时间的空闲连接，进行对于连接的回收
   void scannerConnectionTask() {
+    using namespace std::chrono_literals;
     while (not _finished) {
-      // 通过sleep实现定时
       for (int i = 0; i < _config.conn.max_idle; ++i) {
-        std::this_thread::sleep_for(std::chrono::seconds(1));
+        std::this_thread::sleep_for(1s);
         if (_finished) break;
       }
-      // 扫描整个队列，释放多余的连接
       if (_finished) break;
 
       while (_connectionCnt > _config.pool.init_size) {
@@ -125,7 +122,7 @@ private:
         --_connectionCnt;
       }
     }
-    hd_debug("scannerConnectionTask 结束");
+    hd_debug(YELLOW("函数"), YELLOW("scannerConnectionTask 结束"));
   }
 
   kafka_config _config;
