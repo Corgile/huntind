@@ -20,14 +20,13 @@ struct capture_option final {
   bool include_5tpl{false};
   bool verbose{false};
   int32_t fill_bit{0};
-  int32_t threads{10};
-  uint16_t port{9001};
 
   int32_t stride{8};
   int32_t workers{1};
   std::string device{};
   std::string filter{};
   std::string output_file{};
+  std::string kafka_config{};
   int32_t min_packets{10};
   int32_t max_packets{100};
 

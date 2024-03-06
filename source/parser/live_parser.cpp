@@ -9,9 +9,17 @@
 using namespace hd::global;
 
 hd::type::LiveParser::LiveParser() {
-  util::OpenLiveHandle(opt, &this->mHandle);
+  util::OpenLiveHandle(opt, mHandle);
   for (int i = 0; i < opt.workers; ++i) {
     std::thread(&LiveParser::consumer_job, this).detach();
+  }
+  if (not opt.output_file.empty()) {
+    mSink = std::make_unique<JsonFileSink>(opt.output_file);
+  }
+  if (opt.kafka_config.empty()) {
+    mSink = std::make_unique<BaseSink>(opt.kafka_config);
+  } else {
+    mSink = std::make_unique<KafkaSink>(opt.kafka_config);
   }
 }
 
@@ -24,7 +32,7 @@ void hd::type::LiveParser::startCapture() {
       this->stopCapture();
     }).detach();
   }
-  pcap_loop(mHandle, opt.num_packets, liveHandler, reinterpret_cast<u_char*>(this));
+  pcap_loop(mHandle.get(), opt.num_packets, liveHandler, reinterpret_cast<u_char*>(this));
 }
 
 void hd::type::LiveParser::liveHandler(u_char* user_data, const pcap_pkthdr* pkthdr, const u_char* packet) {
@@ -47,10 +55,10 @@ void hd::type::LiveParser::consumer_job() {
     if (this->mPacketQueue.empty()) continue;
     auto front{mPacketQueue.front()};
     this->mPacketQueue.pop();
-    cv_producer.notify_one();
+    cv_producer.notify_all();
     lock.unlock();
-    hd_debug("raw包队列: ", mPacketQueue.size());
-    server.consumeData({front});
+    std::ignore = std::async(std::launch::async, &BaseSink::consumeData, mSink.get(), front);
+    // mSink->consumeData({front});
 #if defined(BENCHMARK)
     ++num_consumed_packet;
 #endif // defined(BENCHMARK)
@@ -61,13 +69,13 @@ void hd::type::LiveParser::consumer_job() {
 }
 
 void hd::type::LiveParser::stopCapture() {
-  pcap_breakloop(mHandle);
-  pcap_close(mHandle);
+  pcap_breakloop(mHandle.get());
   is_running = false;
   cv_consumer.notify_all();
 }
 
 hd::type::LiveParser::~LiveParser() {
+  cv_consumer.notify_all();
   using namespace std::chrono_literals;
   /// 先等待游离worker线程消费队列直至为空
   while (not mPacketQueue.empty()) {

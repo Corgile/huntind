@@ -7,12 +7,13 @@
 
 #include <pcap/pcap.h>
 #include <atomic>
-#include <hound/type/raw_packet_info.hpp>
 #include <condition_variable>
-#include <hound/sink/rpc_sink.hpp>
-// #include <hound/sink/console_sink.hpp>
+
+#include <hound/type/raw_packet_info.hpp>
 #include <hound/type/deleters.hpp>
 #include <hound/sink/json_file_sink.hpp>
+#include <hound/sink/base_sink.hpp>
+#include <hound/sink/impl/kafka/kafka_sink.hpp>
 
 namespace hd::type {
 class LiveParser {
@@ -34,10 +35,9 @@ private:
   void consumer_job();
 
 private:
-  pcap_t* mHandle{nullptr};
+  pcap_handle_t mHandle{nullptr};
   std::queue<raw_packet_info> mPacketQueue;
-
-  RpcSink server;
+  std::unique_ptr<BaseSink> mSink;
   std::condition_variable cv_producer;      // 生产者条件变量
   std::condition_variable cv_consumer;      // 消费者条件变量
 

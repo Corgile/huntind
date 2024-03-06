@@ -13,14 +13,14 @@
 #include <ylt/struct_json/json_writer.h>
 #include <hound/common/core.hpp>
 #include <hound/common/flow_check.hpp>
-
 #include <hound/type/hd_flow.hpp>
 #include <hound/type/synced_stream.hpp>
+#include <hound/sink/base_sink.hpp>
 
 namespace hd::type {
 namespace fs = std::filesystem;
 
-class JsonFileSink final {
+class JsonFileSink final : public BaseSink{
   using PacketList = std::vector<entity::hd_packet>;
 
 public:
@@ -44,7 +44,7 @@ public:
   }
 
   /// 写入json文件
-  void consumeData(ParsedData const& data) {
+  void consumeData(ParsedData const& data) override {
     if (not data.HasContent) return;
     entity::hd_packet packet(data.mPcapHead);
     core::util::fillRawBitVec(data, packet.bitvec);
@@ -56,7 +56,7 @@ public:
     mFlowTable.at(data.mFlowKey).emplace_back(std::move(packet));
   }
 
-  ~JsonFileSink() {
+  ~JsonFileSink() override {
     for (auto& [id, _list] : this->mFlowTable) {
       if (_list.size() >= global::opt.min_packets) {
         this->appendToFile(id, _list);

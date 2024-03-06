@@ -6,14 +6,14 @@
 #define HOUND_KAFKA_HPP
 
 #ifdef LATENCY_TEST
-#include <fstream>
+  #include <fstream>
 #endif
 
 #include <future>
 #include <hound/sink/impl/kafka/kafka_config.hpp>
 #include <hound/sink/impl/kafka/connection_pool.hpp>
 #include <hound/sink/impl/kafka/kafka_connection.hpp>
-#include <hound/sink/impl/flow_check.hpp>
+#include <hound/common/flow_check.hpp>
 
 namespace hd::type {
 using namespace hd::entity;
@@ -38,7 +38,8 @@ public:
     cvMsgSender.notify_all();
 #pragma region 发送剩下的流数据
     for (auto it = mFlowTable.begin(); it not_eq mFlowTable.end();) {
-      this->send({it->first, it->second});
+      auto code = this->send({it->first, it->second});
+      hd_debug(GREEN("~KafkaSink: "), code);
       it = mFlowTable.erase(it);
     }
     hd_debug("剩余 ", this->mFlowTable.size());
@@ -69,10 +70,13 @@ private:
         return not this->mSendQueue.empty() or not mIsRunning;
       });
       if (not mIsRunning) break;
-      auto front{this->mSendQueue.front()};
-      this->mSendQueue.pop();
+      while (not this->mSendQueue.empty()) {
+        auto front{this->mSendQueue.front()};
+        this->mSendQueue.pop();
+        auto future = std::async(std::launch::async, &KafkaSink::send, this, front);
+        hd_debug(GREEN("SendingJob: "), future.get());
+      }
       lock.unlock();
-      std::ignore = std::async(std::launch::async, &KafkaSink::send, this, front);
     }
     hd_debug(YELLOW("函数 "), YELLOW("void sendingJob() 结束"));
   }
@@ -82,7 +86,6 @@ private:
     // MEM-LEAK valgrind reports a mem-leak somewhere here, but why....
     while (mIsRunning) {
       std::this_thread::sleep_for(std::chrono::seconds(5));
-      if (not mIsRunning) break;
       std::scoped_lock lock1(mtxAccessToFlowTable);
       for (auto it = mFlowTable.begin(); it not_eq mFlowTable.end();) {
         const auto& [key, _packets] = *it;
@@ -90,23 +93,25 @@ private:
           ++it;
           continue;
         }
-        if (flow::_isLengthSatisfited(_packets)) {
+        if (flow::_isLengthSatisfied(_packets)) {
           std::scoped_lock queueLock(mtxAccessToQueue);
           mSendQueue.emplace(key, _packets);
         }
         it = mFlowTable.erase(it);
       }
-      hd_debug("当前: ", this->mFlowTable.size());
+      cvMsgSender.notify_all();
+      if (not mIsRunning) break;
+      hd_debug("移除不好的flow: ", mFlowTable.size());
     }
     hd_debug("函数 ", YELLOW("void cleanerJob() 结束"));
   }
 
-  void send(const hd_flow& flow) {
-    if (flow.count < opt.min_packets) return;
+  int send(const hd_flow& flow) {
+    if (flow.count < opt.min_packets) return -1;
     std::string payload;
     struct_json::to_json(flow, payload);
     std::shared_ptr const connection{mConnectionPool->get_connection()};
-    connection->pushMessage(payload, flow.flowId);
+    return connection->pushMessage(payload, flow.flowId);
   }
 
 private:

@@ -17,7 +17,7 @@ struct hd_packet {
   bpf_u_int32 packet_len{};
   std::string bitvec;
 
-  hd_packet();
+  hd_packet() = default;
 
   explicit hd_packet(const pcap_pkthdr& _pcapHead) {
     ts_sec = _pcapHead.ts.tv_sec;
@@ -38,16 +38,6 @@ struct hd_flow {
       data(std::move(_data)) {
     count = data.size();
   }
-#ifdef HD_DEV
-  size_t size() const {
-    auto s = flowId.size() + sizeof(struct hd_flow);
-    for (auto _packet : data) {
-      s += sizeof(hd_packet) + _packet.bitvec.size();
-    }
-    return s / 1024;
-  }
-#endif
-
 
   hd_flow() = default;
 };
