@@ -20,6 +20,8 @@ struct capture_option final {
   bool include_5tpl{false};
   bool verbose{false};
   int32_t fill_bit{0};
+  int32_t threads{10};
+  uint16_t port{9001};
 
   int32_t stride{8};
   int32_t workers{1};
@@ -30,8 +32,6 @@ struct capture_option final {
   int32_t max_packets{100};
 
   int32_t duration{-1};
-  std::string kafka_config{};
-  int packetTimeout{20};
   std::string separator{','};
   char format[8] = {'%', 'l', 'd', ','};
   bool write_file{false};

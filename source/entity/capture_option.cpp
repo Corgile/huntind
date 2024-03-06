@@ -7,20 +7,22 @@
 
 // @formatter:off
 void hd::type::capture_option::print() const {
-  hd_info(CYAN("\n包含字段: "));
-  if (payload > 0)      hd_info(CYAN("payload"),"（", payload, ")");
-  if (include_pktlen)   hd_info(CYAN(",报文长度"));
-  if (include_ts)       hd_info(CYAN(",时间戳"));
-  hd_line(";");
-  if (num_packets > 0)  hd_line(CYAN("抓包个数: "), num_packets);
-  hd_line(CYAN("填充值: "), fill_bit, CYAN("; "));
-  hd_info(CYAN("将每 "), stride, CYAN(" 位一组按"));
-  hd_line(YELLOW("无符号") CYAN("类型转换为10进制;"));
-  hd_line(CYAN("包处理线程: "), workers);
-  hd_line(CYAN("包过滤表达式: "), filter);
+  std::printf("\n%s\n", CYAN("包含字段: "));
+  if (payload > 0)      std::printf(CYAN("payload")"（%d)", payload);
+  if (include_pktlen)   std::printf(",%s", CYAN("报文长度"));
+  if (include_ts)       std::printf(",%s", CYAN("时间戳"));
+  std::printf("%s\n", ";");
+  if (num_packets > 0)  std::printf("%s%d\n", CYAN("抓包个数: "), num_packets);
+  std::printf("%s%d%s\n", CYAN("填充值: "), fill_bit, CYAN("; "));
+  std::printf("%s%d%s",CYAN("将每 "), stride, CYAN(" 位一组按"));
+  std::printf("%s%s\n", YELLOW("无符号"), CYAN("类型转换为10进制;"));
+  std::printf("%s%d\n", CYAN("包处理线程: "), workers);
+  std::printf("%s%s\n",CYAN("包过滤表达式: "), filter.c_str());
+  std::printf("%s%d\n",CYAN("rpc服务器线程数: "), threads);
+  std::printf("%s%d\n",CYAN("rpc服务器端口号: "), port);
   //@formatter:on
   if (this->write_file and not output_file.empty()) {
-    hd_line(CYAN("输出文件:  "), output_file);
+    std::printf("%s%s", CYAN("输出文件:  "), output_file.c_str());
   }
 }
 

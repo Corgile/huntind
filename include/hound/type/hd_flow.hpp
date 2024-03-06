@@ -8,7 +8,6 @@
 #include <string>
 #include <vector>
 #include <pcap/bpf.h>
-#include <hound/type/pcap_header.hpp>
 #include <ylt/struct_json/json_writer.h>
 
 namespace hd::entity {
@@ -20,42 +19,10 @@ struct hd_packet {
 
   hd_packet();
 
-  explicit hd_packet(const type::PcapHeader& _pcapHead) {
-    ts_sec = _pcapHead.ts_sec;
-    ts_usec = _pcapHead.ts_usec;
+  explicit hd_packet(const pcap_pkthdr& _pcapHead) {
+    ts_sec = _pcapHead.ts.tv_sec;
+    ts_usec = _pcapHead.ts.tv_usec;
     packet_len = _pcapHead.caplen;
-  }
-
-  hd_packet(const hd_packet& other)
-    : ts_sec(other.ts_sec),
-      ts_usec(other.ts_usec),
-      packet_len(other.packet_len),
-      bitvec(other.bitvec) {
-  }
-
-  hd_packet(hd_packet&& other) noexcept
-    : ts_sec(other.ts_sec),
-      ts_usec(other.ts_usec),
-      packet_len(other.packet_len),
-      bitvec(std::move(other.bitvec)) {
-  }
-
-  hd_packet& operator=(const hd_packet& other) {
-    if (this == &other) return *this;
-    ts_sec = other.ts_sec;
-    ts_usec = other.ts_usec;
-    packet_len = other.packet_len;
-    bitvec = other.bitvec;
-    return *this;
-  }
-
-  hd_packet& operator=(hd_packet&& other) noexcept {
-    if (this == &other) return *this;
-    ts_sec = other.ts_sec;
-    ts_usec = other.ts_usec;
-    packet_len = other.packet_len;
-    bitvec = std::move(other.bitvec);
-    return *this;
   }
 };
 

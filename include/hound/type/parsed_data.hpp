@@ -15,7 +15,6 @@
 #include <hound/type/my_value_pair.hpp>
 #include <hound/type/raw_packet_info.hpp>
 #include <hound/type/vlan_header.hpp>
-#include <hound/type/pcap_header.hpp>
 
 #define ETHERTYPE_IPV4 ETHERTYPE_IP
 
@@ -28,7 +27,7 @@ struct ParsedData final {
   MyValuePair<std::string> mPortPair;
 
   std::string_view mIP4Head, mTcpHead, mUdpHead, mPayload;
-  PcapHeader mPcapHead{};
+  pcap_pkthdr mPcapHead{};
 
 public:
   bool HasContent{true};
@@ -45,24 +44,24 @@ public:
     };
     this->mCapLen.assign(std::to_string(mPcapHead.caplen));
     this->mTimestamp.assign(
-      std::to_string(mPcapHead.ts_sec)
+      std::to_string(mPcapHead.ts.tv_sec)
       .append(global::opt.separator)
-      .append(std::to_string(mPcapHead.ts_usec))
+      .append(std::to_string(mPcapHead.ts.tv_usec))
     );
     this->HasContent = processRawBytes(data.byte_arr);
   }
 
 private:
   [[nodiscard("do not discard")]]
-  bool processRawBytes(std::shared_ptr<char> const& _byteArr) {
+  bool processRawBytes(std::string_view _byteArr) {
 #if defined(BENCHMARK)
     ++global::packet_index;
 #endif // defined(BENCHMARK)
-    char* pointer = _byteArr.get();
-    auto eth{reinterpret_cast<ether_header*>(pointer)};
+    char const* pointer = _byteArr.data();//.get();
+    auto eth{reinterpret_cast<ether_header const*>(pointer)};
     if (ntohs(eth->ether_type) == ETHERTYPE_VLAN) {
       pointer += static_cast<int>(sizeof(vlan_header));
-      eth = reinterpret_cast<ether_header*>(pointer);
+      eth = reinterpret_cast<ether_header const*>(pointer);
     }
     auto const _ether_type = ntohs(eth->ether_type);
     if (_ether_type not_eq ETHERTYPE_IPV4) {
@@ -86,7 +85,7 @@ private:
     uint8_t const _ipProtocol{_ipv4->ip_p};
     if (_ipProtocol not_eq IPPROTO_UDP and _ipProtocol not_eq IPPROTO_TCP) {
 #if defined(BENCHMARK)
-      hd_debug(global::packet_index);
+      hd_debug("index: ", global::packet_index);
       ++global::num_consumed_packet;
 #endif // defined(BENCHMARK)
       return false;

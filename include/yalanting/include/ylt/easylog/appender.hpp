@@ -29,32 +29,35 @@
 
 namespace easylog {
 struct empty_mutex {
-  void lock() {}
-  void unlock() {}
+  void lock() const {
+  }
+
+  void unlock() const {
+  }
 };
+
 constexpr inline std::string_view BOM_STR = "\xEF\xBB\xBF";
 
 constexpr char digits[10] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9'};
 
 template <size_t N, char c>
-inline void to_int(int num, char *p, int &size) {
+inline void to_int(int num, char* p, int& size) {
   for (int i = 0; i < N; i++) {
     p[--size] = digits[num % 10];
     num = num / 10;
   }
 
-  if constexpr (N != 4)
-    p[--size] = c;
+  if constexpr (N != 4) p[--size] = c;
 }
 
-inline char *get_time_str(const auto &now) {
+inline char* get_time_str(const auto& now) {
   static thread_local char buf[33];
   static thread_local std::chrono::seconds last_sec_{};
 
   std::chrono::system_clock::duration d = now.time_since_epoch();
   std::chrono::seconds s = std::chrono::duration_cast<std::chrono::seconds>(d);
   auto mill_sec =
-      std::chrono::duration_cast<std::chrono::milliseconds>(d - s).count();
+    std::chrono::duration_cast<std::chrono::milliseconds>(d - s).count();
   int size = 23;
   if (last_sec_ == s) {
     to_int<3, '.'>(mill_sec, buf, size);
@@ -77,14 +80,15 @@ inline char *get_time_str(const auto &now) {
 }
 
 class appender {
- public:
+public:
   appender() = default;
-  appender(const std::string &filename, bool async, bool enable_console,
+
+  appender(const std::string& filename, bool async, bool enable_console,
            size_t max_file_size, size_t max_files, bool flush_every_time)
-      : has_init_(true),
-        flush_every_time_(flush_every_time),
-        enable_console_(enable_console),
-        max_file_size_(max_file_size) {
+    : has_init_(true),
+      flush_every_time_(flush_every_time),
+      enable_console_(enable_console),
+      max_file_size_(max_file_size) {
     filename_ = filename;
     max_files_ = (std::min)(max_files, static_cast<size_t>(1000));
     open_log_file();
@@ -99,14 +103,15 @@ class appender {
     write_thd_ = std::thread([this] {
       while (!stop_) {
         if (max_files_ > 0 && file_size_ > max_file_size_ &&
-            static_cast<size_t>(-1) != file_size_) {
+          static_cast<size_t>(-1) != file_size_) {
           roll_log_files();
         }
 
         record_t record;
         if (queue_.try_dequeue(record)) {
-          enable_console_ ? write_record<false, true>(record)
-                          : write_record<false, false>(record);
+          enable_console_
+            ? write_record<false, true>(record)
+            : write_record<false, false>(record);
         }
 
         if (queue_.size_approx() == 0) {
@@ -120,12 +125,13 @@ class appender {
           if (queue_.size_approx() > 0) {
             while (queue_.try_dequeue(record)) {
               if (max_files_ > 0 && file_size_ > max_file_size_ &&
-                  static_cast<size_t>(-1) != file_size_) {
+                static_cast<size_t>(-1) != file_size_) {
                 roll_log_files();
               }
 
-              enable_console_ ? write_record<false, true>(record)
-                              : write_record<false, false>(record);
+              enable_console_
+                ? write_record<false, true>(record)
+                : write_record<false, false>(record);
             }
           }
         }
@@ -133,7 +139,7 @@ class appender {
     });
   }
 
-  std::string_view get_tid_buf(unsigned int tid) {
+  std::string_view get_tid_buf(unsigned int tid) const {
     static thread_local char buf[24];
     static thread_local unsigned int last_tid;
     static thread_local size_t last_len;
@@ -152,21 +158,20 @@ class appender {
   }
 
   template <bool sync>
-  auto &get_mutex() {
+  auto& get_mutex() {
     if constexpr (sync) {
       return mtx_;
-    }
-    else {
+    } else {
       return empty_mtx_;
     }
   }
 
   template <bool sync = false, bool enable_console = false>
-  void write_record(record_t &record) {
+  void write_record(record_t& record) {
     std::lock_guard guard(get_mutex<sync>());
     if constexpr (sync == true) {
       if (max_files_ > 0 && file_size_ > max_file_size_ &&
-          static_cast<size_t>(-1) != file_size_) {
+        static_cast<size_t>(-1) != file_size_) {
         roll_log_files();
       }
     }
@@ -248,12 +253,9 @@ class appender {
       windows_set_color(color_type::white_bright, color_type::red);
 #elif __APPLE__
 #else
-    if (severity == Severity::WARN)
-      std::cout << "\x1B[93m";
-    if (severity == Severity::ERROR)
-      std::cout << "\x1B[91m";
-    if (severity == Severity::CRITICAL)
-      std::cout << "\x1B[97m\x1B[41m";
+    if (severity == Severity::WARN) std::cout << "\x1B[93m";
+    if (severity == Severity::ERROR) std::cout << "\x1B[91m";
+    if (severity == Severity::CRITICAL) std::cout << "\x1B[97m\x1B[41m";
 #endif
   }
 
@@ -263,12 +265,11 @@ class appender {
       windows_set_color(color_type::white, color_type::black);
 #elif __APPLE__
 #else
-    if (severity >= Severity::WARN)
-      std::cout << "\x1B[0m\x1B[0K";
+    if (severity >= Severity::WARN) std::cout << "\x1B[0m\x1B[0K";
 #endif
   }
 
-  void write(record_t &&r) {
+  void write(record_t&& r) {
     queue_.enqueue(std::move(r));
     cnd_.notify_one();
   }
@@ -296,14 +297,13 @@ class appender {
 
   ~appender() {
     stop();
-    if (write_thd_.joinable())
-      write_thd_.join();
+    if (write_thd_.joinable()) write_thd_.join();
   }
 
- private:
+private:
   void open_log_file() {
     file_size_ = 0;
-    std::string filename = build_filename();
+    std::string const filename = build_filename();
 
     if (std::filesystem::path(filename).has_parent_path()) {
       std::error_code ec;

@@ -1,9 +1,9 @@
 //
-// hound / dbg.hpp.
+// hound / dbg.hpp. 
 // Created by brian on 2024-03-03.
 //
 
-/*****************************************************************************
+/*
 
                                 dbg(...) macro
 
@@ -61,7 +61,9 @@ License (MIT):
 #include <vector>
 
 #ifdef DBG_MACRO_UNIX
+
 #include <unistd.h>
+
 #endif
 
 #if __cplusplus >= 201703L
@@ -73,8 +75,10 @@ License (MIT):
 #endif
 
 #if DBG_MACRO_CXX_STANDARD >= 17
+
 #include <optional>
 #include <variant>
+
 #endif
 
 namespace dbg {
@@ -97,7 +101,7 @@ namespace pretty_function {
 #if defined(__clang__)
 #define DBG_MACRO_PRETTY_FUNCTION __PRETTY_FUNCTION__
 static constexpr size_t PREFIX_LENGTH =
-    sizeof("const char *dbg::type_name_impl() [T = ") - 1;
+  sizeof("const char *dbg::type_name_impl() [T = ") - 1;
 static constexpr size_t SUFFIX_LENGTH = sizeof("]") - 1;
 #elif defined(__GNUC__) && !defined(__clang__)
 #define DBG_MACRO_PRETTY_FUNCTION __PRETTY_FUNCTION__
@@ -116,7 +120,7 @@ static constexpr size_t SUFFIX_LENGTH = sizeof(">(void)") - 1;
 
 // Formatting helpers
 
-template <typename T>
+template<typename T>
 struct print_formatted {
   static_assert(std::is_integral<T>::value,
                 "Only integral types are supported.");
@@ -126,12 +130,12 @@ struct print_formatted {
 
   operator T() const { return inner; }
 
-  const char* prefix() const {
+  [[nodiscard]] const char* prefix() const {
     switch (base) {
-      case 8: return "0o";
-      case 16: return "0x";
-      case 2: return "0b";
-      default: return "";
+    case 8: return "0o";
+    case 16: return "0x";
+    case 2: return "0b";
+    default: return "";
     }
   }
 
@@ -139,67 +143,65 @@ struct print_formatted {
   int base;
 };
 
-template <typename T>
+template<typename T>
 print_formatted<T> hex(T value) {
   return print_formatted<T>{value, 16};
 }
 
-template <typename T>
+template<typename T>
 print_formatted<T> oct(T value) {
   return print_formatted<T>{value, 8};
 }
 
-template <typename T>
+template<typename T>
 print_formatted<T> bin(T value) {
   return print_formatted<T>{value, 2};
 }
 
 // Implementation of 'type_name<T>()'
 
-template <typename T>
+template<typename T>
 const char* type_name_impl() {
   return DBG_MACRO_PRETTY_FUNCTION;
 }
 
-template <typename T>
+template<typename T>
 struct type_tag {};
 
-template <int& ...ExplicitArgumentBarrier, typename T>
-typename std::enable_if<(std::rank<T>::value == 0), std::string>::type
-get_type_name(type_tag<T>) {
+template<int& ...ExplicitArgumentBarrier, typename T>
+requires (std::rank<T>::value == 0)
+std::string get_type_name(type_tag<T>) {
   namespace pf = pretty_function;
-
   std::string type = type_name_impl<T>();
-  return type.substr(pf::PREFIX_LENGTH,
-                     type.size() - pf::PREFIX_LENGTH - pf::SUFFIX_LENGTH);
+  return type.substr(pf::PREFIX_LENGTH, type.size() - pf::PREFIX_LENGTH - pf::SUFFIX_LENGTH);
 }
 
-template <typename T>
+template<typename T>
 std::string type_name() {
   if (std::is_volatile<T>::value) {
     if (std::is_pointer<T>::value) {
-      return type_name<typename std::remove_volatile<T>::type>() + " volatile";
+      return type_name < typename std::remove_volatile<T>::type > () + " volatile";
     } else {
-      return "volatile " + type_name<typename std::remove_volatile<T>::type>();
+      return "volatile " + type_name < typename std::remove_volatile<T>::type > ();
     }
   }
   if (std::is_const<T>::value) {
     if (std::is_pointer<T>::value) {
-      return type_name<typename std::remove_const<T>::type>() + " const";
+      return type_name < typename std::remove_const<T>::type > () + " const";
     } else {
-      return "const " + type_name<typename std::remove_const<T>::type>();
+      return "const " + type_name < typename std::remove_const<T>::type > ();
     }
   }
   if (std::is_pointer<T>::value) {
-    return type_name<typename std::remove_pointer<T>::type>() + "*";
+    return type_name < typename std::remove_pointer<T>::type > () + "*";
   }
   if (std::is_lvalue_reference<T>::value) {
-    return type_name<typename std::remove_reference<T>::type>() + "&";
+    return type_name < typename std::remove_reference<T>::type > () + "&";
   }
   if (std::is_rvalue_reference<T>::value) {
-    return type_name<typename std::remove_reference<T>::type>() + "&&";
+    return type_name < typename std::remove_reference<T>::type > () + "&&";
   }
-  return get_type_name(type_tag<T>{});
+  return get_type_name(type_tag < T > {});
 }
 
 // Prefer bitsize variant over standard integral types
@@ -209,53 +211,60 @@ std::string type_name() {
   }
 
 DBG_MACRO_REGISTER_TYPE_ASSOC(unsigned char, uint8_t)
+
 DBG_MACRO_REGISTER_TYPE_ASSOC(unsigned short, uint16_t)
+
 DBG_MACRO_REGISTER_TYPE_ASSOC(unsigned int, uint32_t)
+
 DBG_MACRO_REGISTER_TYPE_ASSOC(unsigned long, uint64_t)
+
 DBG_MACRO_REGISTER_TYPE_ASSOC(signed char, int8_t)
+
 DBG_MACRO_REGISTER_TYPE_ASSOC(short, int16_t)
+
 DBG_MACRO_REGISTER_TYPE_ASSOC(int, int32_t)
+
 DBG_MACRO_REGISTER_TYPE_ASSOC(long, int64_t)
 
 inline std::string get_type_name(type_tag<std::string>) {
   return "std::string";
 }
 
-template <typename T>
-typename std::enable_if<(std::rank<T>::value == 1), std::string>::type
-get_array_dim() {
+template<typename T>
+requires (std::rank<T>::value == 1)
+std::string get_array_dim() {
   return "[" + std::to_string(std::extent<T>::value) + "]";
 }
 
-template <typename T>
-typename std::enable_if<(std::rank<T>::value > 1), std::string>::type
-get_array_dim() {
+template<typename T>
+requires (std::rank<T>::value > 1)
+std::string get_array_dim() {
   return "[" + std::to_string(std::extent<T>::value) + "]" +
-         get_array_dim<typename std::remove_extent<T>::type>();
+         get_array_dim < typename std::remove_extent<T>::type > ();
 }
 
-template <typename T>
-typename std::enable_if<(std::rank<T>::value > 0), std::string>::type
-get_type_name(type_tag<T>) {
+template<typename T>
+requires (std::rank<T>::value > 0)
+std::string get_type_name(type_tag<T>) {
   return type_name<typename std::remove_all_extents<T>::type>() + get_array_dim<T>();
 }
 
-template <typename T, size_t N>
+template<typename T, size_t N>
 std::string get_type_name(type_tag<std::array<T, N>>) {
   return "std::array<" + type_name<T>() + ", " + std::to_string(N) + ">";
 }
 
-template <typename T>
+template<typename T>
 std::string get_type_name(type_tag<std::vector<T, std::allocator<T>>>) {
   return "std::vector<" + type_name<T>() + ">";
 }
 
-template <typename T1, typename T2>
+template<typename T1, typename T2>
 std::string get_type_name(type_tag<std::pair<T1, T2>>) {
   return "std::pair<" + type_name<T1>() + ", " + type_name<T2>() + ">";
 }
 
-template <typename ...T>
+template<typename ...T>
 std::string type_list_to_string() {
   std::string result;
   auto unused = {(result += type_name<T>() + ", ", 0) ..., 0};
@@ -272,12 +281,12 @@ std::string type_list_to_string() {
   return result;
 }
 
-template <typename ...T>
+template<typename ...T>
 std::string get_type_name(type_tag<std::tuple<T ...>>) {
   return "std::tuple<" + type_list_to_string<T ...>() + ">";
 }
 
-template <typename T>
+template<typename T>
 inline std::string get_type_name(type_tag<print_formatted<T>>) {
   return type_name<T>();
 }
@@ -287,17 +296,20 @@ inline std::string get_type_name(type_tag<print_formatted<T>>) {
 namespace detail_detector {
 struct nonesuch {
   nonesuch() = delete;
+
   ~nonesuch() = delete;
+
   nonesuch(nonesuch const&) = delete;
+
   void operator=(nonesuch const&) = delete;
 };
 
-template <typename ...>
+template<typename ...>
 using void_t = void;
 
-template <class Default,
+template<class Default,
   class AlwaysVoid,
-  template <class ...>
+  template<class ...>
   class Op,
   class ...Args>
 struct detector {
@@ -305,18 +317,19 @@ struct detector {
   using type = Default;
 };
 
-template <class Default, template <class ...> class Op, class ...Args>
+template<class Default, template<class ...> class Op, class ...Args>
 struct detector<Default, void_t<Op<Args ...>>, Op, Args ...> {
   using value_t = std::true_type;
   using type = Op<Args ...>;
 };
 }  // namespace detail_detector
 
-template <template <class ...> class Op, class ...Args>
+template<template<class ...> class Op, class ...Args>
 using is_detected = typename detail_detector::
 detector<detail_detector::nonesuch, void, Op, Args ...>::value_t;
 
-namespace detail {namespace {
+namespace detail {
+namespace {
 using std::begin;
 using std::end;
 #if DBG_MACRO_CXX_STANDARD < 17
@@ -335,135 +348,147 @@ using std::size;
 
 // Specializations for container adapters
 
-template <class T, class C>
+template<class T, class C>
 T pop(std::stack<T, C>& adapter) {
   T value = std::move(adapter.top());
   adapter.pop();
   return value;
 }
 
-template <class T, class C>
+template<class T, class C>
 T pop(std::queue<T, C>& adapter) {
   T value = std::move(adapter.front());
   adapter.pop();
   return value;
 }
 
-template <class T, class C, class Cmp>
+template<class T, class C, class Cmp>
 T pop(std::priority_queue<T, C, Cmp>& adapter) {
   T value = std::move(adapter.top());
   adapter.pop();
   return value;
 }
 
-template <typename T>
+template<typename T>
 struct remove_cvref {
   typedef typename std::remove_cv<typename std::remove_reference<T>::type>::type
     type;
 };
 
-template <typename T>
+template<typename T>
 using remove_cvref_t = typename remove_cvref<T>::type;
 
-template <typename T>
-using detect_begin_t = decltype(detail::begin(std::declval<T>()));
+// template<typename T>
+// using detect_begin_t = decltype(detail::begin(std::declval<T>()));
+//
+// template<typename T>
+// using detect_end_t = decltype(detail::end(std::declval<T>()));
+//
+// template<typename T>
+// using detect_size_t = decltype(detail::size(std::declval<T>()));
+// template<typename T>
+// struct is_container {
+//   static constexpr bool value =
+//     is_detected<detect_begin_t, T>::value &&
+//     is_detected<detect_end_t, T>::value &&
+//     is_detected<detect_size_t, T>::value &&
+//     !std::is_same<std::string, remove_cvref_t<T>>::value;
+// };
+// template<typename T>
+// using detect_underlying_container_t =
+//   typename remove_cvref_t<T>::container_type;
+// template<typename T>
+// struct is_container_adapter {
+//   static constexpr bool value =
+//     is_detected<detect_underlying_container_t, T>::value;
+// };
 
-template <typename T>
-using detect_end_t = decltype(detail::end(std::declval<T>()));
-
-template <typename T>
-using detect_size_t = decltype(detail::size(std::declval<T>()));
-
-template <typename T>
-struct is_container {
-  static constexpr bool value =
-    is_detected<detect_begin_t, T>::value &&
-    is_detected<detect_end_t, T>::value &&
-    is_detected<detect_size_t, T>::value &&
-    !std::is_same<std::string, remove_cvref_t<T>>::value;
+template<typename T>
+concept is_container = requires(T t) {
+  typename T::value_type;
+  typename T::size_type;
+  typename T::allocator_type;
+  typename T::iterator;
+  typename T::const_iterator;
+  t.begin();
+  t.end();
 };
 
-template <typename T>
-using detect_underlying_container_t =
-  typename remove_cvref_t<T>::container_type;
-
-template <typename T>
-struct is_container_adapter {
-  static constexpr bool value =
-    is_detected<detect_underlying_container_t, T>::value;
+template<typename T>
+concept is_container_adapter = requires(T t) {
+  typename T::container_type;
+  t.empty();
+  t.size();
 };
 
-template <typename T>
-using ostream_operator_t =
-  decltype(std::declval<std::ostream&>() << std::declval<T>());
+template<typename T>
+using ostream_operator_t = decltype(std::declval<std::ostream&>() << std::declval<T>());
 
-template <typename T>
+template<typename T>
 struct has_ostream_operator : is_detected<ostream_operator_t, T> {};
 }  // namespace detail
 
 // Helper to dbg(…)-print types
-template <typename T>
+template<typename T>
 struct print_type {};
 
-template <typename T>
+template<typename T>
 print_type<T> type() {
-  return print_type<T>{};
+  return print_type < T > {};
 }
 
 // Forward declarations of "pretty_print"
 
-template <typename T>
+template<typename T>
 inline void pretty_print(std::ostream& stream, const T& value, std::true_type);
 
-template <typename T>
+template<typename T>
 inline void pretty_print(std::ostream&, const T&, std::false_type);
 
-template <typename T>
-inline typename std::enable_if<
-  !detail::is_container<const T&>::value &&
-  !detail::is_container_adapter<const T&>::value &&
-  !std::is_enum<T>::value,
-  bool>::type
-pretty_print(std::ostream& stream, const T& value);
+template<typename T>
+concept NotContainerNorEnum =not detail::is_container<const T&> and
+                             not detail::is_container_adapter<const T&> and
+                             not std::is_enum_v<T>;
+
+template<typename T> requires NotContainerNorEnum<T>
+inline bool pretty_print(std::ostream& stream, const T& value);
 
 inline bool pretty_print(std::ostream& stream, const bool& value);
 
 inline bool pretty_print(std::ostream& stream, const char& value);
 
-template <typename P>
+template<typename P>
 inline bool pretty_print(std::ostream& stream, P* const& value);
 
-template <typename T, typename Deleter>
-inline bool pretty_print(std::ostream& stream,
-                         std::unique_ptr<T, Deleter>& value);
+template<typename T, typename Deleter>
+inline bool pretty_print(std::ostream& stream, std::unique_ptr<T, Deleter>& value);
 
-template <typename T>
+template<typename T>
 inline bool pretty_print(std::ostream& stream, std::shared_ptr<T>& value);
 
-template <size_t N>
-inline bool pretty_print(std::ostream& stream, const char (&value)[N]);
+template<size_t N>
+inline bool pretty_print(std::ostream& stream, const char (& value)[N]);
 
-template <>
+template<>
 inline bool pretty_print(std::ostream& stream, const char* const& value);
 
-template <typename ...Ts>
+template<typename ...Ts>
 inline bool pretty_print(std::ostream& stream, const std::tuple<Ts ...>& value);
 
-template <>
+template<>
 inline bool pretty_print(std::ostream& stream, const std::tuple<>&);
 
-template <>
+template<>
 inline bool pretty_print(std::ostream& stream, const time&);
 
-template <typename T>
+template<typename T>
 inline bool pretty_print(std::ostream& stream, const print_formatted<T>& value);
 
-template <typename T>
+template<typename T>
 inline bool pretty_print(std::ostream& stream, const print_type<T>&);
 
-template <typename Enum>
-inline typename std::enable_if<std::is_enum<Enum>::value, bool>::type
-pretty_print(std::ostream& stream, Enum const& value);
+template<typename Enum> requires std::is_enum_v<Enum>
+inline bool pretty_print(std::ostream& stream, Enum const& value);
 
 inline bool pretty_print(std::ostream& stream, const std::string& value);
 
@@ -473,53 +498,39 @@ inline bool pretty_print(std::ostream& stream, const std::string_view& value);
 
 #endif
 
-template <typename T1, typename T2>
+template<typename T1, typename T2>
 inline bool pretty_print(std::ostream& stream, const std::pair<T1, T2>& value);
 
 #if DBG_MACRO_CXX_STANDARD >= 17
 
-template <typename T>
+template<typename T>
 inline bool pretty_print(std::ostream& stream, const std::optional<T>& value);
 
-template <typename ...Ts>
-inline bool pretty_print(std::ostream& stream,
-                         const std::variant<Ts ...>& value);
+template<typename ...Ts>
+inline bool pretty_print(std::ostream& stream, const std::variant<Ts ...>& value);
 
 #endif
 
-template <typename Container>
-inline typename std::enable_if<detail::is_container<const Container&>::value,
-  bool>::type
-pretty_print(std::ostream& stream, const Container& value);
+template<typename Container> requires detail::is_container<const Container&>
+inline bool pretty_print(std::ostream& stream, const Container& value);
 
-template <typename ContainerAdapter>
-inline typename std::enable_if<
-  detail::is_container_adapter<const ContainerAdapter&>::value,
-  bool>::type
-pretty_print(std::ostream& stream, ContainerAdapter value);
+template<typename ContainerAdapter> requires detail::is_container_adapter<const ContainerAdapter&>
+inline bool pretty_print(std::ostream& stream, ContainerAdapter value);
 
-// Specializations of "pretty_print"
-
-template <typename T>
+/// Specializations of "pretty_print"
+template<typename T>
 inline void pretty_print(std::ostream& stream, const T& value, std::true_type) {
   stream << value;
 }
 
-template <typename T>
+template<typename T>
 inline void pretty_print(std::ostream&, const T&, std::false_type) {
-  static_assert(detail::has_ostream_operator<const T&>::value,
-                "Type does not support the << ostream operator");
+  static_assert(detail::has_ostream_operator<const T&>::value, "Type does not support the << ostream operator");
 }
 
-template <typename T>
-inline typename std::enable_if<
-  !detail::is_container<const T&>::value &&
-  !detail::is_container_adapter<const T&>::value &&
-  !std::is_enum<T>::value,
-  bool>::type
-pretty_print(std::ostream& stream, const T& value) {
-  pretty_print(stream, value,
-               typename detail::has_ostream_operator<const T&>::type{});
+template<typename T> requires NotContainerNorEnum<T>
+inline bool pretty_print(std::ostream& stream, const T& value) {
+  pretty_print(stream, value, typename detail::has_ostream_operator<const T&>::type{});
   return true;
 }
 
@@ -530,7 +541,6 @@ inline bool pretty_print(std::ostream& stream, const bool& value) {
 
 inline bool pretty_print(std::ostream& stream, const char& value) {
   const bool printable = value >= 0x20 && value <= 0x7E;
-
   if (printable) {
     stream << "'" << value << "'";
   } else {
@@ -540,7 +550,7 @@ inline bool pretty_print(std::ostream& stream, const char& value) {
   return true;
 }
 
-template <typename P>
+template<typename P>
 inline bool pretty_print(std::ostream& stream, P* const& value) {
   if (value == nullptr) {
     stream << "nullptr";
@@ -550,36 +560,34 @@ inline bool pretty_print(std::ostream& stream, P* const& value) {
   return true;
 }
 
-template <typename T, typename Deleter>
-inline bool pretty_print(std::ostream& stream,
-                         std::unique_ptr<T, Deleter>& value) {
+template<typename T, typename Deleter>
+inline bool pretty_print(std::ostream& stream, std::unique_ptr<T, Deleter>& value) {
   pretty_print(stream, value.get());
   return true;
 }
 
-template <typename T>
+template<typename T>
 inline bool pretty_print(std::ostream& stream, std::shared_ptr<T>& value) {
   pretty_print(stream, value.get());
   stream << " (use_count = " << value.use_count() << ")";
-
   return true;
 }
 
-template <size_t N>
-inline bool pretty_print(std::ostream& stream, const char (&value)[N]) {
+template<size_t N>
+inline bool pretty_print(std::ostream& stream, const char (& value)[N]) {
   stream << value;
   return false;
 }
 
-template <>
+template<>
 inline bool pretty_print(std::ostream& stream, const char* const& value) {
   stream << '"' << value << '"';
   return true;
 }
 
-template <size_t Idx>
+template<size_t Idx>
 struct pretty_print_tuple {
-  template <typename ...Ts>
+  template<typename ...Ts>
   static void print(std::ostream& stream, const std::tuple<Ts ...>& tuple) {
     pretty_print_tuple<Idx - 1>::print(stream, tuple);
     stream << ", ";
@@ -587,37 +595,33 @@ struct pretty_print_tuple {
   }
 };
 
-template <>
+template<>
 struct pretty_print_tuple<0> {
-  template <typename ...Ts>
+  template<typename ...Ts>
   static void print(std::ostream& stream, const std::tuple<Ts ...>& tuple) {
     pretty_print(stream, std::get<0>(tuple));
   }
 };
 
-template <typename ...Ts>
+template<typename ...Ts>
 inline bool pretty_print(std::ostream& stream, const std::tuple<Ts ...>& value) {
   stream << "{";
   pretty_print_tuple<sizeof...(Ts) - 1>::print(stream, value);
   stream << "}";
-
   return true;
 }
 
-template <>
+template<>
 inline bool pretty_print(std::ostream& stream, const std::tuple<>&) {
   stream << "{}";
-
   return true;
 }
 
-template <>
+template<>
 inline bool pretty_print(std::ostream& stream, const time&) {
   using namespace std::chrono;
-
   const auto now = system_clock::now();
-  const auto us =
-    duration_cast<microseconds>(now.time_since_epoch()).count() % 1000000;
+  const auto us = duration_cast<microseconds>(now.time_since_epoch()).count() % 1000000;
   const auto hms = system_clock::to_time_t(now);
 #if defined(_MSC_VER) && _MSC_VER >= 1600
   struct tm t;
@@ -632,33 +636,28 @@ inline bool pretty_print(std::ostream& stream, const time&) {
 }
 
 // Converts decimal integer to binary string
-template <typename T>
+template<typename T>
 std::string decimalToBinary(T n) {
   const size_t length = 8 * sizeof(T);
   std::string toRet;
   toRet.resize(length);
-
   for (size_t i = 0; i < length; ++i) {
     const auto bit_at_index_i = static_cast<char>((n >> i) & 1);
     toRet[length - 1 - i] = bit_at_index_i + '0';
   }
-
   return toRet;
 }
 
-template <typename T>
-inline bool pretty_print(std::ostream& stream,
-                         const print_formatted<T>& value) {
+template<typename T>
+inline bool pretty_print(std::ostream& stream, const print_formatted<T>& value) {
   if (value.inner < 0) {
     stream << "-";
   }
   stream << value.prefix();
-
   // Print using setbase
   if (value.base != 2) {
     stream << std::setw(sizeof(T)) << std::setfill('0')
            << std::setbase(value.base) << std::uppercase;
-
     if (value.inner >= 0) {
       // The '+' sign makes sure that a uint_8 is printed as a number
       stream << +value.inner;
@@ -666,26 +665,21 @@ inline bool pretty_print(std::ostream& stream,
       using unsigned_type = typename std::make_unsigned<T>::type;
       stream << +(static_cast<unsigned_type>(-(value.inner + 1)) + 1);
     }
-  } else {
-    // Print for binary
-    if (value.inner >= 0) {
-      stream << decimalToBinary(value.inner);
-    } else {
-      using unsigned_type = typename std::make_unsigned<T>::type;
-      stream << decimalToBinary<unsigned_type>(
-        static_cast<unsigned_type>(-(value.inner + 1)) + 1);
-    }
   }
-
+  // Print for binary
+  if (value.inner >= 0) {
+    stream << decimalToBinary(value.inner);
+  } else {
+    using unsigned_type = typename std::make_unsigned<T>::type;
+    stream << decimalToBinary<unsigned_type>(static_cast<unsigned_type>(-(value.inner + 1)) + 1);
+  }
   return true;
 }
 
-template <typename T>
+template<typename T>
 inline bool pretty_print(std::ostream& stream, const print_type<T>&) {
   stream << type_name<T>();
-
   stream << " [sizeof: " << sizeof(T) << " byte, ";
-
   stream << "trivial: ";
   if (std::is_trivial<T>::value) {
     stream << "yes";
@@ -700,16 +694,13 @@ inline bool pretty_print(std::ostream& stream, const print_type<T>&) {
     stream << "no";
   }
   stream << "]";
-
   return false;
 }
 
-template <typename Enum>
-inline typename std::enable_if<std::is_enum<Enum>::value, bool>::type
-pretty_print(std::ostream& stream, Enum const& value) {
+template<typename Enum> requires std::is_enum_v<Enum>
+inline bool pretty_print(std::ostream& stream, Enum const& value) {
   using UnderlyingType = typename std::underlying_type<Enum>::type;
   stream << static_cast<UnderlyingType>(value);
-
   return true;
 }
 
@@ -727,7 +718,7 @@ inline bool pretty_print(std::ostream& stream, const std::string_view& value) {
 
 #endif
 
-template <typename T1, typename T2>
+template<typename T1, typename T2>
 inline bool pretty_print(std::ostream& stream, const std::pair<T1, T2>& value) {
   stream << "{";
   pretty_print(stream, value.first);
@@ -739,62 +730,50 @@ inline bool pretty_print(std::ostream& stream, const std::pair<T1, T2>& value) {
 
 #if DBG_MACRO_CXX_STANDARD >= 17
 
-template <typename T>
+template<typename T>
 inline bool pretty_print(std::ostream& stream, const std::optional<T>& value) {
   if (value) {
     stream << '{';
     pretty_print(stream, *value);
     stream << '}';
   } else {
-    stream << "nullopt";
+    stream << "null opt";
   }
-
   return true;
 }
 
-template <typename ...Ts>
-inline bool pretty_print(std::ostream& stream,
-                         const std::variant<Ts ...>& value) {
+template<typename ...Ts>
+inline bool pretty_print(std::ostream& stream, const std::variant<Ts ...>& value) {
   stream << "{";
   std::visit([&stream](auto&& arg) { pretty_print(stream, arg); }, value);
   stream << "}";
-
   return true;
 }
 
 #endif
 
-template <typename Container>
-inline typename std::enable_if<detail::is_container<const Container&>::value,
-  bool>::type
-pretty_print(std::ostream& stream, const Container& value) {
+template<typename Container> requires detail::is_container<const Container&>
+inline bool pretty_print(std::ostream& stream, const Container& value) {
   stream << "{";
   const size_t size = detail::size(value);
   const size_t n = std::min(size_t{10}, size);
   size_t i = 0;
-  using std::begin;
-  using std::end;
-  for (auto it = begin(value); it != end(value) && i < n; ++it, ++i) {
+  for (auto it = std::begin(value); it != std::end(value) && i < n; ++it, ++i) {
     pretty_print(stream, *it);
     if (i != n - 1) {
       stream << ", ";
     }
   }
-
   if (size > n) {
     stream << ", ...";
     stream << " size:" << size;
   }
-
   stream << "}";
   return true;
 }
 
-template <typename ContainerAdapter>
-inline typename std::enable_if<
-  detail::is_container_adapter<const ContainerAdapter&>::value,
-  bool>::type
-pretty_print(std::ostream& stream, ContainerAdapter value) {
+template<typename ContainerAdapter> requires detail::is_container_adapter<const ContainerAdapter&>
+inline bool pretty_print(std::ostream& stream, ContainerAdapter value) {
   stream << "{";
   const size_t size = detail::size(value);
   const size_t n = std::min(size_t{10}, size);
@@ -823,17 +802,17 @@ pretty_print(std::ostream& stream, ContainerAdapter value) {
   return true;
 }
 
-template <typename T, typename ...U>
+template<typename T, typename ...U>
 struct last {
   using type = typename last<U ...>::type;
 };
 
-template <typename T>
+template<typename T>
 struct last<T> {
   using type = T;
 };
 
-template <typename ...T>
+template<typename ...T>
 using last_t = typename last<T ...>::type;
 
 class DebugOutput {
@@ -854,7 +833,7 @@ public:
     m_location = ss.str();
   }
 
-  template <typename ...T>
+  template<typename ...T>
   auto print(
     std::initializer_list<expr_t> exprs,
     std::initializer_list<std::string> types,
@@ -869,7 +848,7 @@ public:
   }
 
 private:
-  template <typename T>
+  template<typename T>
   T&& print_impl(const expr_t* expr, const std::string* type, T&& value) {
     const T& ref = value;
     std::stringstream stream_value;
@@ -890,11 +869,8 @@ private:
     return std::forward<T>(value);
   }
 
-  template <typename T, typename ...U>
-  auto print_impl(const expr_t* exprs,
-                  const std::string* types,
-                  T&& value,
-                  U&& ...rest) -> last_t<T, U ...> {
+  template<typename T, typename ...U>
+  auto print_impl(const expr_t* exprs, const std::string* types, T&& value, U&& ...rest) -> last_t<T, U ...> {
     print_impl(exprs, types, std::forward<T>(value));
     return print_impl(exprs + 1, types + 1, std::forward<U>(rest) ...);
   }
@@ -923,12 +899,12 @@ private:
 
 // Identity function to suppress "-Wunused-value" warnings in DBG_MACRO_DISABLE
 // mode
-template <typename T>
+template<typename T>
 T&& identity(T&& t) {
   return std::forward<T>(t);
 }
 
-template <typename T, typename ...U>
+template<typename T, typename ...U>
 auto identity(T&&, U&& ...u) -> last_t<U ...> {
   return identity(std::forward<U>(u) ...);
 }
@@ -945,16 +921,12 @@ auto identity(T&&, U&& ...u) -> last_t<U ...> {
 #define DBG_CAT_IMPL(_1, _2) _1##_2
 #define DBG_CAT(_1, _2) DBG_CAT_IMPL(_1, _2)
 
-#define DBG_16TH_IMPL(_1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, \
-  _14, _15, _16, ...)                                     \
-  _16
-#define DBG_16TH(args) DBG_CALL(DBG_16TH_IMPL, args)
-#define DBG_NARG(...) \
-  DBG_16TH((__VA_ARGS__, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0))
+#define DBG_16TH_IMPL(_1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, ...)   _16
+#define DBG_16TH(args)  DBG_CALL(DBG_16TH_IMPL, args)
+#define DBG_NARG(...)   DBG_16TH((__VA_ARGS__, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0))
 
 // DBG_VARIADIC_CALL(fn, data, e1, e2, ...) => fn_N(data, (e1, e2, ...))
-#define DBG_VARIADIC_CALL(fn, data, ...) \
-  DBG_CAT(fn##_, DBG_NARG(__VA_ARGS__))(data, (__VA_ARGS__))
+#define DBG_VARIADIC_CALL(fn, data, ...)    DBG_CAT(fn##_, DBG_NARG(__VA_ARGS__))(data, (__VA_ARGS__))
 
 // (e1, e2, e3, ...) => e1
 #define DBG_HEAD_IMPL(_1, ...) _1

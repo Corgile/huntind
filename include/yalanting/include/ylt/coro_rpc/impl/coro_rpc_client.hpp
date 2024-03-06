@@ -398,7 +398,8 @@ class coro_rpc_client {
       co_return errc::not_connected;
     }
 #endif
-    if (!is_reconnect.value && has_closed_) AS_UNLIKELY {
+    if (!is_reconnect.value && has_closed_)
+      AS_UNLIKELY {
         ELOGV(ERROR,
               "a closed client is not allowed connect again, please use "
               "reconnect function or create a new "

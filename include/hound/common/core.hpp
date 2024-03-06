@@ -15,7 +15,7 @@ using namespace hd::global;
 
 class util {
 public:
-  static inline void fillCsvBuffer(ParsedData const& data, std::string& buffer) {
+  static void fillCsvBuffer(ParsedData const& data, std::string& buffer) {
     using namespace global;
     //@formatter:off
     if (opt.include_5tpl)   buffer.append(data.m5Tuple).append(opt.separator);
@@ -25,7 +25,7 @@ public:
     fillRawBitVec(data, buffer);
   }
 
-  static inline void fillRawBitVec(ParsedData const& data, std::string& buffer) {
+  static void fillRawBitVec(ParsedData const& data, std::string& buffer) {
     using namespace global;
     core::util::fill<IP4_PADSIZE>(true, data.mIP4Head, buffer);
     core::util::fill<TCP_PADSIZE>(true, data.mTcpHead, buffer);
@@ -34,6 +34,7 @@ public:
     buffer.pop_back();
   }
 
+private:
   template <int32_t PadBytes = -1>
   static void fill(bool const condition, const std::string_view rawData, std::string& buffer) {
     if (not condition) return;
@@ -41,8 +42,6 @@ public:
       _fill(opt.stride, opt.payload, rawData, buffer);
     } else _fill(opt.stride, PadBytes, rawData, buffer);
   }
-
-private:
 
   static uint64_t log2(int v) {
     int n = 0;

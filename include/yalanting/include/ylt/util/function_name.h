@@ -39,7 +39,7 @@ constexpr std::string_view get_func_name() {
       std::string_view{refvalue::qualified_name_of_v<func>};
   constexpr auto func_style =
       string_view_array_has(func_style_array, qualified_name);
-  if constexpr (func_style.length() > 0) {
+  if constexpr (not func_style.empty()) {
     return std::string_view{qualified_name.data() + func_style.length(),
                             qualified_name.length() - func_style.length()};
   }

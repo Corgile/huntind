@@ -1,1 +1,0 @@
-INCLUDE_DIRECTORIES(${VENDOR_PATH}/modern-cpp-kafka/include)

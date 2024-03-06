@@ -39,6 +39,7 @@
 #include "ylt/coro_io/coro_io.hpp"
 #include "ylt/coro_io/io_context_pool.hpp"
 #include "ylt/coro_rpc/impl/expected.hpp"
+
 namespace coro_rpc {
 /*!
  * ```cpp
@@ -62,7 +63,7 @@ class coro_rpc_server_base {
     stop       // server is stopping/stopped
   };
 
- public:
+public:
   /*!
    * TODO: add doc
    * @param thread_num the number of io_context.
@@ -72,19 +73,21 @@ class coro_rpc_server_base {
    */
   coro_rpc_server_base(size_t thread_num, unsigned short port,
                        std::chrono::steady_clock::duration
-                           conn_timeout_duration = std::chrono::seconds(0))
-      : pool_(thread_num),
-        acceptor_(pool_.get_executor()->get_asio_executor()),
-        port_(port),
-        conn_timeout_duration_(conn_timeout_duration),
-        flag_{stat::init} {}
+                       conn_timeout_duration = std::chrono::seconds(0))
+    : pool_(thread_num),
+      acceptor_(pool_.get_executor()->get_asio_executor()),
+      port_(port),
+      conn_timeout_duration_(conn_timeout_duration),
+      flag_{stat::init} {
+  }
 
-  coro_rpc_server_base(const server_config &config = server_config{})
-      : pool_(config.thread_num),
-        acceptor_(pool_.get_executor()->get_asio_executor()),
-        port_(config.port),
-        conn_timeout_duration_(config.conn_timeout_duration),
-        flag_{stat::init} {}
+  coro_rpc_server_base(const server_config& config = server_config{})
+    : pool_(config.thread_num),
+      acceptor_(pool_.get_executor()->get_asio_executor()),
+      port_(config.port),
+      conn_timeout_duration_(config.conn_timeout_duration),
+      flag_{stat::init} {
+  }
 
   ~coro_rpc_server_base() {
     ELOGV(INFO, "coro_rpc_server will quit");
@@ -110,9 +113,7 @@ class coro_rpc_server_base {
       ret.value().wait();
       return ret.value().value();
     }
-    else {
-      return ret.error();
-    }
+    return ret.error();
   }
 
   [[nodiscard]] coro_rpc::expected<async_simple::Future<coro_rpc::err_code>,
@@ -124,42 +125,40 @@ class coro_rpc_server_base {
       if (flag_ != stat::init) {
         if (flag_ == stat::started) {
           ELOGV(INFO, "start again");
-        }
-        else if (flag_ == stat::stop) {
+        } else if (flag_ == stat::stop) {
           ELOGV(INFO, "has stoped");
         }
         return coro_rpc::unexpected<coro_rpc::err_code>{
-            coro_rpc::errc::server_has_ran};
+        coro_rpc::errc::server_has_ran
+        };
       }
       ec = listen();
       if (!ec) {
-        if constexpr (requires(typename server_config::executor_pool_t & pool) {
-                        pool.run();
-                      }) {
+        if constexpr (requires(typename server_config::executor_pool_t& pool)
+        {
+          pool.run();
+        }) {
           thd_ = std::thread([this] {
             pool_.run();
           });
         }
         flag_ = stat::started;
-      }
-      else {
+      } else {
         flag_ = stat::stop;
       }
     }
     if (!ec) {
       async_simple::Promise<coro_rpc::err_code> promise;
       auto future = promise.getFuture();
-      accept().start([p = std::move(promise)](auto &&res) mutable {
+      accept().start([p = std::move(promise)](auto&& res) mutable {
         if (res.hasError()) {
           p.setValue(coro_rpc::err_code{coro_rpc::errc::io_error});
-        }
-        else {
+        } else {
           p.setValue(res.value());
         }
       });
       return std::move(future);
-    }
-    else {
+    } else {
       return coro_rpc::unexpected<coro_rpc::err_code>{ec};
     }
   }
@@ -181,7 +180,7 @@ class coro_rpc_server_base {
       close_acceptor();
       {
         std::unique_lock lock(conns_mtx_);
-        for (auto &conn : conns_) {
+        for (auto& conn : conns_) {
           if (!conn.second->has_closed()) {
             conn.second->async_close();
           }
@@ -237,14 +236,14 @@ class coro_rpc_server_base {
    * @param self the object pointer corresponding to these member functions
    */
 
-  template <auto first, auto... functions>
-  void register_handler(util::class_type_t<decltype(first)> *self) {
-    router_.template register_handler<first, functions...>(self);
+  template <auto first, auto...functions>
+  void register_handler(util::class_type_t<decltype(first)>* self) {
+    router_.template register_handler<first, functions ...>(self);
   }
 
   template <auto first>
-  void register_handler(util::class_type_t<decltype(first)> *self,
-                        const auto &key) {
+  void register_handler(util::class_type_t<decltype(first)>* self,
+                        const auto& key) {
     router_.template register_handler<first>(self, key);
   }
 
@@ -272,19 +271,19 @@ class coro_rpc_server_base {
    * @tparam func the address of RPC function. e.g. `foo`, `bar`
    */
 
-  template <auto... functions>
+  template <auto...functions>
   void register_handler() {
-    router_.template register_handler<functions...>();
+    router_.template register_handler<functions ...>();
   }
 
   template <auto func>
-  void register_handler(const auto &key) {
+  void register_handler(const auto& key) {
     router_.template register_handler<func>(key);
   }
 
-  auto &get_io_context_pool() noexcept { return pool_; }
+  auto& get_io_context_pool() noexcept { return pool_; }
 
- private:
+private:
   coro_rpc::err_code listen() {
     ELOGV(INFO, "begin to listen");
     using asio::ip::tcp;
@@ -337,7 +336,7 @@ class coro_rpc_server_base {
       if (error) {
         ELOGV(INFO, "accept failed, error: %s", error.message().data());
         if (error == asio::error::operation_aborted ||
-            error == asio::error::bad_descriptor) {
+          error == asio::error::bad_descriptor) {
           acceptor_close_waiter_.set_value();
           co_return coro_rpc::errc::operation_canceled;
         }
@@ -349,11 +348,11 @@ class coro_rpc_server_base {
       auto conn = std::make_shared<coro_connection>(executor, std::move(socket),
                                                     conn_timeout_duration_);
       conn->set_quit_callback(
-          [this](const uint64_t &id) {
-            std::unique_lock lock(conns_mtx_);
-            conns_.erase(id);
-          },
-          conn_id);
+        [this](const uint64_t& id) {
+          std::unique_lock lock(conns_mtx_);
+          conns_.erase(id);
+        },
+        conn_id);
 
       {
         std::unique_lock lock(conns_mtx_);
@@ -370,7 +369,7 @@ class coro_rpc_server_base {
     }
 #endif
     co_await conn->template start<typename server_config::rpc_protocol>(
-        router_);
+      router_);
   }
 
   void close_acceptor() {
