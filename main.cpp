@@ -35,8 +35,10 @@ int main(const int argc, char* argv[]) {
   static LiveParser _live_parser;
   static int ctrlc = 0, max_ = 5;
   auto handler = [](int const signal) -> void {
-    std::printf("%s\n", RED("\n正在退出..."));
-    _live_parser.stopCapture();
+    std::printf("%s", RED("\n正在退出..."));
+    if (_live_parser.is_running) {
+      _live_parser.stopCapture();
+    }
     quit_guard(max_, ctrlc);
   };
   std::signal(SIGSTOP, handler);

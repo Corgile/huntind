@@ -7,6 +7,8 @@
 #include <hound/common/service_api.hpp>
 #include <hound/type/hd_flow.hpp>
 
+using namespace std::chrono_literals;
+
 hd::type::RpcSink::RpcSink() {
   std::thread(&RpcSink::cleanerJob, this).detach();
   mInternalRpcServer = std::make_unique<coro_rpc::coro_rpc_server>(/*thread_num =*/opt.threads, /*port =*/opt.port);
@@ -42,40 +44,41 @@ hd::type::RpcSink::~RpcSink() {
   mIsRunning = false;
   for (auto it = mFlowTable.begin(); it not_eq mFlowTable.end();) {
     const auto& [key, _packets] = *it;
-    if (flow::_isLengthSatisfited(_packets)) {
+    if (flow::_isLengthSatisfied(_packets)) {
       std::scoped_lock queueLock(service::mtx_queue_access);
       service::rpc_msg_queue.emplace(key, _packets);
     }
     it = mFlowTable.erase(it);
   }
+  /// 如果 no_client  就不要一直等了
+#ifndef NO_CLIENT
   while (not service::rpc_msg_queue.empty()) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    std::this_thread::sleep_for(500ms);
   }
-  hd_debug("当前： ", this->mFlowTable.size());
-  hd_debug("发送队列: ", service::rpc_msg_queue.size());
+#endif
+  hd_debug("剩余： ", mFlowTable.size());
+  hd_debug("消息队列: ", service::rpc_msg_queue.size());
   mInternalRpcServer->stop();
 }
 
 void hd::type::RpcSink::cleanerJob() {
   // MEM-LEAK valgrind reports a mem-leak somewhere here, but why....
   while (mIsRunning) {
-    std::this_thread::sleep_for(std::chrono::seconds(5));
-    if (not mIsRunning) break;
+    std::this_thread::sleep_for(5s);
     std::scoped_lock lock1(accessToFlowTable);
-    long const now = flow::timestampNow<std::chrono::seconds>();
     for (auto it = mFlowTable.begin(); it not_eq mFlowTable.end();) {
       const auto& [key, _packets] = *it;
-      if (not flow::_isTimeout(_packets, now)) {
+      if (not flow::_isTimeout(_packets)) {
         ++it;
         continue;
       }
-      if (flow::_isLengthSatisfited(_packets)) {
+      if (flow::_isLengthSatisfied(_packets)) {
         std::scoped_lock queueLock(service::mtx_queue_access);
         service::rpc_msg_queue.emplace(key, _packets);
       }
       it = mFlowTable.erase(it);
     }
-    hd_debug("当前: ", this->mFlowTable.size());
+    hd_debug("移除: ", mFlowTable.size());
   }
-  hd_debug("函数 ", YELLOW("void cleanerJob() 结束"));
+  hd_debug(YELLOW("函数 "), YELLOW("void cleanerJob() 结束"));
 }

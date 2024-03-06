@@ -25,17 +25,18 @@ public:
 
   ~LiveParser();
 
+public:
+  std::atomic<bool> is_running{true};
+
 private:
   static void liveHandler(u_char*, const pcap_pkthdr*, const u_char*);
 
   void consumer_job();
 
 private:
-  pcap_handle_t mHandle{nullptr};
-  uint32_t mLinkType{};
+  pcap_t* mHandle{nullptr};
   std::queue<raw_packet_info> mPacketQueue;
-  std::atomic<bool> keepRunning{true};
-  // ConsoleSink console;
+
   RpcSink server;
   std::condition_variable cv_producer;      // 生产者条件变量
   std::condition_variable cv_consumer;      // 消费者条件变量

@@ -65,23 +65,23 @@ static option longopts[] = {
 static char const* shortopts = "J:P:W:F:f:N:E:D:S:L:R:p:CTVhIm:";
 #pragma endregion ShortAndLongOptions //@formatter:on
 
-inline void SetFilter(pcap_handle_t const& handle) {
+inline void SetFilter(pcap_t* handle) {
   if (opt.filter.empty() or handle == nullptr) { return; }
   constexpr bpf_u_int32 net{0};
   bpf_program fp{};
   hd_debug("包过滤表达式: ", opt.filter);
-  if (pcap_compile(handle.get(), &fp, opt.filter.c_str(), 0, net) == -1) {
-    std::printf("%s%s\n", RED("解析 Filter 失败: "), pcap_geterr(handle.get()));
+  if (pcap_compile(handle, &fp, opt.filter.c_str(), 0, net) == -1) {
+    std::printf("%s%s\n", RED("解析 Filter 失败: "), pcap_geterr(handle));
     exit(EXIT_FAILURE);
   }
-  if (pcap_setfilter(handle.get(), &fp) == -1) {
-    std::printf("%s%s\n", RED("设置 Filter 失败: "), pcap_geterr(handle.get()));
+  if (pcap_setfilter(handle, &fp) == -1) {
+    std::printf("%s%s\n", RED("设置 Filter 失败: "), pcap_geterr(handle));
     exit(EXIT_FAILURE);
   }
   pcap_freecode(&fp);
 }
 
-static void OpenLiveHandle(capture_option& option, pcap_handle_t& handle) {
+static void OpenLiveHandle(capture_option& option, pcap_t** handle) {
   /* getFlowId device */
   if (option.device.empty()) {
     pcap_if_t* l;
@@ -94,16 +94,14 @@ static void OpenLiveHandle(capture_option& option, pcap_handle_t& handle) {
   }
   hd_debug("网卡: ", option.device);
   /* open device */
-  handle.reset(pcap_open_live(option.device.c_str(), BUFSIZ, 1, 1000, ByteBuffer));
-  if (handle == nullptr) {
+  *handle = pcap_open_live(option.device.c_str(), BUFSIZ, 1, 1000, ByteBuffer);
+  if (*handle == nullptr) {
     std::printf("%s%s\n", RED("监听网卡设备失败: "), ByteBuffer);
     exit(EXIT_FAILURE);
   }
-  SetFilter(handle);
-  pcap_set_promisc(handle.get(), 1);
-  pcap_set_buffer_size(handle.get(), 25 << 22);
-  // link_type = pcap_datalink(handle);
-  // hd_debug(link_type);
+  SetFilter(*handle);
+  pcap_set_promisc(*handle, 1);
+  pcap_set_buffer_size(*handle, 25 << 22);
 }
 
 inline void Doc() {
