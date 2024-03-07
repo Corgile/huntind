@@ -60,13 +60,13 @@ void hd::type::LiveParser::consumer_job() {
     ++num_consumed_packet;
 #endif // defined(BENCHMARK)
   }
-  ELOG_DEBUG << YELLOW("发送消息任务 [") << std::this_thread::get_id() << YELLOW("] 结束");
+  ELOG_INFO << YELLOW("发送消息任务 [") << std::this_thread::get_id() << YELLOW("] 结束");
 }
 
 void hd::type::LiveParser::stopCapture() {
   pcap_breakloop(mHandle.get());
   cv_consumer.notify_all();
-  ELOG_INFO << CYAN("准备退出.. ") << __PRETTY_FUNCTION__;
+  ELOG_INFO << CYAN("准备退出.. ");
 }
 
 hd::type::LiveParser::~LiveParser() {
@@ -84,5 +84,5 @@ hd::type::LiveParser::~LiveParser() {
   std::printf("%s%d\n", CYAN("num_consumed_packet = "), num_consumed_packet.load());
   std::printf("%s%d\n", CYAN("num_written_csv = "), num_written_csv.load());
 #endif //- #if defined(BENCHMARK)
-  ELOG_DEBUG << __PRETTY_FUNCTION__ << ": " << CYAN("raw包队列剩余 ") << mPacketQueue.size();
+  ELOG_DEBUG << CYAN("raw包队列剩余 ") << mPacketQueue.size();
 }

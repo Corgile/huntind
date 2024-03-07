@@ -76,9 +76,9 @@ public:
       mProducer->flush(5'000);
     }
     /// 有先后之分，先topic 再producer
-    ELOG_DEBUG << "kafka连接 ["
+    ELOG_INFO << YELLOW("kafka连接 [")
                << std::this_thread::get_id()
-               << "] 的缓冲队列: "
+               << YELLOW("] 的缓冲队列: ")
                << mProducer->outq_len();
     delete mTopicPtr;
     delete mProducer;

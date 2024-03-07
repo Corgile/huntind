@@ -46,8 +46,13 @@ public:
       it = mFlowTable.erase(it);
     }
     mapLock.unlock();
-    ELOG_DEBUG << "FlowTable 剩余 " << this->mFlowTable.size();
 #pragma endregion
+    ELOG_DEBUG << CYAN("Producer [")
+               << std::this_thread::get_id()
+               << CYAN("] 发送队列剩余: ")
+               << this->mSendQueue.size()
+               << CYAN(", FlowTable 剩余 ")
+               << this->mFlowTable.size();
     delete pConnection;
   }
 
@@ -88,8 +93,9 @@ private:
   /// \brief 将<code>mFlowTable</code>里面超过 timeout 但是数量不足的flow删掉
   void cleanUnwantedFlowTask() {
     while (mIsRunning) {
-      std::this_thread::sleep_for(std::chrono::seconds(5));
+      std::this_thread::sleep_for(std::chrono::seconds(10));
       std::scoped_lock lock(mtxAccessToFlowTable);
+      int count = 0;
       for (flow_iter it = mFlowTable.begin(); it not_eq mFlowTable.end();) {
         const auto& [key, _packets] = *it;
         if (not flow::_isTimeout(_packets)) {
@@ -101,10 +107,16 @@ private:
           mSendQueue.emplace(key, _packets);
         }
         it = mFlowTable.erase(it);
+        count++;
       }
       cvMsgSender.notify_all();
       if (not mIsRunning) break;
-      ELOG_DEBUG << "移除不想要的flow, 剩余: " << mFlowTable.size();
+      if (count > 0) {
+        ELOG_DEBUG << CYAN("Producer [")
+                   << std::this_thread::get_id()
+                   << CYAN("] 移除 ") << count
+                   << CYAN(" 个短流, 剩余: ") << mFlowTable.size();
+      }
     }
     ELOG_TRACE << WHITE("函数 void cleanUnwantedFlowTask() 结束");
   }
