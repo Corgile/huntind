@@ -46,6 +46,9 @@ int main(const int argc, char* argv[]) {
   std::signal(SIGTERM, handler);
   std::signal(SIGKILL, handler);
 
+  easylog::set_min_severity(easylog::Severity::DEBUG);
+  easylog::set_async(true);
+
   _live_parser.startCapture();
   return 0;
 }

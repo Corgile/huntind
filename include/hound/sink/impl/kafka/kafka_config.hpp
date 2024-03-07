@@ -19,7 +19,7 @@ struct kafka_config {
 
     int32_t partition{0};
     int32_t max_idle{60};
-    int32_t timeout_sec{5};
+    int32_t timeout_sec{2};
   } conn;
   /// 连接池配置
   struct _pool {

@@ -17,7 +17,7 @@ public:
   void event_cb(RdKafka::Event& event) override {
     switch (event.type()) {
     case RdKafka::Event::EVENT_ERROR:
-      // hd_line(RED("EVENT_ERROR: "), event.str());
+      // hd_println(RED("EVENT_ERROR: "), event.str());
       break;
     case RdKafka::Event::EVENT_STATS:
       // hd_debug(BLUE("EVENT_STATS: "), event.str());

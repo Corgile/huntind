@@ -65,13 +65,13 @@ public:
   ~connection_pool() {
     cv.notify_all();
     _finished = true;
-    // while (not _connectionQue.empty()) {
-    //   delete _connectionQue.back();
-    //   _connectionQue.pop_back();
-    // }
-    std::for_each(_connectionQue.begin(), _connectionQue.end(), [&](auto item) {
-      delete item;
-    });
+    std::for_each(
+      _connectionQue.begin(),
+      _connectionQue.end(),
+      [&](kafka_connection* item) -> void {
+        delete item;
+      }
+    );
     {
       // ProducerDeliveryReportCb
       DeliveryReportCb* buff_1;
@@ -112,7 +112,7 @@ private:
       }
       cv.notify_all();
     }
-    hd_debug(YELLOW("函数 "), YELLOW("produceConnectionTask 结束"));
+    ELOG_DEBUG << YELLOW("函数 produceConnectionTask 结束");
   }
 
   /// 扫描超过maxIdleTime时间的空闲连接，进行对于连接的回收
@@ -130,12 +130,11 @@ private:
         if ((*it)->isRedundant()) {
           delete *it;
           it = _connectionQue.erase(it);
-        }
-        else it++;
+        } else it++;
       }
       lock.unlock();
     }
-    hd_debug(YELLOW("函数"), YELLOW("clearIdleConnectionTask 结束"));
+    ELOG_DEBUG << YELLOW("函数 clearIdleConnectionTask 结束");
   }
 
   kafka_config _config;

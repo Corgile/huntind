@@ -47,7 +47,7 @@ static bool IsFlowReady(packet_list const& existing, hd_packet const& new_) {
 static void LoadKafkaConfig(kafka_config& config, std::string const& fileName) {
   std::ifstream config_file(fileName);
   if (not config_file.good()) {
-    hd_line(RED("无法打开配置文件: "), fileName);
+    hd_println(RED("无法打开配置文件: "), fileName);
     exit(EXIT_FAILURE);
   }
   std::string line;
@@ -58,7 +58,7 @@ static void LoadKafkaConfig(kafka_config& config, std::string const& fileName) {
     if (value.empty()) continue;
     auto key{line.substr(0, pos)};
     config.put(key, value);
-    hd_line(BLUE("加载配置: "), key, "=", value);
+    ELOG_WARN << BLUE("加载配置: ") << key << "=" << value;
   }
 }
 

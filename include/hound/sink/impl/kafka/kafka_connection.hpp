@@ -57,14 +57,14 @@ public:
    * @param payload: 就是 payload
    * @param _key: 就是 flowId
    */
-  int pushMessage(const std::string_view payload, const std::string& _key) const {
+  [[nodiscard]] int pushMessage(const std::string_view payload, const std::string& _key) const {
     ErrorCode const errorCode = mProducer->produce(
       this->mTopicPtr, this->mPartionToFlush,
       Producer::RK_MSG_COPY, (void*) payload.data(),
       payload.size(), &_key, nullptr
     );
     if (errorCode == ERR_NO_ERROR) return 0;
-    hd_line(RED("发送失败: "), err2str(errorCode), CYAN(", 长度: "), payload.size());
+    ELOG_ERROR << RED("发送失败: ") << err2str(errorCode) << CYAN(", 长度: ") << payload.size();
     if (errorCode not_eq ERR__QUEUE_FULL) return 1;
     // kafka 队列满，等待 5000 ms
     mProducer->poll(5'000);
@@ -74,11 +74,13 @@ public:
   ~kafka_connection() {
     mIsAlive.store(false);
     while (mProducer->outq_len() > 0) {
-      hd_line(YELLOW("kafka连接["), std::this_thread::get_id(),
-              YELLOW("]的缓冲队列: "), mProducer->outq_len());
       mProducer->flush(5'000);
     }
     /// 有先后之分，先topic 再producer
+    ELOG_DEBUG << "kafka连接 ["
+               << std::this_thread::get_id()
+               << "] 的缓冲队列: "
+               << mProducer->outq_len();
     delete mTopicPtr;
     delete mProducer;
   }

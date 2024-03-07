@@ -28,21 +28,26 @@ public:
     flow::LoadKafkaConfig(kafkaConfig, fileName);
     this->mConnectionPool = connection_pool::create(kafkaConfig);
     for (int i = 0; i < opt.workers; ++i) {
-      std::thread(&KafkaSink::sendingJob, this).detach();
+      std::thread(&KafkaSink::sendToKafkaTask, this).detach();
     }
-    std::thread(&KafkaSink::cleanerJob, this).detach();
+    std::thread(&KafkaSink::cleanUnwantedFlowTask, this).detach();
   }
 
   ~KafkaSink() override {
+    ELOG_TRACE << __PRETTY_FUNCTION__;
+    // TODO: 为什么live_parser析构不会引起这里析构，导致detached线程无法退出
     mIsRunning = false;
     cvMsgSender.notify_all();
 #pragma region 发送剩下的流数据
+    /// 为什么加锁？ detached的线程可能造成竞态
+    std::unique_lock mapLock{mtxAccessToFlowTable};
     for (auto it = mFlowTable.begin(); it not_eq mFlowTable.end();) {
       auto code = this->send({it->first, it->second});
-      hd_debug(GREEN("~KafkaSink: "), code);
+      ELOG_TRACE << "~KafkaSink: " << code;
       it = mFlowTable.erase(it);
     }
-    hd_debug("剩余 ", this->mFlowTable.size());
+    mapLock.unlock();
+    ELOG_DEBUG << "FlowTable 剩余 " << this->mFlowTable.size();
 #pragma endregion
     delete mConnectionPool;
   }
@@ -56,6 +61,7 @@ public:
     if (flow::IsFlowReady(_existing, packet)) {
       std::scoped_lock queueLock(mtxAccessToQueue);
       mSendQueue.emplace(data.mFlowKey, std::move(_existing));
+      ELOG_TRACE << "加入发送队列: " << mSendQueue.size();
     }
     _existing.emplace_back(std::move(packet));
     assert(_existing.size() <= opt.max_packets);
@@ -63,7 +69,7 @@ public:
   }
 
 private:
-  void sendingJob() {
+  void sendToKafkaTask() {
     while (mIsRunning) {
       std::unique_lock lock(mtxAccessToQueue);
       cvMsgSender.wait(lock, [&]() -> bool {
@@ -74,18 +80,17 @@ private:
         auto front{this->mSendQueue.front()};
         this->mSendQueue.pop();
         auto future = std::async(std::launch::async, &KafkaSink::send, this, front);
-        hd_debug(GREEN("SendingJob: "), future.get());
+        ELOG_TRACE << __PRETTY_FUNCTION__ << ": " << future.get();
       }
       lock.unlock();
     }
-    hd_debug(YELLOW("函数 "), YELLOW("void sendingJob() 结束"));
+    ELOG_TRACE << WHITE("函数 void sendToKafkaTask() 结束");
   }
 
   /// \brief 将mFlowTable里面超过timeout但是数量不足的flow删掉
-  void cleanerJob() {
-    // MEM-LEAK valgrind reports a mem-leak somewhere here, but why....
+  void cleanUnwantedFlowTask() {
     while (mIsRunning) {
-      std::this_thread::sleep_for(std::chrono::seconds(5));
+      std::this_thread::sleep_for(std::chrono::seconds(opt.flowTimeout));
       std::scoped_lock lock1(mtxAccessToFlowTable);
       for (auto it = mFlowTable.begin(); it not_eq mFlowTable.end();) {
         const auto& [key, _packets] = *it;
@@ -101,9 +106,9 @@ private:
       }
       cvMsgSender.notify_all();
       if (not mIsRunning) break;
-      hd_debug("移除不好的flow: ", mFlowTable.size());
+      ELOG_DEBUG << "已移除不想要的flow, 剩余: " << mFlowTable.size();
     }
-    hd_debug("函数 ", YELLOW("void cleanerJob() 结束"));
+    ELOG_TRACE << WHITE("函数 void cleanUnwantedFlowTask() 结束");
   }
 
   int send(const hd_flow& flow) {

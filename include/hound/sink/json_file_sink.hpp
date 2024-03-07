@@ -20,7 +20,7 @@
 namespace hd::type {
 namespace fs = std::filesystem;
 
-class JsonFileSink final : public BaseSink{
+class JsonFileSink final : public BaseSink {
   using PacketList = std::vector<entity::hd_packet>;
 
 public:
@@ -30,13 +30,13 @@ public:
       create_directories(parent);
     }
     bool const isGood{
-    mOutFile.invoke([](std::fstream const& stream) {
-      return stream.good();
-    })
+      mOutFile.invoke([](std::fstream const& stream) {
+        return stream.good();
+      })
     };
 
     if (not isGood) {
-      std::printf("%s%s\n",RED("无法打开输出文件: "), fileName.c_str());
+      std::printf("%s%s\n", RED("无法打开输出文件: "), fileName.c_str());
       exit(EXIT_FAILURE);
     }
     mOutFile << "[";
@@ -73,11 +73,11 @@ public:
       });
       mOutFile << "]";
     }
-    hd_debug("剩余: ", mFlowTable.size());
+    ELOG_DEBUG << "剩余: " << mFlowTable.size();
   }
 
 protected:
-  template <typename ...Args>
+  template<typename ...Args>
   void appendToFile(Args&& ...args) {
     std::string content;
     entity::hd_flow flow(std::forward<Args>(args) ...);

@@ -33,6 +33,7 @@ void hd::type::LiveParser::startCapture() {
     }).detach();
   }
   pcap_loop(mHandle.get(), opt.num_packets, liveHandler, reinterpret_cast<u_char*>(this));
+  cv_consumer.notify_all();
 }
 
 void hd::type::LiveParser::liveHandler(u_char* user_data, const pcap_pkthdr* pkthdr, const u_char* packet) {
@@ -57,21 +58,19 @@ void hd::type::LiveParser::consumer_job() {
     this->mPacketQueue.pop();
     cv_producer.notify_all();
     lock.unlock();
-    std::ignore = std::async(std::launch::async, &BaseSink::consumeData, mSink.get(), front);
-    // mSink->consumeData({front});
+    // std::ignore = std::async(std::launch::async, &BaseSink::consumeData, mSink.get(), front);
+    mSink->consumeData({front});
 #if defined(BENCHMARK)
     ++num_consumed_packet;
 #endif // defined(BENCHMARK)
   }
-  const std::thread::id this_id = std::this_thread::get_id();
-  const auto id_numeric = std::hash<std::thread::id>{}(this_id);
-  std::printf("%s%lu%s\n", YELLOW("Worker ["), id_numeric, YELLOW("] 退出"));
+  ELOG_DEBUG << YELLOW("发送消息任务 [") << std::this_thread::get_id() << YELLOW("] 结束");
 }
 
 void hd::type::LiveParser::stopCapture() {
   pcap_breakloop(mHandle.get());
-  is_running = false;
   cv_consumer.notify_all();
+  ELOG_INFO << CYAN("准备退出.. ") << __PRETTY_FUNCTION__;
 }
 
 hd::type::LiveParser::~LiveParser() {
@@ -81,6 +80,7 @@ hd::type::LiveParser::~LiveParser() {
   while (not mPacketQueue.empty()) {
     std::this_thread::sleep_for(10ms);
   }
+  is_running = false;
 #if defined(BENCHMARK)
   using namespace global;
   std::printf("%s%d\n", CYAN("num_captured_packet = "), num_captured_packet.load());
@@ -88,5 +88,5 @@ hd::type::LiveParser::~LiveParser() {
   std::printf("%s%d\n", CYAN("num_consumed_packet = "), num_consumed_packet.load());
   std::printf("%s%d\n", CYAN("num_written_csv = "), num_written_csv.load());
 #endif //- #if defined(BENCHMARK)
-  hd_debug("raw包队列剩余: ", mPacketQueue.size());
+  ELOG_DEBUG << __PRETTY_FUNCTION__ << ": " << CYAN("raw包队列剩余 ") << mPacketQueue.size();
 }
