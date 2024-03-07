@@ -1,7 +1,6 @@
 #include <csignal>
 #include <hound/common/util.hpp>
 #include <hound/common/global.hpp>
-
 #include <hound/parser/live_parser.hpp>
 
 namespace hd::global {

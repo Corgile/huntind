@@ -17,7 +17,7 @@ using namespace RdKafka;
 class kafka_connection {
 private:
   clock_t _idleStart{};
-  std::atomic_int mPartionToFlush{0};            // 分区编号
+  std::atomic_int mPartitionToFlush{0};            // 分区编号
   int mMaxPartition{0};            // 分区数量
   int mMaxIdle;
   std::atomic_bool mInUse;
@@ -29,27 +29,26 @@ public:
   /**
    * @brief message publisher
    */
-  kafka_connection(kafka_config::_conn const& conn,
-                   std::unique_ptr<Conf> const& kafkaConf,
-                   std::unique_ptr<Conf> const& topic) {
+  kafka_connection(kafka_config const& conn,
+                   std::unique_ptr<RdKafka::Conf>const & producer_conf,
+                   std::unique_ptr<RdKafka::Conf>const & _topic) {
     std::string errstr;
     this->mMaxPartition = conn.partition;
     this->mMaxIdle = conn.max_idle;
     this->mInUse = false;
-    // TODO: Producer::create 疑似存在内存泄漏
-    this->mProducer = Producer::create(kafkaConf.get(), errstr);
-    this->mTopicPtr = Topic::create(mProducer, conn.topic_str, topic.get(), errstr);
+    this->mProducer = Producer::create(producer_conf.get(), errstr);
+    this->mTopicPtr = Topic::create(mProducer, conn.topic_str, _topic.get(), errstr);
     if (this->mMaxPartition > 1) {
       int32_t counter = 0;
       std::thread([&counter, this] {
         using namespace std::chrono_literals;
         while (mIsAlive) {
           std::this_thread::sleep_for(20s);
-          this->mPartionToFlush.store(counter++ % mMaxPartition);
+          this->mPartitionToFlush.store(counter++ % mMaxPartition);
           counter %= mMaxPartition;
         }
       }).detach();
-    } else this->mPartionToFlush = 0;
+    } else this->mPartitionToFlush = 0;
   }
 
   /**
@@ -59,7 +58,7 @@ public:
    */
   [[nodiscard]] int pushMessage(const std::string_view payload, const std::string& _key) const {
     ErrorCode const errorCode = mProducer->produce(
-      this->mTopicPtr, this->mPartionToFlush,
+      this->mTopicPtr, this->mPartitionToFlush,
       Producer::RK_MSG_COPY, (void*) payload.data(),
       payload.size(), &_key, nullptr
     );

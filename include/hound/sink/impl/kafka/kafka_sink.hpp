@@ -23,13 +23,12 @@ using packet_list = std::vector<hd_packet>;
 
 class KafkaSink final : public BaseSink {
 public:
-  explicit KafkaSink(std::string const& fileName) {
-    kafka_config kafkaConfig;
-    flow::LoadKafkaConfig(kafkaConfig, fileName);
-    this->mConnectionPool = connection_pool::create(kafkaConfig);
-    for (int i = 0; i < opt.workers; ++i) {
-      std::thread(&KafkaSink::sendToKafkaTask, this).detach();
-    }
+  explicit KafkaSink(kafka_config& values,
+                     std::unique_ptr<RdKafka::Conf>& _serverConf,
+                     std::unique_ptr<RdKafka::Conf>& _topicConf) {
+    this->pConnection = new kafka_connection(values, _serverConf, _topicConf);
+    ELOG_DEBUG << "创建 kafka_connection";
+    std::thread(&KafkaSink::sendToKafkaTask, this).detach();
     std::thread(&KafkaSink::cleanUnwantedFlowTask, this).detach();
   }
 
@@ -41,7 +40,7 @@ public:
 #pragma region 发送剩下的流数据
     /// 为什么加锁？ detached的线程可能造成竞态
     std::unique_lock mapLock{mtxAccessToFlowTable};
-    for (auto it = mFlowTable.begin(); it not_eq mFlowTable.end();) {
+    for (flow_iter it = mFlowTable.begin(); it not_eq mFlowTable.end();) {
       auto code = this->send({it->first, it->second});
       ELOG_TRACE << "~KafkaSink: " << code;
       it = mFlowTable.erase(it);
@@ -49,7 +48,7 @@ public:
     mapLock.unlock();
     ELOG_DEBUG << "FlowTable 剩余 " << this->mFlowTable.size();
 #pragma endregion
-    delete mConnectionPool;
+    delete pConnection;
   }
 
   void consumeData(ParsedData const& data) override {
@@ -79,20 +78,19 @@ private:
       while (not this->mSendQueue.empty()) {
         auto front{this->mSendQueue.front()};
         this->mSendQueue.pop();
-        auto future = std::async(std::launch::async, &KafkaSink::send, this, front);
-        ELOG_TRACE << __PRETTY_FUNCTION__ << ": " << future.get();
+        auto code = this->send(front);
+        ELOG_TRACE << __PRETTY_FUNCTION__ << ": " << code;
       }
-      lock.unlock();
     }
     ELOG_TRACE << WHITE("函数 void sendToKafkaTask() 结束");
   }
 
-  /// \brief 将mFlowTable里面超过timeout但是数量不足的flow删掉
+  /// \brief 将<code>mFlowTable</code>里面超过 timeout 但是数量不足的flow删掉
   void cleanUnwantedFlowTask() {
     while (mIsRunning) {
-      std::this_thread::sleep_for(std::chrono::seconds(opt.flowTimeout));
-      std::scoped_lock lock1(mtxAccessToFlowTable);
-      for (auto it = mFlowTable.begin(); it not_eq mFlowTable.end();) {
+      std::this_thread::sleep_for(std::chrono::seconds(5));
+      std::scoped_lock lock(mtxAccessToFlowTable);
+      for (flow_iter it = mFlowTable.begin(); it not_eq mFlowTable.end();) {
         const auto& [key, _packets] = *it;
         if (not flow::_isTimeout(_packets)) {
           ++it;
@@ -106,7 +104,7 @@ private:
       }
       cvMsgSender.notify_all();
       if (not mIsRunning) break;
-      ELOG_DEBUG << "已移除不想要的flow, 剩余: " << mFlowTable.size();
+      ELOG_DEBUG << "移除不想要的flow, 剩余: " << mFlowTable.size();
     }
     ELOG_TRACE << WHITE("函数 void cleanUnwantedFlowTask() 结束");
   }
@@ -115,19 +113,19 @@ private:
     if (flow.count < opt.min_packets) return -1;
     std::string payload;
     struct_json::to_json(flow, payload);
-    std::shared_ptr const connection{mConnectionPool->get_connection()};
-    return connection->pushMessage(payload, flow.flowId);
+    return pConnection->pushMessage(payload, flow.flowId);
   }
 
 private:
   std::mutex mtxAccessToFlowTable;
   std::unordered_map<std::string, packet_list> mFlowTable;
+  using flow_iter = std::unordered_map<std::string, packet_list>::iterator;
 
   std::mutex mtxAccessToQueue;
   std::queue<hd_flow> mSendQueue;
   std::condition_variable cvMsgSender;
 
-  connection_pool* mConnectionPool;
+  kafka_connection* pConnection;
   std::atomic_bool mIsRunning{true};
 #ifdef LATENCY_TEST
   std::ofstream mTimestampLog;

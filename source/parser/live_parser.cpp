@@ -9,17 +9,12 @@
 using namespace hd::global;
 
 hd::type::LiveParser::LiveParser() {
+  conn_conf.read_kafka_conf(opt.kafka_config);
+  flow::InitGetConf(conn_conf, _serverConf, _topicConf);
+  ELOG_DEBUG << "初始化连接配置";
   util::OpenLiveHandle(opt, mHandle);
   for (int i = 0; i < opt.workers; ++i) {
     std::thread(&LiveParser::consumer_job, this).detach();
-  }
-  if (not opt.output_file.empty()) {
-    mSink = std::make_unique<JsonFileSink>(opt.output_file);
-  }
-  if (opt.kafka_config.empty()) {
-    mSink = std::make_unique<BaseSink>(opt.kafka_config);
-  } else {
-    mSink = std::make_unique<KafkaSink>(opt.kafka_config);
   }
 }
 
@@ -48,6 +43,8 @@ void hd::type::LiveParser::liveHandler(u_char* user_data, const pcap_pkthdr* pkt
 }
 
 void hd::type::LiveParser::consumer_job() {
+  KafkaSink sink(conn_conf, _serverConf, _topicConf);
+  ELOG_DEBUG << "创建 KafkaSink";
   /// 采用标志变量keepRunning来控制detach的线程
   while (is_running) {
     std::unique_lock lock(this->mQueueLock);
@@ -58,8 +55,7 @@ void hd::type::LiveParser::consumer_job() {
     this->mPacketQueue.pop();
     cv_producer.notify_all();
     lock.unlock();
-    // std::ignore = std::async(std::launch::async, &BaseSink::consumeData, mSink.get(), front);
-    mSink->consumeData({front});
+    sink.consumeData({front});
 #if defined(BENCHMARK)
     ++num_consumed_packet;
 #endif // defined(BENCHMARK)

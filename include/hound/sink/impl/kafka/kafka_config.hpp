@@ -13,37 +13,43 @@ namespace hd::entity {
 
 struct kafka_config {
   /// 连接参数
-  struct _conn {
-    std::string servers;
-    std::string topic_str;
+  std::string servers;
+  std::string topic_str;
 
-    int32_t partition{0};
-    int32_t max_idle{60};
-    int32_t timeout_sec{2};
-  } conn;
-  /// 连接池配置
-  struct _pool {
-    int32_t init_size{3};
-    int32_t max_size{5};
-  } pool;
+  int32_t partition{0};
+  int32_t max_idle{60};
+  int32_t timeout_sec{2};
+
+  void read_kafka_conf(std::string const& fileName) {
+    std::ifstream config_file(fileName);
+    if (not config_file.good()) {
+      hd_println(RED("无法打开配置文件: "), fileName);
+      exit(EXIT_FAILURE);
+    }
+    std::string line;
+    while (std::getline(config_file, line)) {
+      size_t pos{line.find('=')};
+      if (pos == std::string::npos or line.at(0) == '#') continue;
+      auto value{line.substr(pos + 1)};
+      if (value.empty()) continue;
+      auto key{line.substr(0, pos)};
+      this->put(key, value);
+      ELOG_WARN << BLUE("加载配置: ") << key << "=" << value;
+    }
+  }
 
   void put(const std::string& k, const std::string& v) {
     if (k == hd::keys::KAFKA_BROKERS)
-      this->conn.servers = v;
+      this->servers = v;
     if (k == hd::keys::KAFKA_TOPICS)
-      this->conn.topic_str = v;
+      this->topic_str = v;
 
     if (k == hd::keys::KAFKA_PARTITION)
-      this->conn.partition = std::stoi(v);
+      this->partition = std::stoi(v);
     if (k == hd::keys::CONN_MAX_IDLE_S)
-      this->conn.max_idle = std::stoi(v);
+      this->max_idle = std::stoi(v);
     if (k == hd::keys::CONN_TIMEOUT_MS)
-      this->conn.timeout_sec = std::stoi(v);
-
-    if (k == hd::keys::POOL_INIT_SIZE)
-      this->pool.init_size = std::stoi(v);
-    if (k == hd::keys::POOL_MAX_SIZE)
-      this->pool.max_size = std::stoi(v);
+      this->timeout_sec = std::stoi(v);
   }
 };
 

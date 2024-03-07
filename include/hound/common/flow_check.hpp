@@ -44,25 +44,7 @@ static bool IsFlowReady(packet_list const& existing, hd_packet const& new_) {
   return _isTimeout(existing, new_) and _isLengthSatisfied(existing);
 }
 
-static void LoadKafkaConfig(kafka_config& config, std::string const& fileName) {
-  std::ifstream config_file(fileName);
-  if (not config_file.good()) {
-    hd_println(RED("无法打开配置文件: "), fileName);
-    exit(EXIT_FAILURE);
-  }
-  std::string line;
-  while (std::getline(config_file, line)) {
-    size_t pos{line.find('=')};
-    if (pos == std::string::npos or line.at(0) == '#') continue;
-    auto value{line.substr(pos + 1)};
-    if (value.empty()) continue;
-    auto key{line.substr(0, pos)};
-    config.put(key, value);
-    ELOG_WARN << BLUE("加载配置: ") << key << "=" << value;
-  }
-}
-
-static void InitGetConf(kafka_config::_conn const& conn,
+static void InitGetConf(kafka_config const& conn,
                         std::unique_ptr<RdKafka::Conf>& _kafkaConf,
                         std::unique_ptr<RdKafka::Conf>& _topic) {
   using namespace RdKafka;
@@ -76,7 +58,6 @@ static void InitGetConf(kafka_config::_conn const& conn,
   _kafkaConf->set("statistics.interval.ms", "10000", error_buffer);
   //  1MB
   _kafkaConf->set("max.message.bytes", "104858800", error_buffer);
-  _kafkaConf->set("enable.manual.events.poll", "false", error_buffer);
   // 1.2、创建 Topic Conf 对象
   _topic.reset(Conf::create(Conf::CONF_TOPIC));
   _topic->set("partitioner_cb", new HashPartitionerCb, error_buffer);

@@ -37,9 +37,13 @@ private:
 private:
   pcap_handle_t mHandle{nullptr};
   std::queue<raw_packet_info> mPacketQueue;
-  std::unique_ptr<BaseSink> mSink;
+  // std::unique_ptr<BaseSink> mSink;
   std::condition_variable cv_producer;      // 生产者条件变量
   std::condition_variable cv_consumer;      // 消费者条件变量
+
+  std::unique_ptr<RdKafka::Conf> _serverConf;
+  std::unique_ptr<RdKafka::Conf> _topicConf;
+  kafka_config conn_conf;
 
   mutable std::mutex mQueueLock;
 };
