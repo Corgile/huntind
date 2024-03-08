@@ -13,8 +13,9 @@ hd::type::LiveParser::LiveParser() {
   flow::InitGetConf(conn_conf, _serverConf, _topicConf);
   ELOG_DEBUG << "初始化连接配置";
   util::OpenLiveHandle(opt, mHandle);
+  mConsumerTasks.reserve(opt.workers);
   for (int i = 0; i < opt.workers; ++i) {
-    std::thread(&LiveParser::consumer_job, this).detach();
+    mConsumerTasks.emplace_back(std::thread(&LiveParser::consumer_job, this));
   }
 }
 
@@ -43,7 +44,7 @@ void hd::type::LiveParser::liveHandler(u_char* user_data, const pcap_pkthdr* pkt
 }
 
 void hd::type::LiveParser::consumer_job() {
-  KafkaSink sink(conn_conf, _serverConf, _topicConf);
+  KafkaSink* sink = new KafkaSink(conn_conf, _serverConf, _topicConf);
   ELOG_DEBUG << "创建 KafkaSink";
   /// 采用标志变量keepRunning来控制detach的线程
   while (is_running) {
@@ -55,24 +56,29 @@ void hd::type::LiveParser::consumer_job() {
     this->mPacketQueue.pop();
     cv_producer.notify_all();
     lock.unlock();
-    sink.consumeData({front});
+    sink->consumeData({front});
 #if defined(BENCHMARK)
     ++num_consumed_packet;
 #endif // defined(BENCHMARK)
   }
   ELOG_INFO << YELLOW("发送消息任务 [") << std::this_thread::get_id() << YELLOW("] 结束");
+  delete sink;
 }
 
 void hd::type::LiveParser::stopCapture() {
   pcap_breakloop(mHandle.get());
+  is_running = false;
   cv_consumer.notify_all();
-  ELOG_INFO << CYAN("准备退出.. ");
+  ELOG_INFO << CYAN("准备退出.., 不过要先处理剩下的数据包....");
 }
 
 hd::type::LiveParser::~LiveParser() {
   cv_consumer.notify_all();
   using namespace std::chrono_literals;
-  /// 先等待游离worker线程消费队列直至为空
+  for (std::thread& item : mConsumerTasks) {
+    item.detach();
+  }
+  /// 先等待worker线程消费队列直至为空
   while (not mPacketQueue.empty()) {
     std::this_thread::sleep_for(10ms);
   }
@@ -84,5 +90,5 @@ hd::type::LiveParser::~LiveParser() {
   std::printf("%s%d\n", CYAN("num_consumed_packet = "), num_consumed_packet.load());
   std::printf("%s%d\n", CYAN("num_written_csv = "), num_written_csv.load());
 #endif //- #if defined(BENCHMARK)
-  ELOG_DEBUG << CYAN("raw包队列剩余 ") << mPacketQueue.size();
+  ELOG_DEBUG << CYAN("处理完成， raw包队列剩余 ") << mPacketQueue.size();
 }

@@ -2,8 +2,8 @@
 // Created by brian on 11/28/23.
 //
 
-#ifndef HOUND_BASE_SINK_HPP
-#define HOUND_BASE_SINK_HPP
+#ifndef HOUND_CONSOLE_SINK_HPP
+#define HOUND_CONSOLE_SINK_HPP
 
 #include <hound/type/parsed_data.hpp>
 #include <hound/common/core.hpp>
@@ -38,4 +38,4 @@ public:
 };
 } // entity
 
-#endif //HOUND_BASE_SINK_HPP
+#endif //HOUND_CONSOLE_SINK_HPP

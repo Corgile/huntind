@@ -8,6 +8,7 @@
 
 #include <librdkafka/rdkafkacpp.h>
 #include <hound/common/macro.hpp>
+#include <hound/common/global.hpp>
 
 // 生产者投递报告回调
 class ProducerDeliveryReportCb final : public RdKafka::DeliveryReportCb {

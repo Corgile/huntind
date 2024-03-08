@@ -15,12 +15,11 @@
 #include <hound/common/flow_check.hpp>
 #include <hound/type/hd_flow.hpp>
 #include <hound/type/synced_stream.hpp>
-#include <hound/sink/base_sink.hpp>
 
 namespace hd::type {
 namespace fs = std::filesystem;
 
-class JsonFileSink final : public BaseSink {
+class JsonFileSink final {
   using PacketList = std::vector<entity::hd_packet>;
 
 public:
@@ -41,10 +40,17 @@ public:
     }
     mOutFile << "[";
     mOutFile << std::flush;
+    std::streampos const currentPosition = mOutFile.SyncInvoke(
+      [](std::fstream& stream) { return stream.tellg(); }
+    );
+    mOutFile.SyncInvoke([&](std::fstream& stream) {
+      /// Subtract 1 here because there is '\\n' at the end.
+      stream.seekg(currentPosition.operator-(1));
+    });
   }
 
   /// 写入json文件
-  void consumeData(ParsedData const& data) override {
+  void consumeData(ParsedData const& data) {
     if (not data.HasContent) return;
     entity::hd_packet packet(data.mPcapHead);
     core::util::fillRawBitVec(data, packet.bitvec);
@@ -56,7 +62,7 @@ public:
     mFlowTable.at(data.mFlowKey).emplace_back(std::move(packet));
   }
 
-  ~JsonFileSink() override {
+  ~JsonFileSink() {
     for (auto& [id, _list] : this->mFlowTable) {
       if (_list.size() >= global::opt.min_packets) {
         this->appendToFile(id, _list);

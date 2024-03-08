@@ -19,7 +19,7 @@ struct hd_packet {
 
   hd_packet() = default;
 
-  explicit hd_packet(const pcap_pkthdr& _pcapHead) {
+  explicit hd_packet(pcap_pkthdr const& _pcapHead) {
     ts_sec = _pcapHead.ts.tv_sec;
     ts_usec = _pcapHead.ts.tv_usec;
     packet_len = _pcapHead.caplen;

@@ -7,6 +7,8 @@
 
 #include <cstdint>
 #include <string>
+#include <fstream>
+#include <hound/common/macro.hpp>
 #include <hound/sink/impl/kafka/constants.hpp>
 
 namespace hd::entity {

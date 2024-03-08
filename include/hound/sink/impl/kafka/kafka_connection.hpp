@@ -30,8 +30,8 @@ public:
    * @brief message publisher
    */
   kafka_connection(kafka_config const& conn,
-                   std::unique_ptr<RdKafka::Conf>const & producer_conf,
-                   std::unique_ptr<RdKafka::Conf>const & _topic) {
+                   std::unique_ptr<RdKafka::Conf> const& producer_conf,
+                   std::unique_ptr<RdKafka::Conf> const& _topic) {
     std::string errstr;
     this->mMaxPartition = conn.partition;
     this->mMaxIdle = conn.max_idle;
@@ -43,7 +43,7 @@ public:
       std::thread([&counter, this] {
         using namespace std::chrono_literals;
         while (mIsAlive) {
-          std::this_thread::sleep_for(20s);
+          std::this_thread::sleep_for(10s);
           this->mPartitionToFlush.store(counter++ % mMaxPartition);
           counter %= mMaxPartition;
         }
@@ -65,7 +65,6 @@ public:
     if (errorCode == ERR_NO_ERROR) return 0;
     ELOG_ERROR << RED("发送失败: ") << err2str(errorCode) << CYAN(", 长度: ") << payload.size();
     if (errorCode not_eq ERR__QUEUE_FULL) return 1;
-    // kafka 队列满，等待 5000 ms
     mProducer->poll(5'000);
     return 1;
   }
@@ -77,9 +76,9 @@ public:
     }
     /// 有先后之分，先topic 再producer
     ELOG_INFO << YELLOW("kafka连接 [")
-               << std::this_thread::get_id()
-               << YELLOW("] 的缓冲队列: ")
-               << mProducer->outq_len();
+              << std::this_thread::get_id()
+              << YELLOW("] 的缓冲队列: ")
+              << mProducer->outq_len();
     delete mTopicPtr;
     delete mProducer;
   }
