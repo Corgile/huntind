@@ -86,12 +86,13 @@ private:
         return not this->mSendQueue.empty() or not mIsRunning;
       });
       if (not mIsRunning) break;
-      while (not this->mSendQueue.empty()) {
-        auto front{this->mSendQueue.front()};
-        this->mSendQueue.pop();
-        auto code = this->send(front);
-        ELOG_TRACE << __PRETTY_FUNCTION__ << ": " << code;
-      }
+      // while (not this->mSendQueue.empty()) {
+      auto front{this->mSendQueue.front()};
+      this->mSendQueue.pop();
+      lock.unlock();
+      auto code = this->send(front);
+      ELOG_TRACE << __PRETTY_FUNCTION__ << ": " << code;
+      // }
     }
     ELOG_TRACE << WHITE("函数 void sendToKafkaTask() 结束");
   }
