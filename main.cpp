@@ -18,7 +18,7 @@ std::atomic<int32_t> num_written_csv = 0;
 static void quit_guard(const int max_, int& ctrlc) {
   auto const more = max_ - ++ctrlc;
   if (more > 0) {
-    std::printf("%s%d%s\n", RED("如果没有立即停止就再按 "), more, RED(" 次 [Ctrl-C] 强制退出"));
+    ELOG_INFO << RED("如果没有立即停止, 再按 ") << more << RED(" 次 [Ctrl-C] 强制退出");
   }
   if (ctrlc >= max_) {
     exit(EXIT_FAILURE);
@@ -34,7 +34,8 @@ int main(const int argc, char* argv[]) {
   static LiveParser _live_parser;
   static int ctrlc = 0, max_ = 5;
   auto handler = [](int const signal) -> void {
-    std::printf("\x1b[2D%s", RED("正在退出..."));
+    std::printf("\x1b[2D");
+    ELOG_INFO << RED("正在退出...");
     if (_live_parser.is_running) {
       _live_parser.stopCapture();
     }
