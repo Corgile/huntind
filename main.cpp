@@ -47,7 +47,7 @@ int main(const int argc, char* argv[]) {
 
   easylog::set_min_severity(easylog::Severity::INFO);
   easylog::set_async(true);
-
+  ELOG_INFO << GREEN("已经开始捕获流消息....");
   _live_parser.startCapture();
   return 0;
 }
