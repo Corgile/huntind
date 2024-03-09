@@ -44,7 +44,7 @@ void hd::type::LiveParser::liveHandler(u_char* user_data, const pcap_pkthdr* pkt
 }
 
 void hd::type::LiveParser::consumer_job() {
-  KafkaSink* sink = new KafkaSink(conn_conf, _serverConf, _topicConf);
+  KafkaSink sink(conn_conf, _serverConf, _topicConf);
   ELOG_DEBUG << "创建 KafkaSink";
   /// 采用标志变量keepRunning来控制detach的线程
   while (is_running) {
@@ -56,13 +56,12 @@ void hd::type::LiveParser::consumer_job() {
     this->mPacketQueue.pop();
     cv_producer.notify_all();
     lock.unlock();
-    sink->consumeData({front});
+    sink.consumeData({front});
 #if defined(BENCHMARK)
     ++num_consumed_packet;
 #endif // defined(BENCHMARK)
   }
   ELOG_INFO << YELLOW("发送消息任务 [") << std::this_thread::get_id() << YELLOW("] 结束");
-  delete sink;
 }
 
 void hd::type::LiveParser::stopCapture() {
@@ -73,7 +72,6 @@ void hd::type::LiveParser::stopCapture() {
 }
 
 hd::type::LiveParser::~LiveParser() {
-  cv_consumer.notify_all();
   using namespace std::chrono_literals;
   for (std::thread& item : mConsumerTasks) {
     item.detach();
@@ -83,6 +81,7 @@ hd::type::LiveParser::~LiveParser() {
     std::this_thread::sleep_for(10ms);
   }
   is_running = false;
+  cv_consumer.notify_all();
 #if defined(BENCHMARK)
   using namespace global;
   std::printf("%s%d\n", CYAN("num_captured_packet = "), num_captured_packet.load());

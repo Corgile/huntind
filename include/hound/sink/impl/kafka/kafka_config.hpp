@@ -20,7 +20,6 @@ struct kafka_config {
 
   int32_t partition{0};
   int32_t max_idle{60};
-  int32_t timeout_sec{2};
 
   void read_kafka_conf(std::string const& fileName) {
     std::ifstream config_file(fileName);
@@ -50,8 +49,6 @@ struct kafka_config {
       this->partition = std::stoi(v);
     if (k == hd::keys::CONN_MAX_IDLE_S)
       this->max_idle = std::stoi(v);
-    if (k == hd::keys::CONN_TIMEOUT_MS)
-      this->timeout_sec = std::stoi(v);
   }
 };
 

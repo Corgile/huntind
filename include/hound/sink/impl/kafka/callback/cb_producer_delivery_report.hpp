@@ -5,7 +5,6 @@
 #ifndef HOUND_PRODUCER_DELIVERY_REPORT_CB_HPP
 #define HOUND_PRODUCER_DELIVERY_REPORT_CB_HPP
 
-
 #include <librdkafka/rdkafkacpp.h>
 #include <hound/common/macro.hpp>
 #include <hound/common/global.hpp>
