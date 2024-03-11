@@ -6,7 +6,7 @@
 #define HOUND_SYNCED_STREAM_HPP
 
 #include <mutex>
-
+#include <iostream>
 
 namespace hd::type {
 template <typename StreamType>

@@ -5,9 +5,7 @@
 #ifndef HOUND_UTILS_HPP
 #define HOUND_UTILS_HPP
 
-#include <filesystem>
 #include <getopt.h>
-#include <memory>
 #include <string>
 #include <hound/common/macro.hpp>
 #include <hound/common/global.hpp>
@@ -16,7 +14,6 @@
 #include <hound/type/parsed_data.hpp>
 
 namespace hd::util {
-namespace fs = std::filesystem;
 using namespace hd::global;
 using namespace hd::type;
 inline char ByteBuffer[PCAP_ERRBUF_SIZE];

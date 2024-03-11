@@ -7,7 +7,7 @@
 
 #include <string>
 #include <vector>
-#include <pcap/bpf.h>
+#include <pcap/pcap.h>
 #include <ylt/struct_json/json_writer.h>
 
 namespace hd::entity {

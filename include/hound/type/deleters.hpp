@@ -6,6 +6,7 @@
 #ifndef DELETERS_HPP
 #define DELETERS_HPP
 
+#include <memory>
 #include <pcap/pcap.h>
 
 struct pcap_deleter {

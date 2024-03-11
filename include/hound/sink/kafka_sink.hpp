@@ -9,7 +9,6 @@
   #include <fstream>
 #endif
 
-#include <future>
 #include <hound/sink/impl/kafka/kafka_config.hpp>
 #include <hound/sink/impl/kafka/connection_pool.hpp>
 #include <hound/sink/impl/kafka/kafka_connection.hpp>
