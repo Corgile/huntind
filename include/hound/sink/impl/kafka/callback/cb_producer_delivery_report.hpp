@@ -12,18 +12,7 @@
 // 生产者投递报告回调
 class ProducerDeliveryReportCb final : public RdKafka::DeliveryReportCb {
 public:
-  void dr_cb(RdKafka::Message& message) override {
-    if (not hd::global::opt.verbose) return;
-    // 发送出错的回调
-    if (message.err()) {
-      ELOG_ERROR << "消息推送失败: " << message.errstr();
-    } else {
-      ELOG_TRACE << GREEN("消息推送成功至: ")
-                 << message.topic_name()
-                 << "[" << message.partition()
-                 << "][" << message.offset() << "]";
-    }
-  }
+  void dr_cb(RdKafka::Message& message) override;
 
 private:
 };

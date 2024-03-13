@@ -12,25 +12,11 @@ class HashPartitionerCb : public RdKafka::PartitionerCb {
 public:
   /// @brief 返回 topic 中使用 flowId 的分区，msg_opaque 置 NULL
   /// @return 返回分区，(0, partition_cnt)
-  int32_t partitioner_cb(const RdKafka::Topic* topic, const std::string* key,
-                         int32_t partition_cnt, void* msg_opaque) override {
-    char msg[128] = {0};
-    // 用于自定义分区策略：这里用 hash。例：轮询方式：p_id++ % partition_cnt
-    auto partition{generate_hash(key->c_str(), key->size()) % partition_cnt};
-    sprintf(msg, "topic:[%s], flowId:[%s], partition_cnt:[%d], partition_id:[%d]",
-            topic->name().c_str(), key->c_str(), partition, partition);
-    return partition;
-  }
+  int32_t partitioner_cb(const RdKafka::Topic*, const std::string*, int32_t, void*) override;
 
 private:
-  // 自定义哈希函数
-  static int32_t generate_hash(const char* str, const size_t len) {
-    int32_t hash = 5381;
-    for (size_t i = 0; i < len; i++) {
-      hash = ((hash << 5) + hash) + str[i];
-    }
-    return hash;
-  }
+  /// 自定义哈希函数
+  inline int32_t generate_hash(const char* str, const size_t len);
 };
 
 #endif // HOUND_HASH_PARTITIONER_CB_HPP

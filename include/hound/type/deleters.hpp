@@ -10,8 +10,7 @@
 #include <pcap/pcap.h>
 
 struct pcap_deleter {
-  // invalid write & read & free
-  void operator()(pcap_t* pointer) const { pcap_close(pointer); }
+  void operator()(pcap_t* pointer) const;
 };
 using pcap_handle_t = std::unique_ptr<pcap_t, pcap_deleter>;
 

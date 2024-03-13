@@ -13,13 +13,13 @@
 
 namespace hd::keys {
 /// kafka 设置
-static const std::string KAFKA_BROKERS{"kafka.brokers"};
-static const std::string KAFKA_TOPICS{"kafka.topic"};
-static const std::string KAFKA_PARTITION{"kafka.partition"};
-static const std::string POOL_INIT_SIZE{"kafka.pool.init-size"};
-static const std::string POOL_MAX_SIZE{"kafka.pool.maxSize"};
-static const std::string CONN_MAX_IDLE_S{"kafka.conn.maxIdleSeconds"};
-static const std::string CONN_TIMEOUT_MS{"kafka.conn.timeoutSeconds"};
+inline constexpr std::string_view KAFKA_BROKERS{"kafka.brokers"};
+inline constexpr std::string_view KAFKA_TOPICS{"kafka.topic"};
+inline constexpr std::string_view KAFKA_PARTITION{"kafka.partition"};
+inline constexpr std::string_view POOL_INIT_SIZE{"kafka.pool.init-size"};
+inline constexpr std::string_view POOL_MAX_SIZE{"kafka.pool.maxSize"};
+inline constexpr std::string_view CONN_MAX_IDLE_S{"kafka.conn.maxIdleSeconds"};
+inline constexpr std::string_view CONN_TIMEOUT_MS{"kafka.conn.timeoutSeconds"};
 } // namespace xhl::keys
 
 #endif // HOUND_CONSTANTS_HPP

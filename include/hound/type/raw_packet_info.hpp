@@ -12,14 +12,11 @@ namespace hd::type {
 
 struct raw_packet_info {
   pcap_pkthdr info_hdr{};
-  // std::shared_ptr<char> byte_arr;
   std::string_view byte_arr;
 
-  raw_packet_info(const pcap_pkthdr* pkthdr, const u_char* packet, int32_t len) {
-    this->info_hdr = *pkthdr;
-    byte_arr = std::string_view(reinterpret_cast<const char*>(packet), len);
-  }
+  raw_packet_info(const pcap_pkthdr*, const u_char*, int32_t);
 };
-} // entity
+
+} // type
 
 #endif //HOUND_RAW_PACKET_INFO_HPP

@@ -46,6 +46,6 @@ private:
 
   mutable std::mutex mQueueLock;
 };
-} // entity
+} // type
 
 #endif //FC_REFACTORED_LIVE_PARSER_HPP

@@ -24,6 +24,6 @@ struct vlan_header {
   uint16_t etherType;
 } __attribute__((__packed__));
 
-} // entity
+} // type
 
 #endif //HOUND_VLAN_HEADER_HPP
