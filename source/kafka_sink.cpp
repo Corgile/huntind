@@ -1,8 +1,9 @@
 //
 // Created by brian on 3/13/24.
 //
-#include "hound/sink/kafka_sink.hpp"
 #include "hound/common/util.hpp"
+#include "hound/sink/kafka_sink.hpp"
+#include "hound/encoding/flow-encode.hpp"
 
 hd::sink::KafkaSink::KafkaSink(hd::type::kafka_config& values,
                                RdConfUptr& _serverConf,
@@ -98,8 +99,7 @@ void hd::sink::KafkaSink::cleanUnwantedFlowTask() {
 
 int inline hd::sink::KafkaSink::send(hd::type::hd_flow const& flow) {
   if (flow.count < opt.min_packets) return -1;
-  // std::string payload;
-  // struct_json::to_json(flow, payload);
-  // return pConnection->pushMessage(payload, flow.flowId);
+  auto tensor = encode(flow);
+  tensor.print();
   return 0;
 }

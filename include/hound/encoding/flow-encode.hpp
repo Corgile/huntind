@@ -16,6 +16,6 @@ batch_model_encode(torch::jit::script::Module& model, torch::Tensor data, int64_
 
 // 用于加载模型和配置的函数
 [[maybe_unused]] std::tuple<torch::jit::script::Module, int, int, int, torch::Device>
-load_model_config(std::string const& encodeModelPath = "");
+load_model_config(std::string& encodeModelPath);
 
 #endif // ENCODER_LIBRARY_HPP

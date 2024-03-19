@@ -14,6 +14,7 @@ EmbeddingStock::EmbeddingStock(int64_t input_size, int64_t max_length)
     embedding_dim(input_size),
     max_length(max_length) {
 }
+
 auto EmbeddingStock::forward(Tensor const& batch_edge) {
   std::vector<torch::Tensor> concat_embed;
   concat_embed.reserve(max_length);
@@ -228,13 +229,14 @@ transform::merge_flow(Tensor const& predict_flows, torch::Tensor const& flow_ind
 
 [[maybe_unused]]
 torch::Tensor encode(const hd::type::hd_flow& msg) {
+  std::string file_path = "./";
   auto [
     flow_encode_model,
     origin_packet_length,
     num_window_packets,
     batch_size,
     calc_device
-  ] = load_model_config("/path");
+  ] = load_model_config(file_path);
   torch::Tensor flow_data = transform::convert_to_npy(msg);
   auto [window_arr, flow_index_arr] = transform::build_slide_window(flow_data, num_window_packets, msg.count);
   auto encoded_flows = batch_model_encode(flow_encode_model, flow_data, batch_size);

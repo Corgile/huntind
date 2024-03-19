@@ -13,8 +13,7 @@
 #include <hound/sink/kafka/kafka_connection.hpp>
 #include <hound/common/core.hpp>
 #include <hound/type/parsed_data.hpp>
-
-#include <hound/encoding/flow-encode.hpp>
+#include <hound/type/hd_flow.hpp>
 
 namespace hd::sink {
 using namespace hd::type;
@@ -22,6 +21,7 @@ using namespace hd::global;
 using namespace std::chrono_literals;
 
 using RdConfUptr = std::unique_ptr<RdKafka::Conf>;
+using packet_list = std::vector<hd_packet>;
 using FlowIter = std::unordered_map<std::string, packet_list>::iterator;
 
 class KafkaSink final {
