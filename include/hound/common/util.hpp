@@ -12,6 +12,7 @@
 #include <hound/type/capture_option.hpp>
 #include <hound/type/deleters.hpp>
 #include <hound/type/parsed_data.hpp>
+#include <hound/type/hd_flow.hpp>
 
 namespace hd::util {
 using namespace hd::global;
@@ -70,9 +71,27 @@ inline void Doc();
 
 inline void ParseOptions(capture_option& arg, int argc, char* argv[]);
 
-template<typename T>
-static int min(T _a, T _b) {
-  return _a < _b ? _a : _b;
+inline bool IsFlowReady(packet_list const& existing, hd_packet const& _new);
+
+namespace detail {
+
+using namespace hd::type;
+
+using packet_list = std::vector<hd_packet>;
+
+inline bool _isTimeout(packet_list const& existing, hd_packet const& _new);
+
+inline bool _isTimeout(packet_list const& existing);
+
+inline bool _checkLength(packet_list const& existing);
+
+template<typename TimeUnit = std::chrono::seconds>
+static long timestampNow() {
+  auto const now = std::chrono::system_clock::now();
+  auto const duration = now.time_since_epoch();
+  return std::chrono::duration_cast<TimeUnit>(duration).count();
+}
+
 }
 } // namespace hd::util
 #endif //HOUND_UTILS_HPP

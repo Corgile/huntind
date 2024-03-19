@@ -1,9 +1,10 @@
 //
 // Created by brian on 3/13/24.
 //
-#include <hound/sink/impl/kafka/kafka_connection.hpp>
+#include <hound/sink/kafka/kafka_connection.hpp>
 
-hd::type::kafka_connection::kafka_connection(kafka_config const& conn, RdConfUptr const& producer_conf,
+hd::type::kafka_connection::kafka_connection(kafka_config const& conn,
+                                             RdConfUptr const& producer_conf,
                                              RdConfUptr const& _topic) {
   std::string errstr;
   this->mMaxPartition = conn.partition;
@@ -22,7 +23,6 @@ hd::type::kafka_connection::kafka_connection(kafka_config const& conn, RdConfUpt
       }
     }).detach();
   } else this->mPartitionToFlush = 0;
-
 }
 
 int hd::type::kafka_connection::pushMessage(std::string_view const payload, std::string const& _key) const {

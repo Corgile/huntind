@@ -8,14 +8,14 @@
 #include <hound/encoding/detail/transform.hpp>
 
 [[maybe_unused]]
-torch::Tensor encode();
+torch::Tensor encode(const hd::type::hd_flow& msg);
 
-torch::Tensor
-batch_model_encode(torch::jit::script::Module& model, torch::Tensor data, int64_t batch_size, torch::Device device,
-                   int64_t max_num_batches = 20, bool result_stay_on_device = false);
+[[maybe_unused]] torch::Tensor
+batch_model_encode(torch::jit::script::Module& model, torch::Tensor data, int64_t batch_size,
+                   int64_t max_num_batches = 20, bool retain = false);
 
 // 用于加载模型和配置的函数
 [[maybe_unused]] std::tuple<torch::jit::script::Module, int, int, int, torch::Device>
-loadModelConfig(const std::string& encodeModelPath = "");
+load_model_config(std::string const& encodeModelPath = "");
 
 #endif // ENCODER_LIBRARY_HPP

@@ -8,8 +8,8 @@
 #include <cstdint>
 #include <string>
 #include <fstream>
-#include <hound/common/macro.hpp>
-#include <hound/sink/impl/kafka/constants.hpp>
+#include "hound/common/macro.hpp"
+#include "constants.hpp"
 
 namespace hd::type {
 

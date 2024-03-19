@@ -9,15 +9,15 @@
   #include <fstream>
 #endif
 
-#include <hound/sink/impl/kafka/kafka_config.hpp>
-#include <hound/sink/impl/kafka/kafka_connection.hpp>
+#include <hound/sink/kafka/kafka_config.hpp>
+#include <hound/sink/kafka/kafka_connection.hpp>
 #include <hound/common/core.hpp>
-#include <hound/common/flow_check.hpp>
 #include <hound/type/parsed_data.hpp>
 
-#include <hound/encoder/exports.hpp>
+#include <hound/encoding/flow-encode.hpp>
 
-namespace hd::type {
+namespace hd::sink {
+using namespace hd::type;
 using namespace hd::global;
 using namespace std::chrono_literals;
 

@@ -1,7 +1,7 @@
 //
 // Created by brian on 3/13/24.
 //
-#include <hound/sink/impl/kafka/kafka_config.hpp>
+#include <hound/sink/kafka/kafka_config.hpp>
 
 void hd::type::kafka_config::read_kafka_conf(std::string const& fileName) {
   std::ifstream config_file(fileName);

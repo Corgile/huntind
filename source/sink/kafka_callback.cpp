@@ -1,9 +1,12 @@
 //
 // Created by brian on 3/13/24.
 //
-#include <hound/sink/impl/kafka/callback/cb_hash_partitioner.hpp>
-#include <hound/sink/impl/kafka/callback/cb_producer_delivery_report.hpp>
-#include <hound/sink/impl/kafka/callback/cb_producer_event.hpp>
+#include <hound/sink/kafka/callback/cb_hash_partitioner.hpp>
+#include <hound/sink/kafka/callback/cb_producer_delivery_report.hpp>
+#include <hound/sink/kafka/callback/cb_producer_event.hpp>
+
+#include <hound/common/macro.hpp>
+#include <hound/common/global.hpp>
 
 int32_t HashPartitionerCb::partitioner_cb(
   RdKafka::Topic const* topic, std::string const* key, int32_t partition_cnt,

@@ -1,7 +1,7 @@
 //
 // Created by brian on 3/13/24.
 //
-#include <hound/common/util.hpp>
+#include "hound/common/util.hpp"
 
 void hd::util::SetFilter(pcap_handle_t& handle) {
   if (opt.filter.empty() or handle == nullptr) { return; }
@@ -19,7 +19,7 @@ void hd::util::SetFilter(pcap_handle_t& handle) {
   pcap_freecode(&fp);
 }
 
-void hd::util::OpenLiveHandle(hd::type::capture_option& option, pcap_handle_t& handle) {
+void hd::util::OpenLiveHandle(capture_option& option, pcap_handle_t& handle) {
   /* getFlowId device */
   if (option.device.empty()) {
     pcap_if_t* l;
@@ -68,7 +68,7 @@ void hd::util::Doc() {
     << std::endl;
 }
 
-void hd::util::ParseOptions(hd::type::capture_option& arg, int argc, char** argv) {
+void hd::util::ParseOptions(capture_option& arg, int argc, char** argv) {
   int longind = 0, option, j;
   opterr = 0;
   while ((option = getopt_long(argc, argv, shortopts, longopts, &longind)) not_eq -1) {
@@ -136,4 +136,23 @@ void hd::util::ParseOptions(hd::type::capture_option& arg, int argc, char** argv
     default: break;
     }
   }
+}
+
+bool hd::util::detail::_isTimeout(packet_list const& existing, hd_packet const& _new) {
+  if (existing.empty()) return false;
+  return _new.ts_sec - existing.back().ts_sec >= opt.flowTimeout;
+}
+
+bool hd::util::detail::_isTimeout(packet_list const& existing) {
+  long const now = hd::util::detail::timestampNow<std::chrono::seconds>();
+  return now - existing.back().ts_sec >= opt.flowTimeout;
+}
+
+bool hd::util::detail::_checkLength(packet_list const& existing) {
+  return existing.size() >= opt.min_packets and existing.size() <= opt.max_packets;
+}
+
+bool hd::util::IsFlowReady(packet_list const& existing, hd_packet const& _new) {
+  if (existing.size() == opt.max_packets) return true;
+  return detail::_isTimeout(existing, _new) and detail::_checkLength(existing);
 }

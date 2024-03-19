@@ -2,15 +2,16 @@
 // Created by brian on 11/22/23.
 //
 
-#include <hound/parser/live_parser.hpp>
-#include <hound/common/global.hpp>
-#include <hound/common/util.hpp>
+#include "hound/parser/live_parser.hpp"
+#include "hound/common/global.hpp"
+#include "hound/common/util.hpp"
+#include "hound/sink/kafka/kafka_util.hpp"
 
 using namespace hd::global;
 
 hd::type::LiveParser::LiveParser() {
   conn_conf.read_kafka_conf(opt.kafka_config);
-  flow::InitGetConf(conn_conf, _serverConf, _topicConf);
+  hd::util::InitGetConf(conn_conf, _serverConf, _topicConf);
   ELOG_DEBUG << "初始化连接配置";
   util::OpenLiveHandle(opt, mHandle);
   mConsumerTasks.reserve(opt.workers);
@@ -35,7 +36,7 @@ void hd::type::LiveParser::startCapture() {
 void hd::type::LiveParser::liveHandler(u_char* user_data, const pcap_pkthdr* pkthdr, const u_char* packet) {
   auto const _this{reinterpret_cast<LiveParser*>(user_data)};
   std::unique_lock _accessToQueue(_this->mQueueLock);
-  _this->mPacketQueue.emplace(pkthdr, packet, util::min(opt.payload + 120, static_cast<int>(pkthdr->caplen)));
+  _this->mPacketQueue.emplace(pkthdr, packet, std::min(opt.payload + 120, static_cast<int>(pkthdr->caplen)));
   _this->cv_consumer.notify_all();
   _accessToQueue.unlock();
 #if defined(BENCHMARK)
@@ -44,7 +45,7 @@ void hd::type::LiveParser::liveHandler(u_char* user_data, const pcap_pkthdr* pkt
 }
 
 void hd::type::LiveParser::consumer_job() {
-  KafkaSink sink(conn_conf, _serverConf, _topicConf);
+  hd::sink::KafkaSink sink(conn_conf, _serverConf, _topicConf);
   ELOG_DEBUG << "创建 KafkaSink";
   /// 采用标志变量keepRunning来控制detach的线程
   while (is_running) {

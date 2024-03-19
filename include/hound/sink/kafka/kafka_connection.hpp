@@ -5,11 +5,11 @@
 #ifndef HOUND_KAFKA_CONNECTION_HPP
 #define HOUND_KAFKA_CONNECTION_HPP
 
-#include <librdkafka/rdkafkacpp.h>
 #include <string>
+#include <librdkafka/rdkafkacpp.h>
 
 #include <hound/common/macro.hpp>
-#include <hound/sink/impl/kafka/kafka_config.hpp>
+#include <hound/sink/kafka/kafka_config.hpp>
 
 namespace hd::type {
 

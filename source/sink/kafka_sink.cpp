@@ -2,8 +2,9 @@
 // Created by brian on 3/13/24.
 //
 #include <hound/sink/kafka_sink.hpp>
+#include <hound/common/util.hpp>
 
-hd::type::KafkaSink::KafkaSink(hd::type::kafka_config& values,
+hd::sink::KafkaSink::KafkaSink(hd::type::kafka_config& values,
                                RdConfUptr& _serverConf,
                                RdConfUptr& _topicConf) {
   this->pConnection = new kafka_connection(values, _serverConf, _topicConf);
@@ -12,7 +13,7 @@ hd::type::KafkaSink::KafkaSink(hd::type::kafka_config& values,
   mCleanTask = std::thread(&KafkaSink::cleanUnwantedFlowTask, this);
 }
 
-hd::type::KafkaSink::~KafkaSink() {
+hd::sink::KafkaSink::~KafkaSink() {
   ELOG_TRACE << __PRETTY_FUNCTION__;
   cvMsgSender.notify_all();
   mSendTask.detach();
@@ -30,13 +31,13 @@ hd::type::KafkaSink::~KafkaSink() {
   delete pConnection;
 }
 
-void hd::type::KafkaSink::consumeData(hd::type::ParsedData const& data) {
+void hd::sink::KafkaSink::consumeData(hd::type::ParsedData const& data) {
   if (not data.HasContent) return;
   hd_packet packet{data.mPcapHead};
-  core::util::fillRawBitVec(data, packet.bitvec);
+  // hd::util::fillRawBitVec(data, packet.raw);
   std::scoped_lock mapLock{mtxAccessToFlowTable};
   packet_list& _existing{mFlowTable[data.mFlowKey]};
-  if (flow::IsFlowReady(_existing, packet)) {
+  if (hd::util::IsFlowReady(_existing, packet)) {
     std::scoped_lock queueLock(mtxAccessToQueue);
     mSendQueue.emplace(data.mFlowKey, std::move(_existing));
     ELOG_TRACE << "加入发送队列: " << mSendQueue.size();
@@ -46,7 +47,7 @@ void hd::type::KafkaSink::consumeData(hd::type::ParsedData const& data) {
   cvMsgSender.notify_all();
 }
 
-void hd::type::KafkaSink::sendToKafkaTask() {
+void hd::sink::KafkaSink::sendToKafkaTask() {
   while (mIsRunning) {
     std::unique_lock lock(mtxAccessToQueue);
     cvMsgSender.wait(lock, [&]() -> bool {
@@ -62,7 +63,7 @@ void hd::type::KafkaSink::sendToKafkaTask() {
   ELOG_TRACE << WHITE("函数 void sendToKafkaTask() 结束");
 }
 
-void hd::type::KafkaSink::cleanUnwantedFlowTask() {
+void hd::sink::KafkaSink::cleanUnwantedFlowTask() {
   while (mIsRunning) {
     std::this_thread::sleep_for(10s);
     /// 对象析构后仍然尝试访问该对象的成员，会引发UB,
@@ -72,11 +73,11 @@ void hd::type::KafkaSink::cleanUnwantedFlowTask() {
     int count = 0;
     for (FlowIter it = mFlowTable.begin(); it not_eq mFlowTable.end();) {
       const auto& [key, _packets] = *it;
-      if (not flow::_isTimeout(_packets)) {
+      if (not hd::util::detail::_isTimeout(_packets)) {
         ++it;
         continue;
       }
-      if (flow::_isLengthSatisfied(_packets)) {
+      if (hd::util::detail::_checkLength(_packets)) {
         std::scoped_lock queueLock(mtxAccessToQueue);
         mSendQueue.emplace(key, _packets);
       }
@@ -95,7 +96,7 @@ void hd::type::KafkaSink::cleanUnwantedFlowTask() {
   ELOG_TRACE << WHITE("函数 void cleanUnwantedFlowTask() 结束");
 }
 
-int inline hd::type::KafkaSink::send(hd::type::hd_flow const& flow) {
+int inline hd::sink::KafkaSink::send(hd::type::hd_flow const& flow) {
   if (flow.count < opt.min_packets) return -1;
   std::string payload;
   struct_json::to_json(flow, payload);
