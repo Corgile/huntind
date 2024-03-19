@@ -9,8 +9,10 @@
 
 using namespace torch;
 
-class EmbeddingStock : public torch::nn::Embedding {
+class EmbeddingStock final: public torch::nn::Embedding {
 public:
+  EmbeddingStock();
+
   EmbeddingStock(int64_t input_size, int64_t max_length);
 
   auto forward(const torch::Tensor& input);
@@ -26,9 +28,10 @@ private:
   int64_t hidden_size;
   int64_t num_layers;
   bool bidirectional;
-  torch::nn::Embedding embedding;
-  torch::nn::GRU recurrent;
+  torch::nn::Embedding embedding{nullptr};
+  torch::nn::GRU recurrent{nullptr};
 public:
+  Encoder();
   Encoder(torch::nn::Embedding& embedding, int64_t hidden_size,
           int64_t num_layers = 1, bool bidirectional = false);
 
@@ -37,11 +40,12 @@ public:
 
 class DecoderEvent : public torch::nn::Module {
 private:
-  torch::nn::Linear hidden;
-  torch::nn::Linear output;
-  torch::nn::Dropout dropout;
+  torch::nn::Linear hidden{nullptr};
+  torch::nn::Linear output{nullptr};
+  torch::nn::Dropout dropout{nullptr};
 
 public:
+  DecoderEvent();
   DecoderEvent(int64_t input_size, int64_t output_size, double _dropout = 0.1, std::string name = "DecoderEvent");
 
   auto forward(const torch::Tensor& x, const torch::Tensor& attention);
@@ -49,11 +53,11 @@ public:
 
 class DecoderAttention : public torch::nn::Module {
 private:
-  torch::nn::Embedding embedding;
-  torch::nn::GRU recurrent;
-  torch::nn::LSTM lstm;
-  torch::nn::Linear attn;
-  torch::nn::Dropout dropout;
+  torch::nn::Embedding embedding{nullptr};
+  torch::nn::GRU recurrent{nullptr};
+  torch::nn::LSTM lstm{nullptr};
+  torch::nn::Linear attn{nullptr};
+  torch::nn::Dropout dropout{nullptr};
 public:
   DecoderAttention(torch::nn::Embedding& embedding, int64_t context_size,
                    int64_t attention_size, int64_t num_layers, double dropout_value,
@@ -71,6 +75,8 @@ private:
   std::shared_ptr<DecoderAttention> decoder_attention{nullptr};
   std::shared_ptr<DecoderEvent> decoder_event{nullptr};
 public:
+  ContextBuilder();
+
   ContextBuilder(int64_t input_size, int64_t output_size, int64_t _layers = 1,
                  int64_t max_length = 10, bool bi = false, double dropout = 0.1, int64_t hidden_size = 128);
 

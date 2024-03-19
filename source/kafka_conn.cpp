@@ -1,7 +1,7 @@
 //
 // Created by brian on 3/13/24.
 //
-#include <hound/sink/kafka/kafka_connection.hpp>
+#include "hound/sink/kafka/kafka_connection.hpp"
 
 hd::type::kafka_connection::kafka_connection(kafka_config const& conn,
                                              RdConfUptr const& producer_conf,

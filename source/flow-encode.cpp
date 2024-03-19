@@ -1,17 +1,19 @@
 #include <iostream>
 
-#include <hound/encoding/flow-encode.hpp>
-#include <hound/encoding/detail/encoder.hpp>
-#include <hound/encoding/detail/transform.hpp>
+#include "hound/encoding/flow-encode.hpp"
+#include "hound/encoding/detail/encoder.hpp"
+#include "hound/encoding/detail/transform.hpp"
 
 #pragma region EmbeddingStock, checked
 
-EmbeddingStock::EmbeddingStock(int64_t input_size, int64_t max_length) : torch::nn::Embedding() {
-  this->input_size = input_size;
-  this->embedding_dim = input_size;
-  this->max_length = max_length;
-}
+EmbeddingStock::EmbeddingStock() : torch::nn::Embedding(nullptr) {}
 
+EmbeddingStock::EmbeddingStock(int64_t input_size, int64_t max_length)
+  : torch::nn::Embedding(torch::nn::EmbeddingOptions(input_size, input_size).padding_idx(0)),
+    input_size(input_size),
+    embedding_dim(input_size),
+    max_length(max_length) {
+}
 auto EmbeddingStock::forward(Tensor const& batch_edge) {
   std::vector<torch::Tensor> concat_embed;
   concat_embed.reserve(max_length);
@@ -51,6 +53,8 @@ std::pair<torch::Tensor, torch::Tensor> Encoder::forward(Tensor const& input) {
   return {embedded, hidden_state};
 }
 
+Encoder::Encoder() {}
+
 #pragma endregion Encoder
 
 #pragma region DecoderEvent, checked
@@ -70,6 +74,8 @@ auto DecoderEvent::forward(Tensor const& x, Tensor const& attention) {
   auto out = this->hidden(attn_applied).relu();
   return this->output(out);
 }
+
+DecoderEvent::DecoderEvent() {}
 
 #pragma endregion DecoderEvent
 
@@ -122,6 +128,8 @@ auto ContextBuilder::forward(Tensor const& X) {
   auto confidence_ = decoder_event->forward(X_encoded, attention_);
   return std::make_tuple(confidence_, flow_hidden);
 }
+
+ContextBuilder::ContextBuilder() {}
 
 #pragma endregion ContextBuilder
 

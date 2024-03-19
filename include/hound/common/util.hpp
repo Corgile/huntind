@@ -17,7 +17,7 @@
 namespace hd::util {
 using namespace hd::global;
 using namespace hd::type;
-inline char ByteBuffer[PCAP_ERRBUF_SIZE];
+static char ByteBuffer[PCAP_ERRBUF_SIZE];
 
 #pragma region ShortAndLongOptions
 inline option longopts[] = {
@@ -63,15 +63,15 @@ inline option longopts[] = {
 static char const* shortopts = "J:P:W:F:f:N:E:K:D:S:L:R:p:CTVhIm:";
 #pragma endregion ShortAndLongOptions //@formatter:on
 
-inline void SetFilter(pcap_handle_t& handle);
+void SetFilter(pcap_handle_t& handle);
 
-inline void OpenLiveHandle(capture_option& option, pcap_handle_t& handle);
+void OpenLiveHandle(capture_option& option, pcap_handle_t& handle);
 
-inline void Doc();
+void Doc();
 
-inline void ParseOptions(capture_option& arg, int argc, char* argv[]);
+void ParseOptions(capture_option& arg, int argc, char* argv[]);
 
-inline bool IsFlowReady(packet_list const& existing, hd_packet const& _new);
+bool IsFlowReady(packet_list const& existing, hd_packet const& _new);
 
 namespace detail {
 
@@ -79,11 +79,11 @@ using namespace hd::type;
 
 using packet_list = std::vector<hd_packet>;
 
-inline bool _isTimeout(packet_list const& existing, hd_packet const& _new);
+bool _isTimeout(packet_list const& existing, hd_packet const& _new);
 
-inline bool _isTimeout(packet_list const& existing);
+bool _isTimeout(packet_list const& existing);
 
-inline bool _checkLength(packet_list const& existing);
+bool _checkLength(packet_list const& existing);
 
 template<typename TimeUnit = std::chrono::seconds>
 static long timestampNow() {

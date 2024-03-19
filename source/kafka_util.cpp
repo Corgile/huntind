@@ -1,11 +1,11 @@
 //
 // Created by brian on 3/13/24.
 //
-#include <hound/sink/kafka/kafka_util.hpp>
+#include "hound/sink/kafka/kafka_util.hpp"
 
-#include <hound/sink/kafka/callback/cb_producer_delivery_report.hpp>
-#include <hound/sink/kafka/callback/cb_hash_partitioner.hpp>
-#include <hound/sink/kafka/callback/cb_producer_event.hpp>
+#include "hound/sink/kafka/callback/cb_producer_delivery_report.hpp"
+#include "hound/sink/kafka/callback/cb_hash_partitioner.hpp"
+#include "hound/sink/kafka/callback/cb_producer_event.hpp"
 
 void hd::util::InitGetConf(kafka_config const& conn_conf,
                            RdConfUptr& _serverConf,

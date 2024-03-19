@@ -24,7 +24,7 @@ struct hd_packet {
 };
 
 using packet_list = std::vector<hd_packet>;
-REFLECTION(hd_packet, ts_usec, ts_sec, actual_len, raw)
+// REFLECTION(hd_packet, ts_usec, ts_sec, actual_len, raw)
 
 struct hd_flow {
   uint8_t protocol{};
@@ -37,7 +37,7 @@ struct hd_flow {
   hd_flow(std::string _flowId, packet_list _data);
 };
 
-REFLECTION(hd_flow, protocol, count, flowId, _packet_list)
+// REFLECTION(hd_flow, protocol, count, flowId, _packet_list)
 } // type
 
 #endif //HOUND_HD_FLOW_HPP

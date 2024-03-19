@@ -1,7 +1,7 @@
 //
 // Created by brian on 3/13/24.
 //
-#include <hound/type/parsed_data.hpp>
+#include "hound/type/parsed_data.hpp"
 
 [[maybe_unused]]
 hd::type::ParsedData::ParsedData(hd::type::raw_packet_info const& data) {
