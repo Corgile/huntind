@@ -27,6 +27,7 @@ using packet_list = std::vector<parsed_packet>;
 
 struct parsed_packet final {
   bool HasContent{true};
+  uint16_t protocol;
   long mTsSec, mTSuSec, mCapLen;
   std::string mKey, mBlobData;
 
@@ -57,7 +58,7 @@ private:
   bool processIPv4Packet(char const* _ip_bytes);
 
   template <typename HeaderType>
-  void CopyPayloadToBlob(const uint8_t actual_protocol, ip const* _ipv4,
+  void CopyPayloadToBlob(ip const* _ipv4,
                          char const* trans_header, const std::string_view suffix) {
     auto const* pHeaderType = reinterpret_cast<HeaderType const*>(trans_header);
     auto my_minmax = [](HeaderType const* pHeader)-> auto {
@@ -68,7 +69,7 @@ private:
     auto [_min, _max] = my_minmax(pHeaderType);
     mKey.append(std::to_string(_min)).append("_").append(std::to_string(_max)).append(suffix);
     size_t tl_hl = 8;
-    if (actual_protocol == IPPROTO_TCP) {
+    if (protocol == IPPROTO_TCP) {
       tl_hl = reinterpret_cast<tcphdr const*>(trans_header)->doff * 4;
     }
     const int available = ntohs(_ipv4->ip_len) - _ipv4->ip_hl * 4 - tl_hl;
@@ -77,7 +78,7 @@ private:
   }
 };
 
-REFLECTION(parsed_packet, mTsSec, mTSuSec, mCapLen, mKey, HasContent);
+REFLECTION(parsed_packet, HasContent, mTsSec, mTSuSec, mCapLen, mKey);
 } // hd
 
 #endif //HOUND_PARSED_DATA_HPP

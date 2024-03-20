@@ -10,6 +10,7 @@
 }*/
 
 hd::type::hd_flow::hd_flow(std::string _flowId, packet_list& _data) {
+  protocol = (int)_data[0].protocol;
   flowId = std::move(_flowId);
   _packet_list = std::move(_data);
   count = _packet_list.size();

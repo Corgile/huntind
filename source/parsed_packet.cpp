@@ -31,8 +31,8 @@ bool hd::type::parsed_packet::processRawBytes(std::string_view _byteArr) {
 
 bool hd::type::parsed_packet::processIPv4Packet(char const* _ip_bytes) {
   auto const _ipv4 = reinterpret_cast<ip const*>(_ip_bytes);
-  uint8_t const _protocol{_ipv4->ip_p};
-  if (_protocol != IPPROTO_UDP and _protocol != IPPROTO_TCP) {
+  protocol = static_cast<int>(_ipv4->ip_p);
+  if (protocol != IPPROTO_UDP and protocol != IPPROTO_TCP) {
     return false;
   }
   auto my_minmax = [](ip const* ip_head)-> auto {
@@ -47,14 +47,14 @@ bool hd::type::parsed_packet::processIPv4Packet(char const* _ip_bytes) {
   if (_ipv4HL < 60) [[likely]] {//ip header是变长的，需要补0
     mBlobData.append(nullptr, 60 - _ipv4HL);
   }
-  if (_protocol == IPPROTO_TCP) {
+  if (protocol == IPPROTO_TCP) {
     mBlobData.append(&_ip_bytes[_ipv4HL], 60);
     mBlobData.append(nullptr, 8);
-    CopyPayloadToBlob<tcphdr>(_protocol, _ipv4, &_ip_bytes[_ipv4HL], "_TCP");
-  } else if (_protocol == IPPROTO_UDP) {
+    CopyPayloadToBlob<tcphdr>(_ipv4, &_ip_bytes[_ipv4HL], "_TCP");
+  } else if (protocol == IPPROTO_UDP) {
     mBlobData.append(&_ip_bytes[_ipv4HL], 8);
     mBlobData.append(nullptr, 60);
-    CopyPayloadToBlob<udphdr>(_protocol, _ipv4, &_ip_bytes[_ipv4HL], "_UDP");
+    CopyPayloadToBlob<udphdr>(_ipv4, &_ip_bytes[_ipv4HL], "_UDP");
   }
   return true;
 }
@@ -65,6 +65,7 @@ hd::type::parsed_packet::parsed_packet(const parsed_packet& copied) {
   mTsSec = copied.mTsSec;
   mTSuSec = copied.mTSuSec;
   mCapLen = copied.mCapLen;
+  protocol = copied.protocol;
   mKey = copied.mKey;
   this->mBlobData.assign(copied.mBlobData);
   HasContent = copied.HasContent;
@@ -74,6 +75,7 @@ hd::type::parsed_packet::parsed_packet(parsed_packet&& other) noexcept {
   mTsSec = other.mTsSec;
   mTSuSec = other.mTSuSec;
   mCapLen = other.mCapLen;
+  protocol = other.protocol;
   mKey = std::move(other.mKey);
   mBlobData = std::move(other.mBlobData);
   HasContent = other.HasContent;
