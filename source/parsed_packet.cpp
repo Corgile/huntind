@@ -44,6 +44,9 @@ bool hd::type::parsed_packet::processIPv4Packet(char const* _ip_bytes) {
   mKey.append(inet_ntoa(ip1)).append("_").append(inet_ntoa(ip2)).append("_");
   size_t const _ipv4HL = _ipv4->ip_hl * 4;
   mBlobData.append(_ip_bytes, _ipv4HL);
+  if (_ipv4HL < 60) [[likely]] {//ip header是变长的，需要补0
+    mBlobData.append(nullptr, 60 - _ipv4HL);
+  }
   if (_protocol == IPPROTO_TCP) {
     mBlobData.append(&_ip_bytes[_ipv4HL], 60);
     mBlobData.append(nullptr, 8);

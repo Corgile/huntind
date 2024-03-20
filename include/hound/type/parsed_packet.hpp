@@ -77,7 +77,7 @@ private:
   }
 };
 
-REFLECTION(parsed_packet, mTsSec, mTSuSec, mCapLen, mKey, mBlobData, HasContent);
+REFLECTION(parsed_packet, mTsSec, mTSuSec, mCapLen, mKey, HasContent);
 } // hd
 
 #endif //HOUND_PARSED_DATA_HPP
