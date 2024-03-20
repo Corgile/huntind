@@ -138,21 +138,21 @@ void hd::util::ParseOptions(capture_option& arg, int argc, char** argv) {
   }
 }
 
-bool hd::util::detail::_isTimeout(packet_list const& existing, hd_packet const& _new) {
+bool hd::util::detail::_isTimeout(packet_list const& existing, parsed_packet const& _new) {
   if (existing.empty()) return false;
-  return _new.ts_sec - existing.back().ts_sec >= opt.flowTimeout;
+  return _new.mTsSec - existing.back().mTsSec >= opt.flowTimeout;
 }
 
 bool hd::util::detail::_isTimeout(packet_list const& existing) {
   long const now = hd::util::detail::timestampNow<std::chrono::seconds>();
-  return now - existing.back().ts_sec >= opt.flowTimeout;
+  return now - existing.back().mTsSec >= opt.flowTimeout;
 }
 
 bool hd::util::detail::_checkLength(packet_list const& existing) {
   return existing.size() >= opt.min_packets and existing.size() <= opt.max_packets;
 }
 
-bool hd::util::IsFlowReady(packet_list const& existing, hd_packet const& _new) {
+bool hd::util::IsFlowReady(packet_list const& existing, parsed_packet const& _new) {
   if (existing.size() == opt.max_packets) return true;
   return detail::_isTimeout(existing, _new) and detail::_checkLength(existing);
 }

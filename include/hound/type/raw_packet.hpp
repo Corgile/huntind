@@ -10,11 +10,11 @@
 
 namespace hd::type {
 
-struct raw_packet_info {
+struct raw_packet {
   pcap_pkthdr info_hdr{};
   std::string_view byte_arr;
 
-  raw_packet_info(const pcap_pkthdr*, const u_char*, int32_t);
+  raw_packet(const pcap_pkthdr*, const u_char*, int32_t);
 };
 
 } // type

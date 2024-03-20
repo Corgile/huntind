@@ -12,8 +12,7 @@ EmbeddingStock::EmbeddingStock(int64_t input_size, int64_t max_length)
   : torch::nn::Embedding(torch::nn::EmbeddingOptions(input_size, input_size).padding_idx(0)),
     input_size(input_size),
     embedding_dim(input_size),
-    max_length(max_length) {
-}
+    max_length(max_length) {}
 
 auto EmbeddingStock::forward(Tensor const& batch_edge) {
   std::vector<torch::Tensor> concat_embed;
@@ -23,8 +22,8 @@ auto EmbeddingStock::forward(Tensor const& batch_edge) {
     concat_embed.emplace_back(packet);
   }
   return torch::cat(concat_embed, 1)
-    .view({batch_edge.size(0), max_length, embedding_dim})
-    .to(torch::kFloat);
+         .view({batch_edge.size(0), max_length, embedding_dim})
+         .to(torch::kFloat);
 }
 
 #pragma endregion EmbeddingStock
@@ -37,9 +36,9 @@ Encoder::Encoder(torch::nn::Embedding& embedding, int64_t hidden_size, int64_t n
   bidirectional = bidirectional;
   embedding = embedding;
   auto opt = torch::nn::GRUOptions(embedding->options.embedding_dim(), hidden_size)
-    .num_layers(num_layers)
-    .batch_first(true)
-    .bidirectional(bidirectional);
+             .num_layers(num_layers)
+             .batch_first(true)
+             .bidirectional(bidirectional);
   register_module("recurrent", torch::nn::GRU(std::move(opt)));
 }
 
@@ -152,10 +151,9 @@ torch::Tensor transform::z_score_norm(at::Tensor& data) {
 Tensor transform::convert_to_npy(hd_flow const& flow) {
   std::vector<Tensor> flow_data_list;
   flow_data_list.reserve(flow.count);
-  int tensor_shape = flow._packet_list[0].raw.length();
+  int tensor_shape = flow._packet_list[0].mBlobData.size();
   for (auto& packet : flow._packet_list) {
-    void* array = (void*) packet.raw.data();
-    Tensor tensor_data = torch::from_blob(array, {tensor_shape}, torch::kU8);
+    Tensor tensor_data = torch::from_blob((void*)packet.mBlobData.data(), {tensor_shape}, torch::kU8);
     Tensor processed_data;
     if (flow.protocol == IPPROTO_TCP) {
       processed_data = torch::cat(
@@ -253,13 +251,8 @@ load_model_config(std::string& encodeModelPath) {
   int payloadSize = 20;
 
   torch::Device device(deviceType, deviceId);
-  if (encodeModelPath.empty()) {
-    encodeModelPath.assign("./models/flow_encoder/encoder_")
-      .append(std::to_string(attentionSize)).append("_")
-      .append(std::to_string(payloadSize)).append("_")
-      .append(std::to_string(numWindowPackets))
-      .append("_notime_noip_noport.pt");
-  }
+  encodeModelPath.assign("/data/Projects/flow-encode/models/encoder_a128_p20_w5_notime_noip_noport_tmp.pt");
+
   int originPacketLength = 128 + payloadSize; // 需要设定包头长度
   torch::jit::script::Module flowEncodeModel;
   try {

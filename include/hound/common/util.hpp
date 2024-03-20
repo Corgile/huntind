@@ -11,8 +11,7 @@
 #include <hound/common/global.hpp>
 #include <hound/type/capture_option.hpp>
 #include <hound/type/deleters.hpp>
-#include <hound/type/parsed_data.hpp>
-#include <hound/type/hd_flow.hpp>
+#include <hound/type/parsed_packet.hpp>
 
 namespace hd::util {
 using namespace hd::global;
@@ -71,15 +70,13 @@ void Doc();
 
 void ParseOptions(capture_option& arg, int argc, char* argv[]);
 
-bool IsFlowReady(packet_list const& existing, hd_packet const& _new);
+bool IsFlowReady(packet_list const& existing, parsed_packet const& _new);
 
 namespace detail {
 
 using namespace hd::type;
 
-using packet_list = std::vector<hd_packet>;
-
-bool _isTimeout(packet_list const& existing, hd_packet const& _new);
+bool _isTimeout(packet_list const& existing, parsed_packet const& _new);
 
 bool _isTimeout(packet_list const& existing);
 

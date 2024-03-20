@@ -12,7 +12,7 @@
 #include <hound/sink/kafka/kafka_config.hpp>
 #include <hound/sink/kafka/kafka_connection.hpp>
 #include <hound/common/core.hpp>
-#include <hound/type/parsed_data.hpp>
+#include <hound/type/parsed_packet.hpp>
 #include <hound/type/hd_flow.hpp>
 
 namespace hd::sink {
@@ -20,15 +20,14 @@ using namespace hd::type;
 using namespace hd::global;
 using namespace std::chrono_literals;
 
-using RdConfUptr = std::unique_ptr<RdKafka::Conf>;
-using packet_list = std::vector<hd_packet>;
-using FlowIter = std::unordered_map<std::string, packet_list>::iterator;
+using RdConfUptr = std::unique_ptr<Conf>;
+using flow_iter = std::unordered_map<std::string, packet_list>::iterator;
 
 class KafkaSink final {
 public:
-  KafkaSink(kafka_config&, RdConfUptr&, RdConfUptr&);
+  KafkaSink(const kafka_config&, const RdConfUptr&, const RdConfUptr&);
 
-  void consumeData(ParsedData const& data);
+  void consume_data(raw_packet const& raw);
 
   ~KafkaSink();
 
@@ -39,7 +38,7 @@ private:
   void cleanUnwantedFlowTask();
 
   // TODO: 改为发送流的encoding
-  int inline send(const hd_flow& flow);
+  int send(const hd_flow& flow) const;
 
 private:
   std::mutex mtxAccessToFlowTable;

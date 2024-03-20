@@ -3,11 +3,10 @@
 //
 #include "hound/common/util.hpp"
 #include "hound/sink/kafka_sink.hpp"
-#include "hound/encoding/flow-encode.hpp"
 
-hd::sink::KafkaSink::KafkaSink(hd::type::kafka_config& values,
-                               RdConfUptr& _serverConf,
-                               RdConfUptr& _topicConf) {
+hd::sink::KafkaSink::KafkaSink(const kafka_config& values,
+                               const RdConfUptr& _serverConf,
+                               const RdConfUptr& _topicConf) {
   this->pConnection = new kafka_connection(values, _serverConf, _topicConf);
   ELOG_DEBUG << "创建 kafka_connection";
   mSendTask = std::thread(&KafkaSink::sendToKafkaTask, this);
@@ -32,18 +31,17 @@ hd::sink::KafkaSink::~KafkaSink() {
   delete pConnection;
 }
 
-void hd::sink::KafkaSink::consumeData(hd::type::ParsedData const& data) {
-  if (not data.HasContent) return;
-  hd_packet packet{data.mPcapHead};
-  // hd::util::fillRawBitVec(data, packet.raw);
+void hd::sink::KafkaSink::consume_data(raw_packet const& raw) {
+  parsed_packet _packet(raw);
+  if (not _packet.HasContent) return;
   std::scoped_lock mapLock{mtxAccessToFlowTable};
-  packet_list& _existing{mFlowTable[data.mFlowKey]};
-  if (hd::util::IsFlowReady(_existing, packet)) {
+  packet_list& _existing{mFlowTable[_packet.mKey]};
+  if (util::IsFlowReady(_existing, _packet)) {
     std::scoped_lock queueLock(mtxAccessToQueue);
-    mSendQueue.emplace(data.mFlowKey, std::move(_existing));
+    mSendQueue.emplace(_packet.mKey, _existing);
     ELOG_TRACE << "加入发送队列: " << mSendQueue.size();
   }
-  _existing.emplace_back(std::move(packet));
+  _existing.emplace_back(_packet);//copy
   assert(_existing.size() <= opt.max_packets);
   cvMsgSender.notify_all();
 }
@@ -72,13 +70,13 @@ void hd::sink::KafkaSink::cleanUnwantedFlowTask() {
     if (not mIsRunning) break;
     std::scoped_lock lock(mtxAccessToFlowTable);
     int count = 0;
-    for (FlowIter it = mFlowTable.begin(); it not_eq mFlowTable.end();) {
-      const auto& [key, _packets] = *it;
-      if (not hd::util::detail::_isTimeout(_packets)) {
+    for (flow_iter it = mFlowTable.begin(); it not_eq mFlowTable.end();) {
+      auto& [key, _packets] = *it;
+      if (not util::detail::_isTimeout(_packets)) {
         ++it;
         continue;
       }
-      if (hd::util::detail::_checkLength(_packets)) {
+      if (util::detail::_checkLength(_packets)) {
         std::scoped_lock queueLock(mtxAccessToQueue);
         mSendQueue.emplace(key, _packets);
       }
@@ -97,9 +95,9 @@ void hd::sink::KafkaSink::cleanUnwantedFlowTask() {
   ELOG_TRACE << WHITE("函数 void cleanUnwantedFlowTask() 结束");
 }
 
-int inline hd::sink::KafkaSink::send(hd::type::hd_flow const& flow) {
+int hd::sink::KafkaSink::send(hd_flow const& flow) const {
   if (flow.count < opt.min_packets) return -1;
-  auto tensor = encode(flow);
-  tensor.print();
-  return 0;
+  std::string payload;
+  struct_json::to_json(flow, payload);
+  return pConnection->pushMessage(payload, flow.flowId);
 }
