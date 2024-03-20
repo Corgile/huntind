@@ -48,12 +48,10 @@ bool hd::type::parsed_packet::processIPv4Packet(char const* _ip_bytes) {
     mBlobData.append(nullptr, 60 - _ipv4HL);
   }
   if (protocol == IPPROTO_TCP) {
-    mBlobData.append(&_ip_bytes[_ipv4HL], 60);
-    mBlobData.append(nullptr, 8);
+    mBlobData.append(&_ip_bytes[_ipv4HL], 60).append(nullptr, 8);
     CopyPayloadToBlob<tcphdr>(_ipv4, &_ip_bytes[_ipv4HL], "_TCP");
   } else if (protocol == IPPROTO_UDP) {
-    mBlobData.append(&_ip_bytes[_ipv4HL], 8);
-    mBlobData.append(nullptr, 60);
+    mBlobData.append(&_ip_bytes[_ipv4HL], 8).append(nullptr, 60);
     CopyPayloadToBlob<udphdr>(_ipv4, &_ip_bytes[_ipv4HL], "_UDP");
   }
   return true;
