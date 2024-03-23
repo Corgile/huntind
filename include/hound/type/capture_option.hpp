@@ -10,7 +10,6 @@
 
 namespace hd::type {
 struct capture_option final {
-  explicit capture_option() = default;
 
   int32_t payload{20};
   int32_t num_packets{-1};

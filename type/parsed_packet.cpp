@@ -1,10 +1,10 @@
 //
 // Created by brian on 3/13/24.
 //
-#include <cstring>
+#include <ylt/easylog.hpp>
 #include <netinet/udp.h>
-#include "parsed_packet.hpp"
-#include "vlan_header.hpp"
+#include "hound/type/parsed_packet.hpp"
+#include "hound/type/vlan_header.hpp"
 
 [[maybe_unused]]
 hd::type::parsed_packet::parsed_packet(raw_packet const& raw) {
