@@ -6,7 +6,7 @@
 
 #include <hound/encode/flow-encode.hpp>
 #include <hound/encode/transform.hpp>
-#include "hd_timer.hpp"
+#include "hound/common/hd_timer.hpp"
 
 hd::sink::KafkaSink::KafkaSink(const kafka_config& values,
                                const RdConfUptr& _serverConf,
@@ -127,12 +127,12 @@ int hd::sink::KafkaSink::send(std::vector<hd_flow>& long_flow_list) {
     auto [slide_windows, flow_index_arr] = transform::build_slide_window(flow_data, 5);
     ELOG_INFO << BLUE(">>> 开始编码 ") << _flow_list.size();
     torch::Tensor encoded_flows;
+    std::string msg;
     {
-      std::string msg;
-      xhl::Timer timer("编码", msg);
+      hd::type::Timer timer("编码", msg);
       encoded_flows = batch_model_encode(mModel, slide_windows, 8192);
-      ELOG_INFO << msg << ", 流数量: " << _flow_list.size();
     }
+    ELOG_INFO << msg << ", 流数量: " << _flow_list.size();
     const auto encodings = transform::merge_flow(encoded_flows, flow_index_arr).detach();
     std::string ordered_flow_id; // 与encodings中的每一个encoding对应
     for (const auto& _flow : _flow_list) {
