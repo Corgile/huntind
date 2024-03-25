@@ -2,8 +2,8 @@
 // Created by brian on 11/22/23.
 //
 
-#include "hound/common/macro.hpp"
-#include "hound/type/capture_option.hpp"
+#include "../include/hound/common/macro.hpp"
+#include "../include/hound/type/capture_option.hpp"
 
 // @formatter:off
 void hd::type::capture_option::print() const {

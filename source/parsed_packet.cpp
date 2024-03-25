@@ -1,9 +1,9 @@
 //
 // Created by brian on 3/13/24.
 //
-#include <cstring>
-#include <ylt/easylog.hpp>
 #include <netinet/udp.h>
+#include <ylt/easylog.hpp>
+
 #include "hound/type/parsed_packet.hpp"
 #include "hound/type/vlan_header.hpp"
 
@@ -45,15 +45,21 @@ bool hd::type::parsed_packet::processIPv4Packet(char const* _ip_bytes) {
   size_t const _ipv4HL = _ipv4->ip_hl * 4;
   mBlobData.append(_ip_bytes, _ipv4HL);
   if (_ipv4HL < 60) [[likely]] {//ip header是变长的，需要补0
-    mBlobData.append(nullptr, 60 - _ipv4HL);
+    mBlobData.append(60 - _ipv4HL, '\0');
   }
   if (protocol == IPPROTO_TCP) {
-    mBlobData.append(&_ip_bytes[_ipv4HL], 60).append(nullptr, 8);
+    const auto tcph = reinterpret_cast<tcphdr const*>(&_ip_bytes[_ipv4HL]);
+    const int available = tcph->doff;
+    mBlobData.append(&_ip_bytes[_ipv4HL], available);
+    if (const auto padding = 60 - available; padding >= 0) [[likely]] { mBlobData.append(padding, '\0'); }
+    mBlobData.append(8, '\0');
     CopyPayloadToBlob<tcphdr>(_ipv4, &_ip_bytes[_ipv4HL], "_TCP");
   } else if (protocol == IPPROTO_UDP) {
-    mBlobData.append(&_ip_bytes[_ipv4HL], 8).append(nullptr, 60);
+    mBlobData.append(&_ip_bytes[_ipv4HL], 8).append(60, '\0');
     CopyPayloadToBlob<udphdr>(_ipv4, &_ip_bytes[_ipv4HL], "_UDP");
   }
+  if (mBlobData.size() not_eq 128 + global::opt.payload)
+    ELOG_ERROR << "全部data" << mBlobData.size();//128
   return true;
 }
 

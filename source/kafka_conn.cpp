@@ -25,14 +25,14 @@ hd::type::kafka_connection::kafka_connection(kafka_config const& conn,
   } else this->mPartitionToFlush = 0;
 }
 
-int hd::type::kafka_connection::pushMessage(std::string_view const payload, std::string const& _key) const {
+int hd::type::kafka_connection::pushMessage(void* const payload, const size_t payload_size, std::string const& ordered_key) const {
   ErrorCode const errorCode = mProducer->produce(
     this->mTopicPtr, this->mPartitionToFlush,
-    Producer::RK_MSG_COPY, (void*) payload.data(),
-    payload.size(), &_key, nullptr
+    Producer::RK_MSG_COPY, payload,
+    payload_size, &ordered_key, nullptr
   );
   if (errorCode == ERR_NO_ERROR) return 0;
-  ELOG_ERROR << RED("发送失败: ") << err2str(errorCode) << CYAN(", 长度: ") << payload.size();
+  ELOG_ERROR << RED("发送失败: ") << err2str(errorCode) << CYAN(", 长度: ") << payload_size;
   if (errorCode not_eq ERR__QUEUE_FULL) return 1;
   mProducer->poll(5'000);
   return 1;

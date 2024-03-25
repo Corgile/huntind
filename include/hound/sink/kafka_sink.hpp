@@ -9,6 +9,8 @@
   #include <fstream>
 #endif
 
+#include <torch/script.h>
+
 #include <hound/sink/kafka/kafka_config.hpp>
 #include <hound/sink/kafka/kafka_connection.hpp>
 #include <hound/common/core.hpp>
@@ -38,7 +40,7 @@ private:
   void cleanUnwantedFlowTask();
 
   // TODO: 改为发送流的encoding
-  int send(const hd_flow& flow) const;
+  int send(std::vector<hd_flow>& long_flow_list);
 
 private:
   std::mutex mtxAccessToFlowTable;
@@ -47,10 +49,12 @@ private:
   std::condition_variable cvMsgSender;
 
   std::mutex mtxAccessToQueue;
-  std::queue<hd_flow> mSendQueue;
+  std::vector<hd_flow> mSendQueue;
 
   std::thread mSendTask;
   std::thread mCleanTask;
+
+  torch::jit::script::Module mModel;
 
   kafka_connection* pConnection;
   std::atomic_bool mIsRunning{true};

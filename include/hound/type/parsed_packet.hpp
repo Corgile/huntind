@@ -15,8 +15,7 @@
 
 #include <ostream>
 #include <string>
-
-#include <ylt/struct_json/json_writer.h>
+#include <ylt/easylog.hpp>
 
 #define ETHERTYPE_IPV4 ETHERTYPE_IP
 
@@ -72,13 +71,16 @@ private:
     if (protocol == IPPROTO_TCP) {
       tl_hl = reinterpret_cast<tcphdr const*>(trans_header)->doff * 4;
     }
+    // payload
     const int available = ntohs(_ipv4->ip_len) - _ipv4->ip_hl * 4 - tl_hl;
     size_t const payload_len = std::min(std::max(available, 0), global::opt.payload);
     mBlobData.append(&trans_header[tl_hl], payload_len);
+    int const padding = global::opt.payload + 128 - mBlobData.size();
+    if (padding > 0) [[unlikely]] {
+      mBlobData.append(padding, '\0');
+    }
   }
 };
-
-REFLECTION(parsed_packet, HasContent, mTsSec, mTSuSec, mCapLen, mKey);
 } // hd
 
 #endif //HOUND_PARSED_DATA_HPP

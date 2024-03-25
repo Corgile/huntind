@@ -10,29 +10,8 @@
 #include <pcap/pcap.h>
 #include <ostream>
 #include <hound/type/parsed_packet.hpp>
-#include <ylt/struct_json/json_writer.h>
 
 namespace hd::type {
-/*struct hd_packet {
-  long ts_sec{};
-  long ts_usec{};
-  uint32_t actual_len{};
-  std::string_view raw;
-
-  hd_packet() = default;
-
-  hd_packet(pcap_pkthdr const& _pcap_head);
-
-  friend std::ostream& operator<<(std::ostream& os, hd_packet const& packet) {
-    os << "{data: [..." << packet.raw.length() << " bytes...]"
-      << ",actual_len: " << packet.actual_len
-      << ",mTsSec: " << packet.ts_sec
-      << ",mTSuSec: ";
-    if (packet.ts_usec < 100000) os << "0";
-    os << packet.ts_usec << "}";
-    return os;
-  }
-};*/
 
 template <typename T>
 concept OutStream = requires(T& os, const std::string& s)
@@ -75,8 +54,6 @@ struct hd_flow {
     return out;
   }
 };
-
-REFLECTION(hd_flow, protocol, count, flowId, _packet_list)
 
 } // type
 

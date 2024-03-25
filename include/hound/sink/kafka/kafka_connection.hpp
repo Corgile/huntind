@@ -12,7 +12,6 @@
 #include <hound/sink/kafka/kafka_config.hpp>
 
 namespace hd::type {
-
 using namespace RdKafka;
 using RdConfUptr = std::unique_ptr<RdKafka::Conf>;
 
@@ -36,10 +35,11 @@ public:
   /**
    * @brief push Message to Kafka
    * @param payload: 就是 payload
-   * @param _key: 就是 flowId
+   * @param payload_size: 就是 payload 大小
+   * @param ordered_key: 有序flowId（与encoding顺序一致）
    */
   [[nodiscard]]
-  int pushMessage(const std::string_view payload, const std::string& _key) const;
+  int pushMessage(void* payload, size_t payload_size, std::string const& ordered_key) const;
 
   ~kafka_connection();
 
@@ -56,7 +56,6 @@ public:
   void setInUse(bool v);
 
 private:
-
   /// 返回连接空闲的时长
   [[nodiscard]]
   clock_t getIdleTime() const;
@@ -65,6 +64,5 @@ private:
   [[nodiscard]]
   bool inline isInUse() const;
 };
-
 } // namespace xhl
 #endif // HOUND_KAFKA_CONNECTION_HPP
