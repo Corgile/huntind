@@ -29,8 +29,8 @@ torch::Tensor transform::convert_to_npy(hd_flow const& flow) {
   flow_data_list.reserve(flow.count);
   for (auto const& packet : flow._packet_list) {
     int _blob_size = static_cast<int>(packet.mBlobData.size());
+    // ReSharper disable once CppCStyleCast
     auto _blob_data = (void*)packet.mBlobData.data();
-    // _ft: (128+p)
     auto _ft = torch::from_blob(_blob_data, {_blob_size}, torch::kU8);
     size_t _end = flow.protocol == IPPROTO_TCP ? 60 : 120;
     size_t _start = flow.protocol == IPPROTO_TCP ? 64 : 124;
