@@ -22,7 +22,7 @@
 namespace hd::type {
 struct parsed_packet;
 
-using packet_list = std::vector<parsed_packet>;
+using parsed_list = std::vector<parsed_packet>;
 
 struct parsed_packet final {
   bool HasContent{true};

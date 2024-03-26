@@ -1,10 +1,11 @@
 //
 // Created by brian on 3/13/24.
 //
+#include <future>
 #include <my-timer.hpp>
+
 #include "hound/common/util.hpp"
 #include "hound/sink/kafka_sink.hpp"
-
 #include "hound/encode/flow-encode.hpp"
 #include "hound/encode/transform.hpp"
 
@@ -35,20 +36,42 @@ hd::sink::KafkaSink::~KafkaSink() {
              << this->mFlowTable.size();
   delete pConnection;
 }
-// TODO: std::vector<raw_packet> ~ std::swap
-void hd::sink::KafkaSink::consume_data(raw_packet const& raw) {
-  parsed_packet _packet(raw);
-  if (not _packet.HasContent) return;
-  std::scoped_lock mapLock{mtxAccessToFlowTable};
-  packet_list& _existing{mFlowTable[_packet.mKey]};
-  if (util::IsFlowReady(_existing, _packet)) {
-    std::scoped_lock queueLock(mtxAccessToQueue);
-    mSendQueue.emplace_back(_packet.mKey, _existing);
-    ELOG_TRACE << "加入发送队列: " << mSendQueue.size();
+
+void hd::sink::KafkaSink::consume_data(const std::shared_ptr<raw_list>& _raw_list) {
+  if (not _raw_list) return;
+  parsed_list _pk_list_buff{};
+  _pk_list_buff.reserve(_raw_list->size());
+  for (const auto& packet : *_raw_list) {
+    parsed_packet _parsed(packet);
+    if (not _parsed.HasContent) continue;
+    _pk_list_buff.emplace_back(_parsed);
   }
-  _existing.emplace_back(_packet);//copy
-  assert(_existing.size() <= opt.max_packets);
-  cvMsgSender.notify_all();
+  if (_pk_list_buff.size() <= 0) return;
+  flow_map _buff;
+  {
+    std::scoped_lock mapLock{mtxAccessToFlowTable};
+    _buff.reserve(mFlowTable.size());
+    mFlowTable.swap(_buff);
+  }
+  auto SameTable = std::make_shared<flow_map>(_buff);
+  auto ParsedList = std::make_shared<parsed_list>(_pk_list_buff);
+
+  std::thread([ParsedList, SameTable, this] -> void {
+    for (const auto& _parsed : *ParsedList) {
+      if (not SameTable->contains(_parsed.mKey)) {
+        SameTable->insert_or_assign(_parsed.mKey, parsed_list{});
+      }
+      parsed_list& _existing{SameTable->at(_parsed.mKey)};
+      if (util::IsFlowReady(_existing, _parsed)) {
+        std::scoped_lock queueLock(mtxAccessToQueue);
+        mSendQueue.emplace_back(_parsed.mKey, _existing);
+        cvMsgSender.notify_all();
+        ELOG_TRACE << "加入发送队列: " << mSendQueue.size();
+      }
+      _existing.emplace_back(_parsed);
+      assert(_existing.size() <= opt.max_packets);
+    }
+  }).detach();
 }
 
 void hd::sink::KafkaSink::sendToKafkaTask() {
@@ -58,12 +81,14 @@ void hd::sink::KafkaSink::sendToKafkaTask() {
       return not this->mSendQueue.empty() or not mIsRunning;
     });
     if (not mIsRunning) break;
-    std::vector<hd_flow> flow_list;
-    flow_list.reserve(mSendQueue.size());
-    mSendQueue.swap(flow_list);
+    flow_list _flow_list;
+    _flow_list.reserve(mSendQueue.size());
+    mSendQueue.swap(_flow_list);
     lock.unlock();
-    auto code = this->send(flow_list);
-    ELOG_TRACE << __PRETTY_FUNCTION__ << ": " << code;
+
+    auto p = std::make_shared<flow_list>(_flow_list);
+    auto count = std::async(std::launch::async, &hd::sink::KafkaSink::send, this, p);
+    ELOG_TRACE << __PRETTY_FUNCTION__ << ": " << count.get();
   }
   ELOG_TRACE << WHITE("函数 void sendToKafkaTask() 结束");
 }
@@ -102,18 +127,18 @@ void hd::sink::KafkaSink::cleanUnwantedFlowTask() {
 }
 
 // ReSharper disable once CppDFAUnreachableFunctionCall
-int hd::sink::KafkaSink::send(std::vector<hd_flow>& long_flow_list) {
-  std::ranges::remove_if(long_flow_list, [](const hd_flow& item)-> bool {
+int hd::sink::KafkaSink::send(std::shared_ptr<flow_list> const& long_flow_list) {
+  std::ranges::remove_if(*long_flow_list, [](const hd_flow& item)-> bool {
     return item.count < opt.min_packets;
   });
-  std::vector<std::vector<hd_flow>> flow_splits;
+  std::vector<flow_list> flow_splits;
   [&flow_splits, &long_flow_list](const size_t by)-> void {
-    flow_splits.reserve(long_flow_list.size() / by);
-    while (not long_flow_list.empty()) {
-      const size_t current_batch_size = std::min(by, long_flow_list.size());
-      std::vector sub_vector(long_flow_list.begin(), long_flow_list.begin() + current_batch_size);
+    flow_splits.reserve(long_flow_list->size() / by);
+    while (not long_flow_list->empty()) {
+      const size_t current_batch_size = std::min(by, long_flow_list->size());
+      std::vector sub_vector(long_flow_list->begin(), long_flow_list->begin() + current_batch_size);
       flow_splits.emplace_back(std::move(sub_vector));
-      long_flow_list.erase(long_flow_list.begin(), long_flow_list.begin() + current_batch_size);
+      long_flow_list->erase(long_flow_list->begin(), long_flow_list->begin() + current_batch_size);
     }
   }(1500);
   auto r = 0;

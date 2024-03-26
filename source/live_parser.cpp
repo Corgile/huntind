@@ -3,6 +3,9 @@
 //
 
 #include "hound/parser/live_parser.hpp"
+
+#include <future>
+
 #include "hound/common/global.hpp"
 #include "hound/common/util.hpp"
 #include "hound/sink/kafka/kafka_util.hpp"
@@ -18,6 +21,7 @@ hd::type::LiveParser::LiveParser() {
   for (int i = 0; i < opt.workers; ++i) {
     mConsumerTasks.emplace_back(std::thread(&LiveParser::consumer_job, this));
   }
+  this->mPacketQueue.reserve(100'000);// refference
 }
 
 void hd::type::LiveParser::startCapture() {
@@ -36,7 +40,7 @@ void hd::type::LiveParser::startCapture() {
 void hd::type::LiveParser::liveHandler(u_char* user_data, const pcap_pkthdr* pkthdr, const u_char* packet) {
   auto const _this{reinterpret_cast<LiveParser*>(user_data)};
   std::unique_lock _accessToQueue(_this->mQueueLock);
-  _this->mPacketQueue.emplace(pkthdr, packet, std::min(opt.payload + 120, static_cast<int>(pkthdr->caplen)));
+  _this->mPacketQueue.emplace_back(pkthdr, packet, std::min(opt.payload + 120, static_cast<int>(pkthdr->caplen)));
   _this->cv_consumer.notify_all();
   _accessToQueue.unlock();
 #if defined(BENCHMARK)
@@ -47,21 +51,19 @@ void hd::type::LiveParser::liveHandler(u_char* user_data, const pcap_pkthdr* pkt
 void hd::type::LiveParser::consumer_job() {
   hd::sink::KafkaSink sink(conn_conf, _serverConf, _topicConf);
   ELOG_DEBUG << "创建 KafkaSink";
-  /// 采用标志变量keepRunning来控制detach的线程
   while (is_running) {
     std::unique_lock lock(this->mQueueLock);
     this->cv_consumer.wait(lock, [this] { return not this->mPacketQueue.empty() or not is_running; });
     if (not is_running) break;
     if (this->mPacketQueue.empty()) continue;
-    //TODO: mPacketQueue->vector, mPacketQueue.swap()
-    auto front{mPacketQueue.front()};
-    this->mPacketQueue.pop();
-    cv_producer.notify_all();
+    raw_list _swapped_buff;
+    _swapped_buff.reserve(mPacketQueue.size());
+    mPacketQueue.swap(_swapped_buff);
     lock.unlock();
-    sink.consume_data(front);
-#if defined(BENCHMARK)
-    ++num_consumed_packet;
-#endif // defined(BENCHMARK)
+    cv_producer.notify_all();
+
+    auto shared_buff = std::make_shared<raw_list>(_swapped_buff);
+    std::ignore = std::async(std::launch::async, &hd::sink::KafkaSink::consume_data, &sink, shared_buff);
   }
   ELOG_INFO << YELLOW("发送消息任务 [") << std::this_thread::get_id() << YELLOW("] 结束");
 }

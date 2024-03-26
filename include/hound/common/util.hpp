@@ -70,17 +70,17 @@ void Doc();
 
 void ParseOptions(capture_option& arg, int argc, char* argv[]);
 
-bool IsFlowReady(packet_list const& existing, parsed_packet const& _new);
+bool IsFlowReady(parsed_list const& existing, parsed_packet const& _new);
 
 namespace detail {
 
 using namespace hd::type;
 
-bool _isTimeout(packet_list const& existing, parsed_packet const& _new);
+bool _isTimeout(parsed_list const& existing, parsed_packet const& _new);
 
-bool _isTimeout(packet_list const& existing);
+bool _isTimeout(parsed_list const& existing);
 
-bool _checkLength(packet_list const& existing);
+bool _checkLength(parsed_list const& existing);
 
 template<typename TimeUnit = std::chrono::seconds>
 static long timestampNow() {

@@ -23,13 +23,16 @@ using namespace hd::global;
 using namespace std::chrono_literals;
 
 using RdConfUptr = std::unique_ptr<Conf>;
-using flow_iter = std::unordered_map<std::string, packet_list>::iterator;
+using flow_map = std::unordered_map<std::string, parsed_list>;
+using flow_iter = flow_map::iterator;
 
 class KafkaSink final {
 public:
   KafkaSink(const kafka_config&, const RdConfUptr&, const RdConfUptr&);
 
-  void consume_data(raw_packet const& raw);
+  void consume_data(const std::shared_ptr<raw_list>& raw_list);
+
+  int send(std::shared_ptr<flow_list> const& long_flow_list);
 
   ~KafkaSink();
 
@@ -39,17 +42,16 @@ private:
   /// \brief 将<code>mFlowTable</code>里面超过 timeout 但是数量不足的flow删掉
   void cleanUnwantedFlowTask();
 
-  // TODO: 改为发送流的encoding
-  int send(std::vector<hd_flow>& long_flow_list);
+
 
 private:
   std::mutex mtxAccessToFlowTable;
-  std::unordered_map<std::string, packet_list> mFlowTable;
+  flow_map mFlowTable;
 
   std::condition_variable cvMsgSender;
 
   std::mutex mtxAccessToQueue;
-  std::vector<hd_flow> mSendQueue;
+  flow_list mSendQueue;
 
   std::thread mSendTask;
   std::thread mCleanTask;
