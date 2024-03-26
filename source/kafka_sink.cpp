@@ -35,7 +35,7 @@ hd::sink::KafkaSink::~KafkaSink() {
              << this->mFlowTable.size();
   delete pConnection;
 }
-
+// TODO: std::vector<raw_packet> ~ std::swap
 void hd::sink::KafkaSink::consume_data(raw_packet const& raw) {
   parsed_packet _packet(raw);
   if (not _packet.HasContent) return;
@@ -59,7 +59,6 @@ void hd::sink::KafkaSink::sendToKafkaTask() {
     });
     if (not mIsRunning) break;
     std::vector<hd_flow> flow_list;
-    //我认为 reserve 是必要的.
     flow_list.reserve(mSendQueue.size());
     mSendQueue.swap(flow_list);
     lock.unlock();
@@ -71,7 +70,7 @@ void hd::sink::KafkaSink::sendToKafkaTask() {
 
 void hd::sink::KafkaSink::cleanUnwantedFlowTask() {
   while (mIsRunning) {
-    std::this_thread::sleep_for(10s);
+    std::this_thread::sleep_for(60s);
     /// 对象析构后仍然尝试访问该对象的成员，会引发UB,
     /// 如访问悬挂指针。此处：睡一觉醒来发现this都没了，访问成员自然会SegFault
     if (not mIsRunning) break;

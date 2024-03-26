@@ -53,6 +53,7 @@ void hd::type::LiveParser::consumer_job() {
     this->cv_consumer.wait(lock, [this] { return not this->mPacketQueue.empty() or not is_running; });
     if (not is_running) break;
     if (this->mPacketQueue.empty()) continue;
+    //TODO: mPacketQueue->vector, mPacketQueue.swap()
     auto front{mPacketQueue.front()};
     this->mPacketQueue.pop();
     cv_producer.notify_all();
