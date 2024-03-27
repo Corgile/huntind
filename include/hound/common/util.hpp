@@ -36,6 +36,7 @@ inline option longopts[] = {
   {"timeout", required_argument, nullptr, 'E'},
   {"kafka", required_argument, nullptr, 'K'},
   {"sep", required_argument, nullptr, 'm'},
+  {"model", required_argument, nullptr, 'M'},
   {"index", required_argument, nullptr, 'I'},
   /// num of bits to convert as an integer
   {"stride", required_argument, nullptr, 'S'},
@@ -59,7 +60,7 @@ inline option longopts[] = {
   {"verbose", no_argument, nullptr, 'V'},
   {nullptr, 0, nullptr, 0}
 };
-static char const* shortopts = "J:P:W:F:f:N:E:K:D:S:L:R:p:CTVhIm:";
+static char const* shortopts = "J:P:W:F:f:N:E:K:D:S:L:R:p:CTVhIM:m:";
 #pragma endregion ShortAndLongOptions //@formatter:on
 
 void SetFilter(pcap_handle_t& handle);

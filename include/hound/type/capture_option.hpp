@@ -26,6 +26,7 @@ struct capture_option final {
   std::string filter{};
   std::string output_file{};
   std::string kafka_config{};
+  std::string model_path{};
   int32_t min_packets{10};
   int32_t max_packets{100};
 

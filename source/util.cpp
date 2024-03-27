@@ -54,6 +54,7 @@ void hd::util::Doc() {
     << "\t-N, --num=-1                  指定抓包的数量 (默认 -1, non-stop)\n"
     << "\t-E, --timeout=20              flow超时时间(新到达的packet距离上一个packet的时间) (默认 20)\n"
     << "\t-K, --kafka-conf              kafka 配置文件路径\n"
+    << "\t-M, --model                   torch script模型文件路径\n"
     << "\t-L, --min=10                  合并成流/json的时候，指定流的最 小 packet数量 (默认 10)\n"
     << "\t-R, --max=100                 合并成流/json的时候，指定流的最 大 packet数量 (默认 100)\n"
     << "\t-W, --write=/path/out         输出到文件, 需指定输出文件路径\n"
@@ -106,6 +107,8 @@ void hd::util::ParseOptions(capture_option& arg, int argc, char** argv) {
     case 'm': arg.separator.assign(optarg);
       std::sprintf(arg.format, "%s%s", "%ld", optarg);
       break;
+    case 'M': arg.model_path.assign(optarg);
+      break;
     case 'I': arg.include_5tpl = true;
       break;
     case 'J': j = std::stoi(optarg);
@@ -128,7 +131,7 @@ void hd::util::ParseOptions(capture_option& arg, int argc, char** argv) {
         exit(EXIT_FAILURE);
       }
       break;
-    case '?':hd_println("选项 ", '-', static_cast<char>(optopt), ":" RED(" 语法错误"));
+    case '?': hd_println("选项 ", '-', static_cast<char>(optopt), ":" RED(" 语法错误"));
       hd_println("使用 -h, --help 查看使用方法");
       exit(EXIT_FAILURE);
     case 'h': Doc();

@@ -51,7 +51,11 @@ int main(const int argc, char* argv[]) {
   easylog::set_min_severity(easylog::Severity::DEBUG);
   easylog::set_async(true);
   ELOG_INFO << GREEN("已经开始捕获流消息....");
-  _live_parser.startCapture();
+  try {
+    _live_parser.startCapture();
+  } catch (const c10::Error& e) {
+    ELOG_ERROR << RED("发生一个torch内部错误") << e.what();
+  }
   ELOG_INFO << YELLOW("程序退出信号: ") << _signal;
   return 0;
 }

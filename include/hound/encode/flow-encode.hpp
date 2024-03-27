@@ -16,7 +16,7 @@
  * @return encoded data
  */
 [[maybe_unused]] torch::Tensor
-batch_model_encode(torch::jit::script::Module& model, const torch::Tensor& data, int64_t batch_size,
+BatchEncode(torch::jit::script::Module* model, const torch::Tensor& data, int64_t batch_size,
                    int64_t max_batch = 20, bool retain = false);
 
 // 用于加载模型和配置的函数

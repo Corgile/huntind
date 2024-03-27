@@ -9,11 +9,10 @@
   #include <fstream>
 #endif
 
-#include <torch/script.h>
-
 #include <hound/sink/kafka/kafka_config.hpp>
 #include <hound/sink/kafka/kafka_connection.hpp>
 #include <hound/common/core.hpp>
+#include <hound/common/scope_guard.hpp>
 #include <hound/type/parsed_packet.hpp>
 #include <hound/type/hd_flow.hpp>
 
@@ -32,17 +31,17 @@ public:
 
   void consume_data(const std::shared_ptr<raw_list>& raw_list);
 
-  int send(std::shared_ptr<flow_list> const& long_flow_list);
+  int SendEncoding(std::shared_ptr<flow_list> const& long_flow_list) const;
 
   ~KafkaSink();
 
 private:
   void sendToKafkaTask();
 
+  torch::Tensor EncodFlowList(const flow_list& _flow_list, torch::Tensor const& slide_window) const;
+
   /// \brief 将<code>mFlowTable</code>里面超过 timeout 但是数量不足的flow删掉
   void cleanUnwantedFlowTask();
-
-
 
 private:
   std::mutex mtxAccessToFlowTable;
@@ -56,7 +55,7 @@ private:
   std::thread mSendTask;
   std::thread mCleanTask;
 
-  torch::jit::script::Module mModel;
+  ModelPool* mPool;
 
   kafka_connection* pConnection;
   std::atomic_bool mIsRunning{true};
