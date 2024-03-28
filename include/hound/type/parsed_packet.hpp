@@ -57,24 +57,19 @@ private:
   bool processIPv4Packet(char const* _ip_bytes);
 
   template <typename HeaderType>
-  void CopyPayloadToBlob(ip const* _ipv4,
-                         char const* trans_header, const std::string_view suffix) {
+  void CopyPayloadToBlob(ip const* _ipv4, char const* trans_header,
+                         const std::string_view suffix, int const data_offset) {
     auto const* pHeaderType = reinterpret_cast<HeaderType const*>(trans_header);
-    auto my_minmax = [](HeaderType const* pHeader)-> auto {
+    auto [_min, _max] = [](HeaderType const* pHeader)-> auto {
       return pHeader->source > pHeader->dest
                ? std::make_pair(ntohs(pHeader->source), ntohs(pHeader->dest))
                : std::make_pair(ntohs(pHeader->dest), ntohs(pHeader->source));
-    };
-    auto [_min, _max] = my_minmax(pHeaderType);
+    }(pHeaderType);
     mKey.append(std::to_string(_min)).append("_").append(std::to_string(_max)).append(suffix);
-    size_t tl_hl = 8;
-    if (protocol == IPPROTO_TCP) {
-      tl_hl = reinterpret_cast<tcphdr const*>(trans_header)->doff * 4;
-    }
     // payload
-    const int available = ntohs(_ipv4->ip_len) - _ipv4->ip_hl * 4 - tl_hl;
+    const int available = ntohs(_ipv4->ip_len) - _ipv4->ip_hl * 4 - data_offset;
     size_t const payload_len = std::min(std::max(available, 0), global::opt.payload);
-    mBlobData.append(&trans_header[tl_hl], payload_len);
+    mBlobData.append(&trans_header[data_offset], payload_len);
     int const padding = global::opt.payload + 128 - mBlobData.size();
     if (padding > 0) [[unlikely]] {
       mBlobData.append(padding, '\0');

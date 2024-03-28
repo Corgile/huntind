@@ -1,2 +1,0 @@
-ADD_LIBRARY(hd_encoder STATIC ../flow-encode.cpp)
-TARGET_LINK_LIBRARIES(hd_encoder PRIVATE ${TORCH_LIBRARIES})
