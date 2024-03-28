@@ -80,6 +80,7 @@ void hd::sink::KafkaSink::sendToKafkaTask() {
   ELOG_TRACE << WHITE("函数 void sendToKafkaTask() 结束");
 }
 
+/// TODO 瓶颈， 会耽误其他线程
 void hd::sink::KafkaSink::cleanUnwantedFlowTask() {
   while (mIsRunning) {
     std::this_thread::sleep_for(60s);
