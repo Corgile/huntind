@@ -30,7 +30,7 @@ public:
   /**
    * @brief message publisher
    */
-  kafka_connection(kafka_config const& conn, RdConfUptr const& producer_conf, RdConfUptr const& _topic);
+  kafka_connection(kafka_config const& conn);
 
   /**
    * @brief push Message to Kafka
@@ -55,14 +55,14 @@ public:
   [[maybe_unused]]
   void setInUse(bool v);
 
+  /// 获取使用状态
+  [[nodiscard]]
+  bool isInUse() const;
+
 private:
   /// 返回连接空闲的时长
   [[nodiscard]]
   clock_t getIdleTime() const;
-
-  /// 获取使用状态
-  [[nodiscard]]
-  bool inline isInUse() const;
 };
 } // namespace xhl
 #endif // HOUND_KAFKA_CONNECTION_HPP

@@ -8,13 +8,12 @@
 
 #include "hound/common/global.hpp"
 #include "hound/common/util.hpp"
-#include "hound/sink/kafka/kafka_util.hpp"
 
 using namespace hd::global;
 
 hd::type::LiveParser::LiveParser() {
-  conn_conf.read_kafka_conf(opt.kafka_config);
-  hd::util::InitGetConf(conn_conf, _serverConf, _topicConf);
+  // conn_conf.read_kafka_conf(opt.kafka_config);
+  // hd::util::InitGetConf(conn_conf, _serverConf, _topicConf);
   ELOG_DEBUG << "初始化连接配置";
   util::OpenLiveHandle(opt, mHandle);
   mConsumerTasks.reserve(opt.workers);
@@ -49,8 +48,7 @@ void hd::type::LiveParser::liveHandler(u_char* user_data, const pcap_pkthdr* pkt
 }
 
 void hd::type::LiveParser::consumer_job() {
-  hd::sink::KafkaSink sink(conn_conf, _serverConf, _topicConf);
-  ELOG_DEBUG << "创建 KafkaSink";
+  hd::sink::KafkaSink sink;
   while (is_running) {
     std::unique_lock lock(this->mQueueLock);
     this->cv_consumer.wait(lock, [this] { return not this->mPacketQueue.empty() or not is_running; });
@@ -63,7 +61,7 @@ void hd::type::LiveParser::consumer_job() {
     cv_producer.notify_all();
 
     auto shared_buff = std::make_shared<raw_list>(_swapped_buff);
-    std::ignore = std::async(std::launch::async, &hd::sink::KafkaSink::consume_data, &sink, shared_buff);
+    std::ignore = std::async(std::launch::async, &hd::sink::KafkaSink::MakeFlow, &sink, shared_buff);
   }
   ELOG_INFO << YELLOW("发送消息任务 [") << std::this_thread::get_id() << YELLOW("] 结束");
 }

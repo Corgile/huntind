@@ -2,10 +2,12 @@
 #include <hound/common/util.hpp>
 #include <hound/common/global.hpp>
 #include <hound/parser/live_parser.hpp>
+#include <hound/sink/kafka/kafka_config.hpp>
 
 namespace hd::global {
 type::capture_option opt;
 std::string fillBit;
+hd::type::kafka_config KafkaConfig;
 #if defined(BENCHMARK)
 std::atomic<int32_t> packet_index = 0;
 std::atomic<int32_t> num_captured_packet = 0;
@@ -16,11 +18,10 @@ std::atomic<int32_t> num_written_csv = 0;
 }
 
 static void quit_guard(const int max_, int& ctrlc) {
-  auto const more = max_ - ++ctrlc;
-  if (more > 0) {
-    ELOG_INFO << RED("如果没有立即停止, 再按 ") << more << RED(" 次 [Ctrl-C] 强制退出");
-  }
-  if (ctrlc >= max_) {
+  // if (more > 0) {
+  // ELOG_INFO << RED("如果没有立即停止, 再按 ") << more << RED(" 次 [Ctrl-C] 强制退出");
+  // }
+  if (++ctrlc >= max_) {
     exit(EXIT_FAILURE);
   }
 }
@@ -28,11 +29,17 @@ static void quit_guard(const int max_, int& ctrlc) {
 int main(const int argc, char* argv[]) {
   using namespace hd::global;
   using namespace hd::type;
+  if (argc <= 1) [[unlikely]]{
+    hd::util::Doc();
+    exit(EXIT_SUCCESS);
+  }
   hd::util::ParseOptions(opt, argc, argv);
   if (opt.stride == 1) opt.fill_bit = 0;
   fillBit = std::to_string(opt.fill_bit).append(opt.separator);
+  KafkaConfig = hd::type::kafka_config(opt.kafka_config);
+
   static LiveParser _live_parser;
-  // static int ctrlc = 0, max_ = 5;
+  static int ctrlc = 0, max_ = 5;
   static int _signal{0};
   auto handler = [](int const sig) -> void {
     std::printf("\x1b[2D");
@@ -40,7 +47,7 @@ int main(const int argc, char* argv[]) {
     if (_live_parser.is_running) {
       _live_parser.stopCapture();
     }
-    // quit_guard(max_, ctrlc);
+    quit_guard(max_, ctrlc);
     _signal = sig;
   };
   std::signal(SIGSTOP, handler);

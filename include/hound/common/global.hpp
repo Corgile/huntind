@@ -12,10 +12,12 @@
 #endif//-#if defined(BENCHMARK)
 
 #include <hound/type/capture_option.hpp>
+#include <hound/sink/kafka/kafka_config.hpp>
 
 namespace hd::global {
 extern type::capture_option opt;
 extern std::string fillBit;
+extern hd::type::kafka_config KafkaConfig;
 #if defined(BENCHMARK)
 extern std::atomic<int32_t> packet_index;
 extern std::atomic<int32_t> num_captured_packet;

@@ -3,15 +3,13 @@
 //
 #include "hound/sink/kafka/kafka_connection.hpp"
 
-hd::type::kafka_connection::kafka_connection(kafka_config const& conn,
-                                             RdConfUptr const& producer_conf,
-                                             RdConfUptr const& _topic) {
+hd::type::kafka_connection::kafka_connection(kafka_config const& conn) {
   std::string errstr;
   this->mMaxPartition = conn.partition;
   this->mMaxIdle = conn.max_idle;
   this->mInUse = false;
-  this->mProducer = Producer::create(producer_conf.get(), errstr);
-  this->mTopicPtr = Topic::create(mProducer, conn.topic_str, _topic.get(), errstr);
+  this->mProducer = Producer::create(conn.mServerConf.get(), errstr);
+  this->mTopicPtr = Topic::create(mProducer, conn.topic_str, conn.mTopicConf.get(), errstr);
   if (this->mMaxPartition > 1) {
     int32_t counter = 0;
     std::thread([&counter, this] {
@@ -71,6 +69,6 @@ clock_t hd::type::kafka_connection::getIdleTime() const {
   return clock() - _idleStart;
 }
 
-bool inline hd::type::kafka_connection::isInUse() const {
+bool hd::type::kafka_connection::isInUse() const {
   return mInUse;
 }

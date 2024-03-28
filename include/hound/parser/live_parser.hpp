@@ -16,7 +16,7 @@
 namespace hd::type {
 class LiveParser {
 public:
-  explicit LiveParser();
+  LiveParser();
 
   void startCapture();
 
@@ -40,9 +40,9 @@ private:
   std::condition_variable cv_consumer;      // 消费者条件变量
 
   std::vector<std::thread> mConsumerTasks;
-  std::unique_ptr<RdKafka::Conf> _serverConf;
-  std::unique_ptr<RdKafka::Conf> _topicConf;
-  kafka_config conn_conf;
+  // std::unique_ptr<RdKafka::Conf> _serverConf;
+  // std::unique_ptr<RdKafka::Conf> _topicConf;
+  // kafka_config conn_conf;
 
   mutable std::mutex mQueueLock;
 };
