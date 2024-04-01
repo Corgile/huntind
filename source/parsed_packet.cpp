@@ -35,10 +35,10 @@ bool hd::type::parsed_packet::processIPv4Packet(char const* _ip_bytes) {
   if (protocol != IPPROTO_UDP and protocol != IPPROTO_TCP) {
     return false;
   }
-  auto [ip1, ip2] = [](ip const* ip_head)-> auto {
+  auto [ip1, ip2] = [](ip const* ip_head) -> auto {
     return ip_head->ip_src.s_addr > ip_head->ip_dst.s_addr
-             ? std::make_pair(ip_head->ip_dst, ip_head->ip_src)
-             : std::make_pair(ip_head->ip_src, ip_head->ip_dst);
+           ? std::make_pair(ip_head->ip_dst, ip_head->ip_src)
+           : std::make_pair(ip_head->ip_src, ip_head->ip_dst);
   }(_ipv4);
   mKey.append(inet_ntoa(ip1)).append("_").append(inet_ntoa(ip2)).append("_");
   size_t const _ipv4HL = _ipv4->ip_hl * 4;
@@ -48,17 +48,18 @@ bool hd::type::parsed_packet::processIPv4Packet(char const* _ip_bytes) {
   }
   if (protocol == IPPROTO_TCP) {
     const auto tcph = reinterpret_cast<tcphdr const*>(&_ip_bytes[_ipv4HL]);
-    const int tch_headet_len = tcph->doff * 4;
-    mBlobData.append(&_ip_bytes[_ipv4HL], tch_headet_len);
-    if (const auto padding = 60 - tch_headet_len; padding >= 0) [[likely]] { mBlobData.append(padding, '\0'); }
+    const int tch_header_len = tcph->doff * 4;
+    mBlobData.append(&_ip_bytes[_ipv4HL], tch_header_len);
+    if (const auto padding = 60 - tch_header_len; padding >= 0) [[likely]] { mBlobData.append(padding, '\0'); }
     mBlobData.append(8, '\0');
-    CopyPayloadToBlob<tcphdr>(_ipv4, &_ip_bytes[_ipv4HL], "_TCP", tch_headet_len);
+    CopyPayloadToBlob<tcphdr>(_ipv4, &_ip_bytes[_ipv4HL], "_TCP", tch_header_len);
   } else if (protocol == IPPROTO_UDP) {
     mBlobData.append(&_ip_bytes[_ipv4HL], 8).append(60, '\0');
     CopyPayloadToBlob<udphdr>(_ipv4, &_ip_bytes[_ipv4HL], "_UDP", 8);
   }
-  if (mBlobData.size() not_eq 128 + global::opt.payload)
+  if (mBlobData.size() not_eq 128 + global::opt.payload) {
     ELOG_ERROR << "全部data" << mBlobData.size();//128
+  }
   return true;
 }
 

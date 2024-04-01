@@ -9,11 +9,11 @@ void hd::util::SetFilter(pcap_handle_t& handle) {
   bpf_program fp{};
   ELOG_DEBUG << "包过滤表达式: " << opt.filter;
   if (pcap_compile(handle.get(), &fp, opt.filter.c_str(), 0, net) == -1) {
-    hd_println("解析 Filter 失败: ", opt.filter, "\n", pcap_geterr(handle.get()));
+    ELOG_ERROR << "解析 Filter 失败: " << opt.filter << pcap_geterr(handle.get());
     exit(EXIT_FAILURE);
   }
   if (pcap_setfilter(handle.get(), &fp) == -1) {
-    hd_println("设置 Filter 失败: ", pcap_geterr(handle.get()));
+    ELOG_ERROR << "设置 Filter 失败: " << pcap_geterr(handle.get());
     exit(EXIT_FAILURE);
   }
   pcap_freecode(&fp);
@@ -74,69 +74,69 @@ void hd::util::ParseOptions(capture_option& arg, int argc, char** argv) {
   opterr = 0;
   while ((option = getopt_long(argc, argv, shortopts, longopts, &longind)) not_eq -1) {
     switch (option) {
-    case 'd': arg.device = optarg;
-      break;
-    case 'D': arg.duration = std::stoi(optarg);
-      break;
-    case 'C': arg.include_pktlen = true;
-      break;
-    case 'F': arg.filter = optarg;
-      break;
-    case 'f': arg.fill_bit = std::stoi(optarg);
-      break;
-    case 'N': arg.num_packets = std::stoi(optarg);
-      break;
-    case 'K': arg.kafka_config = optarg;
-      if (arg.kafka_config.empty()) {
-        hd_println("-K, --kafka-config 缺少值");
+      case 'd': arg.device = optarg;
+        break;
+      case 'D': arg.duration = std::stoi(optarg);
+        break;
+      case 'C': arg.include_pktlen = true;
+        break;
+      case 'F': arg.filter = optarg;
+        break;
+      case 'f': arg.fill_bit = std::stoi(optarg);
+        break;
+      case 'N': arg.num_packets = std::stoi(optarg);
+        break;
+      case 'K': arg.kafka_config = optarg;
+        if (arg.kafka_config.empty()) {
+          ELOG_ERROR << "-K, --kafka-config 缺少值";
+          exit(EXIT_FAILURE);
+        }
+        break;
+      case 'p': arg.payload = std::stoi(optarg);
+        break;
+      case 'L': arg.min_packets = std::stoi(optarg);
+        break;
+      case 'R': arg.max_packets = std::stoi(optarg);
+        break;
+      case 'E': arg.flowTimeout = std::stoi(optarg);
+        break;
+      case 'T': arg.include_ts = true;
+        break;
+      case 'V': arg.verbose = true;
+        break;
+      case 'm': arg.separator.assign(optarg);
+        std::sprintf(arg.format, "%s%s", "%ld", optarg);
+        break;
+      case 'M': arg.model_path.assign(optarg);
+        break;
+      case 'I': arg.include_5tpl = true;
+        break;
+      case 'J': j = std::stoi(optarg);
+        if (j < 1) {
+          ELOG_ERROR << "worker 必须 >= 1";
+          exit(EXIT_FAILURE);
+        }
+        arg.workers = j;
+        break;
+      case 'S': arg.stride = std::stoi(optarg);
+        if (arg.stride & arg.stride - 1 or arg.stride == 0) {
+          ELOG_ERROR << "-S,  --stride 只能是1,2,4,8,16,32,64, 现在是: " << arg.stride;
+          exit(EXIT_FAILURE);
+        }
+        break;
+      case 'W': arg.write_file = true;
+        arg.output_file = optarg;
+        if (optarg == nullptr or arg.output_file.empty()) {
+          ELOG_ERROR << "-W, --write 缺少值";
+          exit(EXIT_FAILURE);
+        }
+        break;
+      case '?': ELOG_ERROR << "选项 -" << static_cast<char>(optopt) << ":" RED(" 语法错误");
+        ELOG_ERROR << "使用 -h, --help 查看使用方法";
         exit(EXIT_FAILURE);
-      }
-      break;
-    case 'p': arg.payload = std::stoi(optarg);
-      break;
-    case 'L': arg.min_packets = std::stoi(optarg);
-      break;
-    case 'R': arg.max_packets = std::stoi(optarg);
-      break;
-    case 'E': arg.flowTimeout = std::stoi(optarg);
-      break;
-    case 'T': arg.include_ts = true;
-      break;
-    case 'V': arg.verbose = true;
-      break;
-    case 'm': arg.separator.assign(optarg);
-      std::sprintf(arg.format, "%s%s", "%ld", optarg);
-      break;
-    case 'M': arg.model_path.assign(optarg);
-      break;
-    case 'I': arg.include_5tpl = true;
-      break;
-    case 'J': j = std::stoi(optarg);
-      if (j < 1) {
-        hd_println("worker 必须 >= 1");
-        exit(EXIT_FAILURE);
-      }
-      arg.workers = j;
-      break;
-    case 'S': arg.stride = std::stoi(optarg);
-      if (arg.stride & arg.stride - 1 or arg.stride == 0) {
-        hd_println("-S,  --stride 只能是1,2,4,8,16,32,64, 现在是: ", arg.stride);
-        exit(EXIT_FAILURE);
-      }
-      break;
-    case 'W': arg.write_file = true;
-      arg.output_file = optarg;
-      if (optarg == nullptr or arg.output_file.empty()) {
-        hd_println("-W, --write 缺少值");
-        exit(EXIT_FAILURE);
-      }
-      break;
-    case '?': hd_println("选项 ", '-', static_cast<char>(optopt), ":" RED(" 语法错误"));
-      hd_println("使用 -h, --help 查看使用方法");
-      exit(EXIT_FAILURE);
-    case 'h': Doc();
-      exit(EXIT_SUCCESS);
-    default: break;
+      case 'h': Doc();
+        exit(EXIT_SUCCESS);
+      default: break;
     }
   }
 }

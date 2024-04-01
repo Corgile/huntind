@@ -24,14 +24,14 @@ hd::sink::KafkaSink::~KafkaSink() {
   cvMsgSender.notify_all();
   mSendTask.detach();
   mCleanTask.detach();
-  while (not mSendQueue.empty()) {
+  while (mSendQueue.size_approx() > 0) {
     std::this_thread::sleep_for(10ms);
   }
   mIsRunning = false;
   ELOG_DEBUG << CYAN("退出时， Producer [")
              << std::this_thread::get_id()
              << CYAN("] 的发送队列剩余: ")
-             << this->mSendQueue.size()
+             << this->mSendQueue.size_approx()
              << CYAN(", FlowTable 剩余 ")
              << this->mFlowTable.size();
 }
@@ -51,10 +51,11 @@ void hd::sink::KafkaSink::MakeFlow(const std::shared_ptr<raw_list>& _raw_list) {
   std::ranges::for_each(_parsed_list, [this](parsed_packet const& _parsed) {
     parsed_list& _existing = mFlowTable[_parsed.mKey];
     if (util::IsFlowReady(_existing, _parsed)) {
-      std::scoped_lock queueLock(mtxAccessToQueue);
-      mSendQueue.emplace_back(_parsed.mKey, _existing);
-      cvMsgSender.notify_all();
-      ELOG_TRACE << "加入发送队列: " << mSendQueue.size();
+//      std::scoped_lock queueLock(mtxAccessToQueue);
+//      mSendQueue.emplace_back(_parsed.mKey, _existing);
+      mSendQueue.enqueue({_parsed.mKey, _existing});
+//      cvMsgSender.notify_all();
+      ELOG_TRACE << "加入发送队列: " << mSendQueue.size_approx();
     }
     _existing.emplace_back(_parsed);
     assert(_existing.size() <= opt.max_packets);
@@ -63,17 +64,23 @@ void hd::sink::KafkaSink::MakeFlow(const std::shared_ptr<raw_list>& _raw_list) {
 
 void hd::sink::KafkaSink::sendToKafkaTask() {
   while (mIsRunning) {
-    std::unique_lock lock(mtxAccessToQueue);
-    cvMsgSender.wait(lock, [&]() -> bool {
-      return not this->mSendQueue.empty() or not mIsRunning;
-    });
+//    std::unique_lock lock(mtxAccessToQueue);
+//    cvMsgSender.wait(lock, [&]() -> bool {
+//      return not this->mSendQueue.empty() or not mIsRunning;
+//    });
+    if (mSendQueue.size_approx() <= 0) continue;
     if (not mIsRunning) break;
-    flow_list _flow_list;
-    _flow_list.reserve(mSendQueue.size());
-    mSendQueue.swap(_flow_list);
-    lock.unlock();
-
-    auto p = std::make_shared<flow_list>(_flow_list);
+//    flow_vector _flow_list{};
+//    _flow_list.reserve(mSendQueue.size());
+//    mSendQueue.swap(_flow_list);
+//    lock.unlock();
+    flow_vector _vector{};
+    hd_flow flow_buffer;
+    _vector.reserve(mSendQueue.size_approx());
+    while (mSendQueue.try_dequeue(flow_buffer)) {
+      _vector.emplace_back(flow_buffer);
+    }
+    auto p = std::make_shared<flow_vector>(_vector);
     auto count = std::async(std::launch::async, &hd::sink::KafkaSink::SendEncoding, this, p);
     ELOG_TRACE << __PRETTY_FUNCTION__ << ": " << count.get();
   }
@@ -94,8 +101,9 @@ void hd::sink::KafkaSink::cleanUnwantedFlowTask() {
         continue;
       }
       if (util::detail::_checkLength(_packets)) {
-        std::scoped_lock queueLock(mtxAccessToQueue);
-        mSendQueue.emplace_back(key, _packets);
+//        std::scoped_lock queueLock(mtxAccessToQueue);
+//        mSendQueue.emplace_back(key, _packets);
+        mSendQueue.enqueue({key, _packets});
       }
       it = mFlowTable.erase(it);
       count++;
@@ -112,8 +120,8 @@ void hd::sink::KafkaSink::cleanUnwantedFlowTask() {
   ELOG_TRACE << WHITE("函数 void cleanUnwantedFlowTask() 结束");
 }
 
-int hd::sink::KafkaSink::SendEncoding(std::shared_ptr<flow_list> const& long_flow_list) {
-  std::vector<flow_list> flow_splits;
+int hd::sink::KafkaSink::SendEncoding(std::shared_ptr<flow_vector> const& long_flow_list) {
+  std::vector<flow_vector> flow_splits;
   SplitFlows(long_flow_list, flow_splits, 1500);
   constexpr auto r = 0;
   std::ranges::for_each(flow_splits, [this](auto& item) {
@@ -125,9 +133,9 @@ int hd::sink::KafkaSink::SendEncoding(std::shared_ptr<flow_list> const& long_flo
 }
 
 // ReSharper disable once CppDFAUnreachableFunctionCall
-void hd::sink::KafkaSink::SplitFlows(std::shared_ptr<flow_list> const& _list,
-                                     std::vector<flow_list>& output, size_t const& by) {
-  std::ranges::remove_if(*_list, [](const hd_flow& item)-> bool {
+void hd::sink::KafkaSink::SplitFlows(std::shared_ptr<flow_vector> const& _list,
+                                     std::vector<flow_vector>& output, size_t const& by) {
+  std::ranges::remove_if(*_list, [](const hd_flow& item) -> bool {
     return item.count < opt.min_packets;
   });
   if (_list->size() <= by) [[likely]] {
@@ -143,7 +151,7 @@ void hd::sink::KafkaSink::SplitFlows(std::shared_ptr<flow_list> const& _list,
   }
 }
 
-void hd::sink::KafkaSink::_EncodeAndSend(flow_list& _flow_list) {
+void hd::sink::KafkaSink::_EncodeAndSend(flow_vector& _flow_list) {
   std::vector<torch::Tensor> flow_data;
   flow_data.reserve(_flow_list.size());
   /// 滑动窗口
@@ -164,7 +172,7 @@ void hd::sink::KafkaSink::_EncodeAndSend(flow_list& _flow_list) {
   std::ignore = connection->pushMessage(encodings.data_ptr(), data_size, ordered_flow_id);
 }
 
-torch::Tensor hd::sink::KafkaSink::EncodFlowList(const flow_list& _flow_list, torch::Tensor const& slide_window) {
+torch::Tensor hd::sink::KafkaSink::EncodFlowList(const flow_vector& _flow_list, torch::Tensor const& slide_window) {
   std::string msg;
   long ms{};
   torch::Tensor encoded_flows;

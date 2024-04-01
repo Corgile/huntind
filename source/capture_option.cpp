@@ -27,4 +27,5 @@ hd::type::capture_option::~capture_option() {
   if (verbose) {
     print();
   }
+  exit(EXIT_SUCCESS);
 }

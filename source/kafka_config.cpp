@@ -10,7 +10,7 @@
 void hd::type::kafka_config::read_kafka_conf(std::string const& fileName) {
   std::ifstream config_file(fileName);
   if (not config_file.good()) {
-    hd_println(RED("无法打开配置文件: "), fileName);
+    ELOG_ERROR << RED("无法打开配置文件: ") << fileName;
     exit(EXIT_FAILURE);
   }
   std::string line;

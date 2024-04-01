@@ -6,7 +6,8 @@
 #define HOUND_HD_FLOW_HPP
 
 #include <string>
-#include <vector>
+//#include <vector>
+#include <ylt/util/concurrentqueue.h>
 #include <pcap/pcap.h>
 #include <ostream>
 #include <hound/type/parsed_packet.hpp>
@@ -55,7 +56,8 @@ struct hd_flow {
   }
 };
 
-using flow_list = std::vector<hd_flow>;
+using flow_queue = moodycamel::ConcurrentQueue<hd_flow>;
+using flow_vector = std::vector<hd_flow>;
 
 } // type
 

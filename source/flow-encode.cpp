@@ -30,16 +30,17 @@ torch::Tensor transform::ConvertToTensor(hd_flow const& flow) {
   for (auto const& packet : flow._packet_list) {
     int _blob_size = static_cast<int>(packet.mBlobData.size());
     // ReSharper disable once CppCStyleCast
-    auto _blob_data = (void*)packet.mBlobData.data();
+    auto _blob_data = (void*) packet.mBlobData.data();
     auto _ft = torch::from_blob(_blob_data, {_blob_size}, torch::kU8);
     size_t _end = flow.protocol == IPPROTO_TCP ? 60 : 120;
     size_t _start = flow.protocol == IPPROTO_TCP ? 64 : 124;
     // 使用参数化的方式构建张量
-    flow_data_list.emplace_back(torch::concat({
-      _ft.slice(0, 0, 12),
-      _ft.slice(0, 20, _end),
-      _ft.slice(0, _start)
-    }));
+    flow_data_list.emplace_back(
+      torch::concat({
+                      _ft.slice(0, 0, 12),
+                      _ft.slice(0, 20, _end),
+                      _ft.slice(0, _start)
+                    }));
   }
   // shape: (num_pkt, pkt_len) 116+payload 10,148
   return stack(flow_data_list, 0).to(torch::kU8);
@@ -104,20 +105,16 @@ torch::jit::script::Module load_model(std::string model_file_path) {
 }
 
 void print_shape(torch::Tensor const& tensor) {
-  const auto sizes = tensor.sizes();
-  std::cout << "Tensor sizes: [";
-  for (size_t i = 0; i < sizes.size(); ++i) {
-    std::cout << sizes[i];
-    if (i < sizes.size() - 1) {
-      std::cout << ", ";
-    }
-  }
-  std::cout << "]" << std::endl;
+  std::cout << "Tensor shape: [";
+  std::ranges::for_each(tensor.sizes().vec(), [](auto const& item) {
+    std::cout << item << ',';
+  });
+  std::cout << "\x1b[1D]\n";
 }
 
 [[maybe_unused]] torch::Tensor
 BatchEncode(torch::jit::Module* model, const torch::Tensor& data,
-                   int64_t batch_size, int64_t max_batch, bool retain) {
+            int64_t batch_size, int64_t max_batch, bool retain) {
   model->eval();
   const int64_t data_length = data.size(0);
   if (data_length <= batch_size) {

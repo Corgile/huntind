@@ -23,7 +23,8 @@ hd::type::kafka_connection::kafka_connection(kafka_config const& conn) {
   } else this->mPartitionToFlush = 0;
 }
 
-int hd::type::kafka_connection::pushMessage(void* const payload, const size_t payload_size, std::string const& ordered_key) const {
+int hd::type::kafka_connection::pushMessage(void* const payload, const size_t payload_size,
+                                            std::string const& ordered_key) const {
   ErrorCode const errorCode = mProducer->produce(
     this->mTopicPtr, this->mPartitionToFlush,
     Producer::RK_MSG_COPY, payload,
@@ -38,9 +39,9 @@ int hd::type::kafka_connection::pushMessage(void* const payload, const size_t pa
 
 hd::type::kafka_connection::~kafka_connection() {
   mIsAlive.store(false);
-  while (mProducer->outq_len() > 0) {
-    mProducer->flush(5'000);
-  }
+//  while (mProducer->outq_len() > 0) {
+//    mProducer->flush(5'000);
+//  }
   /// 有先后之分，先topic 再producer
   ELOG_INFO << YELLOW("kafka连接 [")
             << std::this_thread::get_id()

@@ -20,7 +20,7 @@ hd::type::LiveParser::LiveParser() {
   for (int i = 0; i < opt.workers; ++i) {
     mConsumerTasks.emplace_back(std::thread(&LiveParser::consumer_job, this));
   }
-  this->mPacketQueue.reserve(100'000);// refference
+  this->mPacketQueue.reserve(100'000);// reference
 }
 
 void hd::type::LiveParser::startCapture() {
