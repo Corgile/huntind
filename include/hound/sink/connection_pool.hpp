@@ -6,9 +6,9 @@
 #ifndef CONNECTION_POOL_HPP
 #define CONNECTION_POOL_HPP
 
-#include <concepts>
 #include <functional>
 #include <memory>
+#include <hound/common/macro.hpp>
 
 namespace hd::type {
 namespace _internal {

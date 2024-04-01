@@ -8,8 +8,7 @@
 #include <cstdint>
 #include <string>
 #include <librdkafka/rdkafkacpp.h>
-
-#include "hound/common/macro.hpp"
+#include <memory>
 
 namespace hd::type {
 using RdConfUptr = std::unique_ptr<RdKafka::Conf>;

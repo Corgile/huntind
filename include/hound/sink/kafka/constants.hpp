@@ -9,7 +9,7 @@
 #ifndef HOUND_CONSTANTS_HPP
 #define HOUND_CONSTANTS_HPP
 
-#include <string>
+#include <string_view>
 
 namespace hd::keys {
 /// kafka 设置

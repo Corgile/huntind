@@ -6,7 +6,6 @@
 #define HOUND_UTILS_HPP
 
 #include <getopt.h>
-#include <string>
 #include <hound/common/macro.hpp>
 #include <hound/common/global.hpp>
 #include <hound/type/capture_option.hpp>
@@ -21,28 +20,28 @@ static char ByteBuffer[PCAP_ERRBUF_SIZE];
 #pragma region ShortAndLongOptions
 inline option longopts[] = {
   /// specify which network interface to capture
-  {"device", required_argument, nullptr, 'd'},
-  {"workers", required_argument, nullptr, 'J'},
-  {"duration", required_argument, nullptr, 'D'},
+  {"device",    required_argument, nullptr, 'd'},
+  {"workers",   required_argument, nullptr, 'J'},
+  {"duration",  required_argument, nullptr, 'D'},
   /// custom filter for libpcap
-  {"filter", required_argument, nullptr, 'F'},
-  {"fill", required_argument, nullptr, 'f'},
-  {"num", required_argument, nullptr, 'N'},
+  {"filter",    required_argument, nullptr, 'F'},
+  {"fill",      required_argument, nullptr, 'f'},
+  {"num",       required_argument, nullptr, 'N'},
   /// min packets
-  {"min", required_argument, nullptr, 'L'},
+  {"min",       required_argument, nullptr, 'L'},
   /// max packets
-  {"max", required_argument, nullptr, 'R'},
+  {"max",       required_argument, nullptr, 'R'},
   /// packet timeout seconds(to determine whether to send)
-  {"timeout", required_argument, nullptr, 'E'},
-  {"kafka", required_argument, nullptr, 'K'},
-  {"sep", required_argument, nullptr, 'm'},
-  {"model", required_argument, nullptr, 'M'},
-  {"index", required_argument, nullptr, 'I'},
+  {"timeout",   required_argument, nullptr, 'E'},
+  {"kafka",     required_argument, nullptr, 'K'},
+  {"sep",       required_argument, nullptr, 'm'},
+  {"model",     required_argument, nullptr, 'M'},
+  {"index",     required_argument, nullptr, 'I'},
   /// num of bits to convert as an integer
-  {"stride", required_argument, nullptr, 'S'},
+  {"stride",    required_argument, nullptr, 'S'},
   /// dump output into a csv_path file
-  {"write", required_argument, nullptr, 'W'},
-  {"payload", required_argument, nullptr, 'p'},
+  {"write",     required_argument, nullptr, 'W'},
+  {"payload",   required_argument, nullptr, 'p'},
   /// no argument
 #if defined(HD_FUTURE_SUPPORT)
   {"radiotap",    no_argument,       nullptr, 'r'},
@@ -54,11 +53,11 @@ inline option longopts[] = {
   {"tcp",         no_argument,       nullptr, 't'},
   {"udp",         no_argument,       nullptr, 'u'},
 #endif
-  {"help", no_argument, nullptr, 'h'},
-  {"timestamp", no_argument, nullptr, 'T'},
-  {"caplen", no_argument, nullptr, 'C'},
-  {"verbose", no_argument, nullptr, 'V'},
-  {nullptr, 0, nullptr, 0}
+  {"help",        no_argument,  nullptr, 'h'},
+  {"timestamp",   no_argument,  nullptr, 'T'},
+  {"caplen",      no_argument,  nullptr, 'C'},
+  {"verbose",     no_argument,  nullptr, 'V'},
+  {nullptr,       0,            nullptr, 0}
 };
 static char const* shortopts = "J:P:W:F:f:N:E:K:D:S:L:R:p:CTVhIM:m:";
 #pragma endregion ShortAndLongOptions //@formatter:on
