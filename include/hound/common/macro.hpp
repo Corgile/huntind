@@ -31,7 +31,7 @@
 #pragma endregion 常量宏
 
 #pragma region 功能性宏
-
+/*
 namespace hd::macro {
 inline std::mutex coutMutex;
 
@@ -40,6 +40,7 @@ inline void printL(T ...args) {
   ((std::cout << args), ...);
 }
 }
+
 
 #ifndef hd_println
   #define hd_println(...)                     \
@@ -78,6 +79,7 @@ inline void printL(T ...args) {
   #define hd_debug(x, ...)  dbg(WHITE(x),   __VA_ARGS__)
   #undef hd_debug
 #endif
+*/
 
 #pragma endregion 功能性宏
 #endif //HOUND_MACROS_HPP
