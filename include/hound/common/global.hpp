@@ -16,7 +16,6 @@
 
 namespace hd::global {
 extern type::capture_option opt;
-extern std::string fillBit;
 extern hd::type::kafka_config KafkaConfig;
 #if defined(BENCHMARK)
 extern std::atomic<int32_t> packet_index;

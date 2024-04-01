@@ -35,7 +35,7 @@ public:
     : _maxSize(maxSize), _create(Creator{}) {
     for (int i = 0; i < maxSize; ++i) {
       auto newConn = std::unique_ptr<Connection>(_create());
-      auto* rawPtr = newConn.get();
+//      auto* rawPtr = newConn.get();
       _pool.push_back(std::move(newConn));
     }
   }

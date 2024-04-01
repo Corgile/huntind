@@ -9,8 +9,6 @@
   #include <hound/dbg/dbg.hpp>
   #include <ylt/easylog.hpp>
 #endif
-#include <iostream>
-#include <mutex>
 
 #pragma region 常量
 #ifndef XXX_PADSIZE
@@ -30,56 +28,4 @@
 #endif //HD_ANSI_COLOR
 #pragma endregion 常量宏
 
-#pragma region 功能性宏
-/*
-namespace hd::macro {
-inline std::mutex coutMutex;
-
-template<typename ...T>
-inline void printL(T ...args) {
-  ((std::cout << args), ...);
-}
-}
-
-
-#ifndef hd_println
-  #define hd_println(...)                     \
-  do {                                        \
-  std::lock_guard lock(hd::macro::coutMutex); \
-  hd::macro::printL(__VA_ARGS__, "\n");       \
-  } while (false)
-#endif//-hd_println
-#ifndef hd_print
-  #define hd_print(...)                       \
-  do {                                        \
-  std::lock_guard lock(hd::macro::coutMutex); \
-  hd::macro::printL(__VA_ARGS__);       \
-  } while (false)
-#endif//-hd_print
-
-#if defined(HD_LOG_ERROR)
-  #define hd_error(x, ...)  dbg(RED(x),     __VA_ARGS__)
-  #define hd_warn(x, ...)
-  #define hd_info(x, ...)
-  #define hd_debug(x, ...)
-#elif defined(HD_LOG_WARN)
-  #define hd_error(x, ...)  dbg(RED(x),     __VA_ARGS__)
-  #define hd_warn(x, ...)   dbg(YELLOW(x),  __VA_ARGS__)
-  #define hd_info(x, ...)
-  #define hd_debug(x, ...)
-#elif defined(HD_LOG_INFO)
-  #define hd_error(x, ...)  dbg(RED(x),     __VA_ARGS__)
-  #define hd_warn(x, ...)   dbg(YELLOW(x),  __VA_ARGS__)
-  #define hd_info(x, ...)   dbg(CYAN(x),    __VA_ARGS__)
-  #define hd_debug(x, ...)
-#elif defined(HD_LOG_DEBUG)
-  #define hd_error(x, ...)  dbg(RED(x),     __VA_ARGS__)
-  #define hd_warn(x, ...)   dbg(YELLOW(x),  __VA_ARGS__)
-  #define hd_info(x, ...)   dbg(CYAN(x),    __VA_ARGS__)
-  #define hd_debug(x, ...)  dbg(WHITE(x),   __VA_ARGS__)
-  #undef hd_debug
-#endif
-*/
-
-#pragma endregion 功能性宏
 #endif //HOUND_MACROS_HPP

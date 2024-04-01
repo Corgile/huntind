@@ -6,7 +6,6 @@
 
 namespace hd::global {
 type::capture_option opt;
-std::string fillBit;
 hd::type::kafka_config KafkaConfig;
 #if defined(BENCHMARK)
 std::atomic<int32_t> packet_index = 0;
@@ -35,7 +34,7 @@ int main(const int argc, char* argv[]) {
   }
   hd::util::ParseOptions(opt, argc, argv);
   if (opt.stride == 1) opt.fill_bit = 0;
-  fillBit = std::to_string(opt.fill_bit).append(opt.separator);
+ 
   KafkaConfig = hd::type::kafka_config(opt.kafka_config);
 
   static LiveParser _live_parser;

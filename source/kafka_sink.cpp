@@ -87,7 +87,6 @@ void hd::sink::KafkaSink::sendToKafkaTask() {
   ELOG_TRACE << WHITE("函数 void sendToKafkaTask() 结束");
 }
 
-/// TODO 瓶颈， 会耽误其他线程
 void hd::sink::KafkaSink::cleanUnwantedFlowTask() {
   while (mIsRunning) {
     std::this_thread::sleep_for(60s);
@@ -132,7 +131,8 @@ int hd::sink::KafkaSink::SendEncoding(std::shared_ptr<flow_vector> const& long_f
   return r;
 }
 
-// ReSharper disable once CppDFAUnreachableFunctionCall
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "UnreachableCallsOfFunction"
 void hd::sink::KafkaSink::SplitFlows(std::shared_ptr<flow_vector> const& _list,
                                      std::vector<flow_vector>& output, size_t const& by) {
   std::ranges::remove_if(*_list, [](const hd_flow& item) -> bool {
@@ -150,6 +150,7 @@ void hd::sink::KafkaSink::SplitFlows(std::shared_ptr<flow_vector> const& _list,
     _list->erase(_list->begin(), _list->begin() + current_batch_size);
   }
 }
+#pragma clang diagnostic pop
 
 void hd::sink::KafkaSink::_EncodeAndSend(flow_vector& _flow_list) {
   std::vector<torch::Tensor> flow_data;
