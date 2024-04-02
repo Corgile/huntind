@@ -6,6 +6,7 @@
 #include "hound/sink/kafka/callback/cb_producer_delivery_report.hpp"
 #include "hound/sink/kafka/callback/cb_hash_partitioner.hpp"
 #include "hound/sink/kafka/callback/cb_producer_event.hpp"
+#include "hound/common/macro.hpp"
 
 void hd::type::kafka_config::read_kafka_conf(std::string const& fileName) {
   std::ifstream config_file(fileName);
