@@ -2,7 +2,7 @@
 // Created by brian on 11/22/23.
 //
 
-#include "hound/parser/live_parser.hpp"
+#include "hound/live_parser.hpp"
 
 #include <future>
 
@@ -12,15 +12,13 @@
 using namespace hd::global;
 
 hd::type::LiveParser::LiveParser() {
-  // conn_conf.read_kafka_conf(opt.kafka_config);
-  // hd::util::InitGetConf(conn_conf, _serverConf, _topicConf);
   ELOG_DEBUG << "初始化连接配置";
   util::OpenLiveHandle(opt, mHandle);
   mConsumerTasks.reserve(opt.workers);
   for (int i = 0; i < opt.workers; ++i) {
     mConsumerTasks.emplace_back(std::thread(&LiveParser::consumer_job, this));
   }
-  this->mPacketQueue.reserve(100'000);// reference
+  this->mPacketQueue.reserve(110'000);
 }
 
 void hd::type::LiveParser::startCapture() {

@@ -1,12 +1,16 @@
 #include <csignal>
 #include <hound/common/util.hpp>
 #include <hound/common/global.hpp>
-#include <hound/parser/live_parser.hpp>
-#include <hound/sink/kafka/kafka_config.hpp>
+
+#include <hound/live_parser.hpp>
+#include <hound/sink/kafka/producer_pool.hpp>
+
+#include <c10/util/Exception.h>
 
 namespace hd::global {
 type::capture_option opt;
-hd::type::kafka_config KafkaConfig;
+ProducerPool producer_pool;
+type::ModelPool model_pool;
 #if defined(BENCHMARK)
 std::atomic<int32_t> packet_index = 0;
 std::atomic<int32_t> num_captured_packet = 0;
@@ -31,8 +35,8 @@ int main(const int argc, char* argv[]) {
   }
   hd::util::ParseOptions(opt, argc, argv);
   if (opt.stride == 1) opt.fill_bit = 0;
- 
-  KafkaConfig = hd::type::kafka_config(opt.kafka_config);
+  producer_pool = ProducerPool(opt.poolSize, opt.brokers);
+  model_pool = ModelPool(20, opt.model_path);
 
   static LiveParser _live_parser;
   static int ctrlc = 0, max_ = 5;

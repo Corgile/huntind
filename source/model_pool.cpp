@@ -2,7 +2,9 @@
 // hound-torch / model_pool.cpp.
 // Created by brian on 2024-03-26.
 //
-#include "hound/common/scope_guard.hpp"
+#include "hound/model_pool.hpp"
+
+hd::type::ModelPool::ModelPool() {}
 
 hd::type::ModelPool::ModelPool(int size, const std::string& model_path) {
   for (int i = 0; i < size; ++i) {

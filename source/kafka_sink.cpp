@@ -12,8 +12,7 @@
 #include "hound/encode/transform.hpp"
 #include <torch/script.h>
 
-hd::sink::KafkaSink::KafkaSink()
-  : mPool(10, opt.model_path), mConnectionPool(10) {
+hd::sink::KafkaSink::KafkaSink() {
   ELOG_DEBUG << "创建 KafkaSink";
   mSendTask = std::thread(&KafkaSink::sendToKafkaTask, this);
   mCleanTask = std::thread(&KafkaSink::cleanUnwantedFlowTask, this);
@@ -134,6 +133,7 @@ int hd::sink::KafkaSink::SendEncoding(std::shared_ptr<flow_vector> const& long_f
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "UnreachableCallsOfFunction"
 
+// ReSharper disable once CppDFAUnreachableFunctionCall
 void hd::sink::KafkaSink::SplitFlows(std::shared_ptr<flow_vector> const& _list,
                                      std::vector<flow_vector>& output, size_t const& by) {
   std::ranges::remove_if(*_list, [](const hd_flow& item) -> bool {
@@ -171,8 +171,29 @@ void hd::sink::KafkaSink::_EncodeAndSend(flow_vector& _flow_list) {
   });
   /// 发送
   const auto data_size = encodings.element_size() * encodings.numel();// calculated in byte
-  const auto connection = mConnectionPool.acquire();
-  std::ignore = connection->pushMessage(encodings.data_ptr(), data_size, ordered_flow_id);
+  const auto connection = producer_pool.acquire();
+
+  scope_guard<hd::sink::ProducerUp> _guard(
+    [] { return producer_pool.acquire(); },
+    [](hd::sink::ProducerUp res) {
+      if (not res) return;
+      auto err_code = res->flush(10'000);
+      if (err_code not_eq RdKafka::ERR_NO_ERROR) [[unlikely]] {
+        ELOG_ERROR << "error code: " << err_code;
+      }
+      producer_pool.collect(std::move(res));
+    }
+  );
+  const auto& producer = _guard.resource();
+  const std::string topic = "debug-topic";
+  producer->produce(
+    topic,
+    0,
+    RdKafka::Producer::RK_MSG_COPY,
+    encodings.data_ptr(),
+    data_size,
+    ordered_flow_id.data(),
+    ordered_flow_id.length(), 0, nullptr);
 }
 
 torch::Tensor hd::sink::KafkaSink::EncodeFlowList(const flow_vector& _flow_list, torch::Tensor const& slide_window) {
@@ -182,7 +203,7 @@ torch::Tensor hd::sink::KafkaSink::EncodeFlowList(const flow_vector& _flow_list,
   const auto count = _flow_list.size();
   {
     hd::type::Timer<std::chrono::nanoseconds> timer(ns, GREEN("<<< 编码"), msg);
-    const auto modelGuard = mPool.borrowModel();
+    const auto modelGuard = model_pool.borrowModel();
     ELOG_TRACE << BLUE(">>> 开始编码 ") << count;
     encoded_flows = BatchEncode(modelGuard.get(), slide_window, 8192);
   }

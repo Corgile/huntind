@@ -10,7 +10,6 @@
 
 namespace hd::type {
 struct capture_option final {
-
   int32_t payload{20};
   int32_t num_packets{-1};
   int32_t flowTimeout{20};
@@ -25,7 +24,6 @@ struct capture_option final {
   std::string device{};
   std::string filter{};
   std::string output_file{};
-  std::string kafka_config{};
   std::string model_path{};
   int32_t min_packets{10};
   int32_t max_packets{100};
@@ -34,6 +32,9 @@ struct capture_option final {
   std::string separator{','};
   char format[8] = {'%', 'l', 'd', ','};
   bool write_file{false};
+  size_t poolSize{50};
+  int32_t partition{1};
+  std::string brokers{};
 
 public:
   void print() const;

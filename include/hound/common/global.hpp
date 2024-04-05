@@ -12,11 +12,13 @@
 #endif//-#if defined(BENCHMARK)
 
 #include <hound/type/capture_option.hpp>
-#include <hound/sink/kafka/kafka_config.hpp>
+#include <hound/sink/kafka/producer_pool.hpp>
+#include <hound/model_pool.hpp>
 
 namespace hd::global {
 extern type::capture_option opt;
-extern hd::type::kafka_config KafkaConfig;
+extern ProducerPool producer_pool;
+extern type::ModelPool model_pool;
 #if defined(BENCHMARK)
 extern std::atomic<int32_t> packet_index;
 extern std::atomic<int32_t> num_captured_packet;

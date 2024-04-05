@@ -53,13 +53,16 @@ void hd::util::Doc() {
     << "\t-D, --duration=-1             D秒后结束抓包  (默认 -1, non-stop)\n"
     << "\t-N, --num=-1                  指定抓包的数量 (默认 -1, non-stop)\n"
     << "\t-E, --timeout=20              flow超时时间(新到达的packet距离上一个packet的时间) (默认 20)\n"
-    << "\t-K, --kafka-conf              kafka 配置文件路径\n"
+    // << "\t-K, --kafka-conf              kafka 配置文件路径\n"
     << "\t-M, --model                   torch script模型文件路径\n"
     << "\t-L, --min=10                  合并成流/json的时候，指定流的最 小 packet数量 (默认 10)\n"
     << "\t-R, --max=100                 合并成流/json的时候，指定流的最 大 packet数量 (默认 100)\n"
     << "\t-W, --write=/path/out         输出到文件, 需指定输出文件路径\n"
     << "\t-S, --stride=8                将 S 位二进制串转换为 uint 数值 (默认 8)\n"
     << "\t-p, --payload=0               包含 n 字节的 payload (默认 0)\n"
+    << "\t    --pool=50                 kafka 连接池大小 (默认 50)\n"
+    << "\t    --brokers=STRING          消息队列地址\n"
+    << "\t    --partition=1             消息队列分区数 (默认 1)\n"
     << "\t    --sep=,                   csv列分隔符 (默认 ,)\n"
     << "\t-----------------" CYAN("以下选项不需要传入值")"----------------------------\n"
     << "\t-T, --timestamp               包含时间戳(秒,毫秒) (默认 不包含)\n"
@@ -74,69 +77,75 @@ void hd::util::ParseOptions(capture_option& arg, int argc, char** argv) {
   opterr = 0;
   while ((option = getopt_long(argc, argv, shortopts, longopts, &longind)) not_eq -1) {
     switch (option) {
-      case 'd': arg.device = optarg;
-        break;
-      case 'D': arg.duration = std::stoi(optarg);
-        break;
-      case 'C': arg.include_pktlen = true;
-        break;
-      case 'F': arg.filter = optarg;
-        break;
-      case 'f': arg.fill_bit = std::stoi(optarg);
-        break;
-      case 'N': arg.num_packets = std::stoi(optarg);
-        break;
-      case 'K': arg.kafka_config = optarg;
-        if (arg.kafka_config.empty()) {
-          ELOG_ERROR << "-K, --kafka-config 缺少值";
-          exit(EXIT_FAILURE);
-        }
-        break;
-      case 'p': arg.payload = std::stoi(optarg);
-        break;
-      case 'L': arg.min_packets = std::stoi(optarg);
-        break;
-      case 'R': arg.max_packets = std::stoi(optarg);
-        break;
-      case 'E': arg.flowTimeout = std::stoi(optarg);
-        break;
-      case 'T': arg.include_ts = true;
-        break;
-      case 'V': arg.verbose = true;
-        break;
-      case 'm': arg.separator.assign(optarg);
-        std::sprintf(arg.format, "%s%s", "%ld", optarg);
-        break;
-      case 'M': arg.model_path.assign(optarg);
-        break;
-      case 'I': arg.include_5tpl = true;
-        break;
-      case 'J': j = std::stoi(optarg);
-        if (j < 1) {
-          ELOG_ERROR << "worker 必须 >= 1";
-          exit(EXIT_FAILURE);
-        }
-        arg.workers = j;
-        break;
-      case 'S': arg.stride = std::stoi(optarg);
-        if (arg.stride & arg.stride - 1 or arg.stride == 0) {
-          ELOG_ERROR << "-S,  --stride 只能是1,2,4,8,16,32,64, 现在是: " << arg.stride;
-          exit(EXIT_FAILURE);
-        }
-        break;
-      case 'W': arg.write_file = true;
-        arg.output_file = optarg;
-        if (optarg == nullptr or arg.output_file.empty()) {
-          ELOG_ERROR << "-W, --write 缺少值";
-          exit(EXIT_FAILURE);
-        }
-        break;
-      case '?': ELOG_ERROR << "选项 -" << static_cast<char>(optopt) << ":" RED(" 语法错误");
-        ELOG_ERROR << "使用 -h, --help 查看使用方法";
+    case 'd': arg.device = optarg;
+      break;
+    case 'D': arg.duration = std::stoi(optarg);
+      break;
+    case 'C': arg.include_pktlen = true;
+      break;
+    case 'F': arg.filter = optarg;
+      break;
+    case 'f': arg.fill_bit = std::stoi(optarg);
+      break;
+    case 'N': arg.num_packets = std::stoi(optarg);
+      break;
+    // case 'K': arg.kafka_config = optarg;
+    //   if (arg.kafka_config.empty()) {
+    //     ELOG_ERROR << "-K, --kafka-config 缺少值";
+    //     exit(EXIT_FAILURE);
+    //   }
+    //   break;
+    case 'p': arg.payload = std::stoi(optarg);
+      break;
+    case 'L': arg.min_packets = std::stoi(optarg);
+      break;
+    case 'R': arg.max_packets = std::stoi(optarg);
+      break;
+    case 'E': arg.flowTimeout = std::stoi(optarg);
+      break;
+    case 'T': arg.include_ts = true;
+      break;
+    case 'V': arg.verbose = true;
+      break;
+    case 'm': arg.separator.assign(optarg);
+      std::sprintf(arg.format, "%s%s", "%ld", optarg);
+      break;
+    case 'B': arg.brokers.assign(optarg);
+      break;
+    case 'b': arg.poolSize = std::stoi(optarg);
+      break;
+    case 'x': arg.partition = std::stoi(optarg);
+      break;
+    case 'M': arg.model_path.assign(optarg);
+      break;
+    case 'I': arg.include_5tpl = true;
+      break;
+    case 'J': j = std::stoi(optarg);
+      if (j < 1) {
+        ELOG_ERROR << "worker 必须 >= 1";
         exit(EXIT_FAILURE);
-      case 'h': Doc();
-        exit(EXIT_SUCCESS);
-      default: break;
+      }
+      arg.workers = j;
+      break;
+    case 'S': arg.stride = std::stoi(optarg);
+      if (arg.stride & arg.stride - 1 or arg.stride == 0) {
+        ELOG_ERROR << "-S,  --stride 只能是1,2,4,8,16,32,64, 现在是: " << arg.stride;
+        exit(EXIT_FAILURE);
+      }
+      break;
+    case 'W': arg.write_file = true;
+      arg.output_file = optarg;
+      if (optarg == nullptr or arg.output_file.empty()) {
+        ELOG_ERROR << "-W, --write 缺少值";
+        exit(EXIT_FAILURE);
+      }
+      break;
+    case '?': ELOG_ERROR << "选项 -" << static_cast<char>(optopt) << ":" RED(" 语法错误");
+      ELOG_ERROR << "使用 -h, --help 查看使用方法";
+      exit(EXIT_FAILURE);
+    case 'h': Doc();
+      exit(EXIT_SUCCESS);
+    default: break;
     }
   }
 }

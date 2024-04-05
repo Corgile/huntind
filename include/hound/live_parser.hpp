@@ -8,7 +8,6 @@
 #include <pcap/pcap.h>
 #include <atomic>
 #include <condition_variable>
-#include <hound/common/macro.hpp>
 #include <hound/type/raw_packet.hpp>
 #include <hound/type/deleters.hpp>
 #include <hound/sink/kafka_sink.hpp>

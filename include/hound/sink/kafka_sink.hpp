@@ -5,12 +5,10 @@
 #ifndef HOUND_KAFKA_HPP
 #define HOUND_KAFKA_HPP
 
-#include <hound/common/scope_guard.hpp>
-#include <hound/sink/connection_pool.hpp>
-#include <hound/sink/kafka/kafka_connection.hpp>
+#include <torch/torch.h>
+
 #include <hound/type/hd_flow.hpp>
 #include <hound/type/parsed_packet.hpp>
-
 #include <ylt/util/concurrentqueue.h>
 
 namespace hd::sink {
@@ -18,7 +16,7 @@ using namespace hd::type;
 using namespace hd::global;
 using namespace std::chrono_literals;
 
-using RdConfUptr [[maybe_unused]] = std::unique_ptr<Conf>;
+using RdConfUptr [[maybe_unused]] = std::unique_ptr<RdKafka::Conf>;
 using flow_map = std::unordered_map<std::string, parsed_list>;
 using flow_iter = flow_map::iterator;
 
@@ -33,8 +31,8 @@ public:
 private:
   void sendToKafkaTask();
 
-  torch::Tensor EncodeFlowList(const flow_vector &_flow_list,
-                               torch::Tensor const &slide_window);
+  static torch::Tensor EncodeFlowList(const flow_vector &_flow_list,
+                                      torch::Tensor const &slide_window);
 
   /// \brief 将<code>mFlowTable</code>里面超过 timeout 但是数量不足的flow删掉
   void cleanUnwantedFlowTask();
@@ -56,22 +54,6 @@ private:
 
   std::thread mSendTask;
   std::thread mCleanTask;
-
-  ModelPool mPool;
-
-  struct Creator {
-    kafka_connection *operator()() const {
-      return new kafka_connection(global::KafkaConfig);
-    }
-
-    kafka_connection *operator()(const bool inUse) const {
-      const auto conn = new kafka_connection(global::KafkaConfig);
-      conn->setInUse(inUse);
-      return conn;
-    }
-  };
-
-  ConnectionPool<kafka_connection, Creator> mConnectionPool;
 
   std::atomic_bool mIsRunning{true};
 };
