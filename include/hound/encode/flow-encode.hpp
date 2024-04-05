@@ -17,7 +17,7 @@
  */
 [[maybe_unused]] torch::Tensor
 BatchEncode(torch::jit::script::Module* model, const torch::Tensor& data, int64_t batch_size,
-                   int64_t max_batch = 20, bool retain = false);
+                   int64_t max_batch = 20, bool retain = true);
 
 // 用于加载模型和配置的函数
 [[maybe_unused]] torch::jit::script::Module

@@ -33,8 +33,8 @@ public:
 private:
   void sendToKafkaTask();
 
-  torch::Tensor EncodFlowList(const flow_vector &_flow_list,
-                              torch::Tensor const &slide_window);
+  torch::Tensor EncodeFlowList(const flow_vector &_flow_list,
+                               torch::Tensor const &slide_window);
 
   /// \brief 将<code>mFlowTable</code>里面超过 timeout 但是数量不足的flow删掉
   void cleanUnwantedFlowTask();
@@ -52,9 +52,7 @@ private:
 
   std::condition_variable cvMsgSender;
 
-  //  std::mutex mtxAccessToQueue;
   flow_queue mSendQueue;
-  //  moodycamel::ConcurrentQueue<hd_flow> mSendQueue;
 
   std::thread mSendTask;
   std::thread mCleanTask;

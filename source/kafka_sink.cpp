@@ -51,10 +51,10 @@ void hd::sink::KafkaSink::MakeFlow(const std::shared_ptr<raw_list>& _raw_list) {
   std::ranges::for_each(_parsed_list, [this](parsed_packet const& _parsed) {
     parsed_list& _existing = mFlowTable[_parsed.mKey];
     if (util::IsFlowReady(_existing, _parsed)) {
-//      std::scoped_lock queueLock(mtxAccessToQueue);
-//      mSendQueue.emplace_back(_parsed.mKey, _existing);
+      //      std::scoped_lock queueLock(mtxAccessToQueue);
+      //      mSendQueue.emplace_back(_parsed.mKey, _existing);
       mSendQueue.enqueue({_parsed.mKey, _existing});
-//      cvMsgSender.notify_all();
+      //      cvMsgSender.notify_all();
       ELOG_TRACE << "加入发送队列: " << mSendQueue.size_approx();
     }
     _existing.emplace_back(_parsed);
@@ -64,16 +64,16 @@ void hd::sink::KafkaSink::MakeFlow(const std::shared_ptr<raw_list>& _raw_list) {
 
 void hd::sink::KafkaSink::sendToKafkaTask() {
   while (mIsRunning) {
-//    std::unique_lock lock(mtxAccessToQueue);
-//    cvMsgSender.wait(lock, [&]() -> bool {
-//      return not this->mSendQueue.empty() or not mIsRunning;
-//    });
+    //    std::unique_lock lock(mtxAccessToQueue);
+    //    cvMsgSender.wait(lock, [&]() -> bool {
+    //      return not this->mSendQueue.empty() or not mIsRunning;
+    //    });
     if (mSendQueue.size_approx() <= 0) continue;
     if (not mIsRunning) break;
-//    flow_vector _flow_list{};
-//    _flow_list.reserve(mSendQueue.size());
-//    mSendQueue.swap(_flow_list);
-//    lock.unlock();
+    //    flow_vector _flow_list{};
+    //    _flow_list.reserve(mSendQueue.size());
+    //    mSendQueue.swap(_flow_list);
+    //    lock.unlock();
     flow_vector _vector{};
     hd_flow flow_buffer;
     _vector.reserve(mSendQueue.size_approx());
@@ -100,8 +100,8 @@ void hd::sink::KafkaSink::cleanUnwantedFlowTask() {
         continue;
       }
       if (util::detail::_checkLength(_packets)) {
-//        std::scoped_lock queueLock(mtxAccessToQueue);
-//        mSendQueue.emplace_back(key, _packets);
+        //        std::scoped_lock queueLock(mtxAccessToQueue);
+        //        mSendQueue.emplace_back(key, _packets);
         mSendQueue.enqueue({key, _packets});
       }
       it = mFlowTable.erase(it);
@@ -133,6 +133,7 @@ int hd::sink::KafkaSink::SendEncoding(std::shared_ptr<flow_vector> const& long_f
 
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "UnreachableCallsOfFunction"
+
 void hd::sink::KafkaSink::SplitFlows(std::shared_ptr<flow_vector> const& _list,
                                      std::vector<flow_vector>& output, size_t const& by) {
   std::ranges::remove_if(*_list, [](const hd_flow& item) -> bool {
@@ -150,6 +151,7 @@ void hd::sink::KafkaSink::SplitFlows(std::shared_ptr<flow_vector> const& _list,
     _list->erase(_list->begin(), _list->begin() + current_batch_size);
   }
 }
+
 #pragma clang diagnostic pop
 
 void hd::sink::KafkaSink::_EncodeAndSend(flow_vector& _flow_list) {
@@ -160,7 +162,7 @@ void hd::sink::KafkaSink::_EncodeAndSend(flow_vector& _flow_list) {
   std::ranges::copy(transformed_view, std::back_inserter(flow_data));
   auto [slide_windows, flow_index_arr] = transform::BuildSlideWindow(flow_data, 5);
   /// 编码 & 合并
-  const auto encoded_flows = EncodFlowList(_flow_list, slide_windows);
+  const auto encoded_flows = EncodeFlowList(_flow_list, slide_windows);
   const auto encodings = transform::MergeFlow(encoded_flows, flow_index_arr);
   /// 拼接flowId
   std::string ordered_flow_id;
@@ -173,17 +175,24 @@ void hd::sink::KafkaSink::_EncodeAndSend(flow_vector& _flow_list) {
   std::ignore = connection->pushMessage(encodings.data_ptr(), data_size, ordered_flow_id);
 }
 
-torch::Tensor hd::sink::KafkaSink::EncodFlowList(const flow_vector& _flow_list, torch::Tensor const& slide_window) {
+torch::Tensor hd::sink::KafkaSink::EncodeFlowList(const flow_vector& _flow_list, torch::Tensor const& slide_window) {
   std::string msg;
-  long ms{};
+  size_t ns{};
   torch::Tensor encoded_flows;
   const auto count = _flow_list.size();
   {
-    hd::type::Timer timer(ms, GREEN("<<< 编码"), msg);
+    hd::type::Timer<std::chrono::nanoseconds> timer(ns, GREEN("<<< 编码"), msg);
     const auto modelGuard = mPool.borrowModel();
     ELOG_TRACE << BLUE(">>> 开始编码 ") << count;
     encoded_flows = BatchEncode(modelGuard.get(), slide_window, 8192);
   }
-  ELOG_DEBUG << msg << ", 流数量: " << _flow_list.size() << ", AVG: " << count * 1000 / ms << " 条/s";
-  return encoded_flows;
+  std::string COUNT;
+  if (ns == 0) COUNT = RED("INF");
+  else COUNT = std::to_string(count * 1000000000 / ns);
+  ELOG_DEBUG << msg << ", 流数量: " << _flow_list.size() << ", AVG: " << COUNT << " 条/s";
+  return encoded_flows
+#if USE_CUDA
+    .to(torch::kCUDA)
+#endif
+    ;
 }

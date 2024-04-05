@@ -17,9 +17,6 @@ std::atomic<int32_t> num_written_csv = 0;
 }
 
 static void quit_guard(const int max_, int& ctrlc) {
-  // if (more > 0) {
-  // ELOG_INFO << RED("如果没有立即停止, 再按 ") << more << RED(" 次 [Ctrl-C] 强制退出");
-  // }
   if (++ctrlc >= max_) {
     exit(EXIT_FAILURE);
   }
