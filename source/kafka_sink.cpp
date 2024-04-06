@@ -163,7 +163,8 @@ void hd::sink::KafkaSink::_EncodeAndSend(flow_vector& _flow_list) {
   auto [slide_windows, flow_index_arr] = transform::BuildSlideWindow(flow_data, 5);
   /// 编码 & 合并
   const auto encoded_flows = EncodeFlowList(_flow_list, slide_windows);
-  const auto encodings = transform::MergeFlow(encoded_flows, flow_index_arr);
+  /// 记得把GPU上的数据拿到CPU中
+  const auto encodings = transform::MergeFlow(encoded_flows, flow_index_arr).cpu();
   /// 拼接flowId
   std::string ordered_flow_id;
   std::ranges::for_each(_flow_list, [&ordered_flow_id](const auto& _flow) {

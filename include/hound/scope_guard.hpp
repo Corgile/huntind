@@ -50,8 +50,8 @@ struct scope_guard<void> {
   template <typename Func, typename ...Args>
     requires std::invocable<Func, std::unwrap_reference_t<Args> ...>
   explicit scope_guard(Func&& func, Args&& ...args) {
-    collect = [func = std::decay_t<Func>(func), ...args = std::unwrap_reference_t<Args>(args)] mutable {
-      std::invoke(std::forward<Func>(func), std::forward<Args>(args) ...);
+    collect = [&] {
+      std::invoke(std::forward<std::decay_t<Func>>(func), std::forward<std::unwrap_reference_t<Args>>(args) ...);
     };
   }
 
