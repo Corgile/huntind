@@ -15,10 +15,7 @@ public:
 
   ProducerPool(size_t poolSize, const std::string& brokers) {
     std::string errstr;
-    const auto conf = RdKafka::Conf::create(RdKafka::Conf::CONF_GLOBAL);
-    scope_guard<void> _guard([&conf] {
-      delete conf;
-    });
+    auto conf = RdKafka::Conf::create(RdKafka::Conf::CONF_GLOBAL);
     conf->set("bootstrap.servers", brokers, errstr);
     producers_.reserve(poolSize);
     for (size_t i = 0; i < poolSize; ++i) {
@@ -28,6 +25,7 @@ public:
       }
       producers_.emplace_back(hd::sink::ProducerUp(producer));
     }
+    delete conf;
   }
 
   hd::sink::ProducerUp acquire() {

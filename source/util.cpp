@@ -61,8 +61,9 @@ void hd::util::Doc() {
     << "\t-S, --stride=8                将 S 位二进制串转换为 uint 数值 (默认 8)\n"
     << "\t-p, --payload=0               包含 n 字节的 payload (默认 0)\n"
     << "\t    --pool=50                 kafka 连接池大小 (默认 50)\n"
-    << "\t    --brokers=STRING          消息队列地址\n"
+    << "\t    --brokers=STRING          消息队列服务器地址\n"
     << "\t    --partition=1             消息队列分区数 (默认 1)\n"
+    << "\t    --topic=STRING            消息队列 topic\n"
     << "\t    --sep=,                   csv列分隔符 (默认 ,)\n"
     << "\t-----------------" CYAN("以下选项不需要传入值")"----------------------------\n"
     << "\t-T, --timestamp               包含时间戳(秒,毫秒) (默认 不包含)\n"
@@ -115,6 +116,8 @@ void hd::util::ParseOptions(capture_option& arg, int argc, char** argv) {
     case 'b': arg.poolSize = std::stoi(optarg);
       break;
     case 'x': arg.partition = std::stoi(optarg);
+      break;
+    case 'y': arg.topic.assign(optarg);
       break;
     case 'M': arg.model_path.assign(optarg);
       break;

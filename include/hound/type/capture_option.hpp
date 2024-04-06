@@ -35,6 +35,7 @@ struct capture_option final {
   size_t poolSize{50};
   int32_t partition{1};
   std::string brokers{};
+  std::string topic{};
 
 public:
   void print() const;

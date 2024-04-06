@@ -34,11 +34,12 @@ inline option longopts[] = {
   {"max",       required_argument, nullptr, 'R'},
   /// packet timeout seconds(to determine whether to send)
   {"timeout",   required_argument, nullptr, 'E'},
-  {"kafka",     required_argument, nullptr, 'K'},
+  // {"kafka",     required_argument, nullptr, 'K'},
   {"sep",       required_argument, nullptr, 'm'},
   {"brokers",   required_argument, nullptr, 'B'},
   {"pool",      required_argument, nullptr, 'b'},
   {"partition", required_argument, nullptr, 'x'},
+  {"topic",     required_argument, nullptr, 'y'},
   {"model",     required_argument, nullptr, 'M'},
   {"index",     required_argument, nullptr, 'I'},
   /// num of bits to convert as an integer
@@ -63,9 +64,9 @@ inline option longopts[] = {
   {"verbose",     no_argument,     nullptr, 'V'},
   {nullptr,       0,               nullptr, 0}
 };
-static char const* shortopts = "J:P:W:F:f:N:E:"
+static char const* shortopts = "J:P:W:F:f:N:E:D:S:L:R:p:CTVhIM:m:B:b:x:y:";
 // "K:"
-"D:S:L:R:p:CTVhIM:m:B:b:x:";
+
 #pragma endregion ShortAndLongOptions //@format:on
 
 void SetFilter(pcap_handle_t& handle);

@@ -172,8 +172,6 @@ void hd::sink::KafkaSink::_EncodeAndSend(flow_vector& _flow_list) {
   });
   /// 发送
   const auto data_size = encodings.element_size() * encodings.numel();// calculated in byte
-  const auto connection = producer_pool.acquire();
-
   scope_guard<hd::sink::ProducerUp> _guard(
     [] { return producer_pool.acquire(); },
     [](hd::sink::ProducerUp res) {
@@ -186,9 +184,8 @@ void hd::sink::KafkaSink::_EncodeAndSend(flow_vector& _flow_list) {
     }
   );
   const auto& producer = _guard.resource();
-  const std::string topic = "debug-topic";
   producer->produce(
-    topic,
+    opt.topic,
     0,
     RdKafka::Producer::RK_MSG_COPY,
     encodings.data_ptr(),

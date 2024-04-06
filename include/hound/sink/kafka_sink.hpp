@@ -42,7 +42,7 @@ private:
   static void SplitFlows(std::shared_ptr<flow_vector> const &_list,
                          std::vector<flow_vector> &output, const size_t &by);
 
-  void _EncodeAndSend(flow_vector &_flow_list);
+  static void _EncodeAndSend(flow_vector &_flow_list);
 
 private:
   std::mutex mtxAccessToFlowTable;
