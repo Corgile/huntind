@@ -16,46 +16,51 @@ using namespace hd::type;
 using namespace hd::global;
 using namespace std::chrono_literals;
 
-using RdConfUptr [[maybe_unused]] = std::unique_ptr<RdKafka::Conf>;
-using flow_map = std::unordered_map<std::string, parsed_list>;
+using flow_map = std::unordered_map<std::string, parsed_vector>;
 using flow_iter = flow_map::iterator;
+
+using shared_flow_vec = std::shared_ptr<flow_vector>;
+using vec_of_flow_vec = std::vector<flow_vector>;
+using shared_raw_vec = std::shared_ptr<raw_vector>;
 
 class KafkaSink final {
 public:
   KafkaSink();
 
-  void MakeFlow(std::shared_ptr<raw_list> const &_raw_list);
+  void MakeFlow(shared_raw_vec const& _raw_list);
 
   ~KafkaSink();
 
 private:
   void sendToKafkaTask();
 
-  static torch::Tensor EncodeFlowList(const flow_vector &_flow_list,
-                                      torch::Tensor const &slide_window);
-
   /// \brief 将<code>mFlowTable</code>里面超过 timeout 但是数量不足的flow删掉
   void cleanUnwantedFlowTask();
 
-  int SendEncoding(std::shared_ptr<flow_vector> const &long_flow_list);
-
-  static void SplitFlows(std::shared_ptr<flow_vector> const &_list,
-                         std::vector<flow_vector> &output, const size_t &by);
-
-  static void _EncodeAndSend(flow_vector &_flow_list);
+  int32_t SendEncoding(shared_flow_vec const& long_flow_list);
 
 private:
   std::mutex mtxAccessToFlowTable;
   flow_map mFlowTable;
 
-  std::condition_variable cvMsgSender;
-
   flow_queue mSendQueue;
 
-  std::thread mSendTask;
+  std::vector<std::thread> mSendTasks;
   std::thread mCleanTask;
 
   std::atomic_bool mIsRunning{true};
+  struct Impl;
+  std::unique_ptr<Impl> pImpl_;
+};
+
+struct KafkaSink::Impl {
+
+  void merge_to_existing_flow(parsed_vector&, KafkaSink*) const;
+  static torch::Tensor EncodeFlowList(const flow_vector& _flow_list, torch::Tensor const& slide_window);
+  static std::tuple<torch::Tensor, std::string> encode_flow_tensors(flow_vector& _flow_list);
+  static parsed_vector parse_raw_packets(const shared_raw_vec& _raw_list);
+  static bool send_feature_to_kafka(const torch::Tensor& feature, const std::string& id);
+  static void split_flows(shared_flow_vec const&, vec_of_flow_vec&, size_t const&);
 };
 } // namespace hd::sink
 

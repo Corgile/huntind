@@ -15,14 +15,13 @@
 
 #include <ostream>
 #include <string>
-#include <ylt/easylog.hpp>
 
 #define ETHERTYPE_IPV4 ETHERTYPE_IP
 
 namespace hd::type {
 struct parsed_packet;
 
-using parsed_list = std::vector<parsed_packet>;
+using parsed_vector = std::vector<parsed_packet>;
 
 struct parsed_packet final {
   bool HasContent{true};

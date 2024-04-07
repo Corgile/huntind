@@ -8,27 +8,24 @@
 #include <librdkafka/rdkafkacpp.h>
 
 // 生产者投递报告回调
-class ProducerDeliveryReportCb final : public RdKafka::DeliveryReportCb {
+class MyReportCB final : public RdKafka::DeliveryReportCb {
 public:
   void dr_cb(RdKafka::Message& message) override;
 };
 
 // 生产者事件回调函数
-class ProducerEventCb final : public RdKafka::EventCb {
+class MyEventCB final : public RdKafka::EventCb {
 public:
   void event_cb(RdKafka::Event& event) override;
 };
 
 /// 生产者自定义分区策略回调：partitioner_cb
-class HashPartitionerCb final : public RdKafka::PartitionerCb {
+class MyPartitionCB final : public RdKafka::PartitionerCb {
 public:
+  mutable int32_t last_partition = 0;
   /// @brief 返回 topic 中使用 flowId 的分区，msg_opaque 置 NULL
   /// @return 返回分区，(0, partition_cnt)
   int32_t partitioner_cb(const RdKafka::Topic*, const std::string*, int32_t, void*) override;
-
-private:
-  /// 自定义哈希函数
-  static inline int32_t generate_hash(const char* str, size_t len);
 };
 
 #endif //KAFKA_CALLBACK_HPP

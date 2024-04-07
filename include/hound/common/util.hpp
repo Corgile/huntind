@@ -27,6 +27,7 @@ inline option longopts[] = {
   /// custom filter for libpcap
   {"filter",    required_argument, nullptr, 'F'},
   {"fill",      required_argument, nullptr, 'f'},
+  {"cuda",      required_argument, nullptr, 'c'},
   {"num",       required_argument, nullptr, 'N'},
   /// min packets
   {"min",       required_argument, nullptr, 'L'},
@@ -64,7 +65,7 @@ inline option longopts[] = {
   {"verbose",     no_argument,     nullptr, 'V'},
   {nullptr,       0,               nullptr, 0}
 };
-static char const* shortopts = "J:P:W:F:f:N:E:D:S:L:R:p:CTVhIM:m:B:b:x:y:";
+static char const* shortopts = "c:J:P:W:F:f:N:E:D:S:L:R:p:CTVhIM:m:B:b:x:y:";
 // "K:"
 
 #pragma endregion ShortAndLongOptions //@format:on
@@ -77,16 +78,16 @@ void Doc();
 
 void ParseOptions(capture_option& arg, int argc, char* argv[]);
 
-bool IsFlowReady(parsed_list const& existing, parsed_packet const& _new);
+bool IsFlowReady(parsed_vector const& existing, parsed_packet const& _new);
 
 namespace detail {
 using namespace hd::type;
 
-bool _isTimeout(parsed_list const& existing, parsed_packet const& _new);
+bool _isTimeout(parsed_vector const& existing, parsed_packet const& _new);
 
-bool _isTimeout(parsed_list const& existing);
+bool _isTimeout(parsed_vector const& existing);
 
-bool _checkLength(parsed_list const& existing);
+bool _checkLength(parsed_vector const& existing);
 
 template <typename TimeUnit = std::chrono::seconds>
 static long timestampNow() {

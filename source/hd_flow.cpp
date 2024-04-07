@@ -3,7 +3,7 @@
 //
 #include "hound/type/hd_flow.hpp"
 
-hd::type::hd_flow::hd_flow(std::string _flowId, parsed_list& _data) {
+hd::type::hd_flow::hd_flow(std::string _flowId, parsed_vector& _data) {
   protocol = static_cast<int>(_data[0].protocol);
   flowId = std::move(_flowId);
   _packet_list = std::move(_data);

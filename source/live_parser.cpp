@@ -37,7 +37,7 @@ void hd::type::LiveParser::startCapture() {
 void hd::type::LiveParser::liveHandler(u_char* user_data, const pcap_pkthdr* pkthdr, const u_char* packet) {
   auto const _this{reinterpret_cast<LiveParser*>(user_data)};
   std::unique_lock _accessToQueue(_this->mQueueLock);
-  _this->mPacketQueue.emplace_back(pkthdr, packet, std::min(opt.payload + 120, static_cast<int>(pkthdr->caplen)));
+  _this->mPacketQueue.emplace_back(pkthdr, packet, std::min(opt.payload + 128, static_cast<int>(pkthdr->caplen)));
   _this->cv_consumer.notify_all();
   _accessToQueue.unlock();
 #if defined(BENCHMARK)
@@ -52,14 +52,17 @@ void hd::type::LiveParser::consumer_job() {
     this->cv_consumer.wait(lock, [this] { return not this->mPacketQueue.empty() or not is_running; });
     if (not is_running) break;
     if (this->mPacketQueue.empty()) continue;
-    raw_list _swapped_buff;
+    raw_vector _swapped_buff;
     _swapped_buff.reserve(mPacketQueue.size());
     mPacketQueue.swap(_swapped_buff);
     lock.unlock();
     cv_producer.notify_all();
 
-    auto shared_buff = std::make_shared<raw_list>(_swapped_buff);
-    std::ignore = std::async(std::launch::async, &hd::sink::KafkaSink::MakeFlow, &sink, shared_buff);
+    auto shared_buff = std::make_shared<raw_vector>(_swapped_buff);
+    // sink.MakeFlow(shared_buff);
+    std::ignore = std::async(std::launch::async, [&] {
+      sink.MakeFlow(shared_buff);
+    });
   }
   ELOG_INFO << YELLOW("发送消息任务 [") << std::this_thread::get_id() << YELLOW("] 结束");
 }

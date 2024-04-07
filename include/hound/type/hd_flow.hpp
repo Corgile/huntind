@@ -24,11 +24,11 @@ struct hd_flow {
   uint16_t protocol{};
   size_t count{};
   std::string flowId;
-  parsed_list _packet_list;
+  parsed_vector _packet_list;
 
   hd_flow() = default;
 
-  hd_flow(std::string _flowId, parsed_list& _data);
+  hd_flow(std::string _flowId, parsed_vector& _data);
 
   template <OutStream stream>
   void print(stream& out) const {

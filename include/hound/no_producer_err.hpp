@@ -12,7 +12,10 @@
 class NoProducerErr : public std::runtime_error {
 public:
   NoProducerErr(const std::string& message)
-      : std::runtime_error(message) {
+    : std::runtime_error(message) {}
+
+  ~NoProducerErr() override {
+    ELOG_DEBUG << __PRETTY_FUNCTION__;
   }
 };
 

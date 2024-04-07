@@ -33,7 +33,7 @@ private:
 
 private:
   pcap_handle_t mHandle{nullptr};
-  raw_list mPacketQueue;
+  raw_vector mPacketQueue;
   std::condition_variable cv_producer;      // 生产者条件变量
   std::condition_variable cv_consumer;      // 消费者条件变量
   std::vector<std::thread> mConsumerTasks;

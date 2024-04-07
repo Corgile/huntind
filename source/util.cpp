@@ -2,11 +2,15 @@
 // Created by brian on 3/13/24.
 //
 #include "hound/common/util.hpp"
+#include "hound/scope_guard.hpp"
 
 void hd::util::SetFilter(pcap_handle_t& handle) {
   if (opt.filter.empty() or handle == nullptr) { return; }
   constexpr bpf_u_int32 net{0};
-  bpf_program fp{};
+  bpf_program fp;
+  scope_guard _guard([&fp] {
+    pcap_freecode(&fp);
+  });
   ELOG_DEBUG << "包过滤表达式: " << opt.filter;
   if (pcap_compile(handle.get(), &fp, opt.filter.c_str(), 0, net) == -1) {
     ELOG_ERROR << "解析 Filter 失败: " << opt.filter << pcap_geterr(handle.get());
@@ -16,7 +20,7 @@ void hd::util::SetFilter(pcap_handle_t& handle) {
     ELOG_ERROR << "设置 Filter 失败: " << pcap_geterr(handle.get());
     exit(EXIT_FAILURE);
   }
-  pcap_freecode(&fp);
+  // pcap_freecode(&fp);
 }
 
 void hd::util::OpenLiveHandle(capture_option& option, pcap_handle_t& handle) {
@@ -50,6 +54,7 @@ void hd::util::Doc() {
     << "                              " RED(
       "\t非常重要,必须设置并排除镜像流量服务器和kafka集群之间的流量,比如 \"not port 9092\"\n")
     << "\t-f, --fill=0                  空字节填充值 (默认 0)\n"
+    << "\t    --cuda=0                  cuda设备 (默认 0)\n"
     << "\t-D, --duration=-1             D秒后结束抓包  (默认 -1, non-stop)\n"
     << "\t-N, --num=-1                  指定抓包的数量 (默认 -1, non-stop)\n"
     << "\t-E, --timeout=20              flow超时时间(新到达的packet距离上一个packet的时间) (默认 20)\n"
@@ -85,6 +90,8 @@ void hd::util::ParseOptions(capture_option& arg, int argc, char** argv) {
     case 'C': arg.include_pktlen = true;
       break;
     case 'F': arg.filter = optarg;
+      break;
+    case 'c': arg.cudaId = std::stoi(optarg);
       break;
     case 'f': arg.fill_bit = std::stoi(optarg);
       break;
@@ -153,21 +160,21 @@ void hd::util::ParseOptions(capture_option& arg, int argc, char** argv) {
   }
 }
 
-bool hd::util::detail::_isTimeout(parsed_list const& existing, parsed_packet const& _new) {
+bool hd::util::detail::_isTimeout(parsed_vector const& existing, parsed_packet const& _new) {
   if (existing.empty()) return false;
   return _new.mTsSec - existing.back().mTsSec >= opt.flowTimeout;
 }
 
-bool hd::util::detail::_isTimeout(parsed_list const& existing) {
+bool hd::util::detail::_isTimeout(parsed_vector const& existing) {
   long const now = hd::util::detail::timestampNow<std::chrono::seconds>();
   return now - existing.back().mTsSec >= opt.flowTimeout;
 }
 
-bool hd::util::detail::_checkLength(parsed_list const& existing) {
+bool hd::util::detail::_checkLength(parsed_vector const& existing) {
   return existing.size() >= opt.min_packets and existing.size() <= opt.max_packets;
 }
 
-bool hd::util::IsFlowReady(parsed_list const& existing, parsed_packet const& _new) {
+bool hd::util::IsFlowReady(parsed_vector const& existing, parsed_packet const& _new) {
   if (existing.size() == opt.max_packets) return true;
   return detail::_isTimeout(existing, _new) and detail::_checkLength(existing);
 }

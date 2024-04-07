@@ -5,23 +5,28 @@
 #include <ranges>
 #include <algorithm>
 
-#include "hound/common/util.hpp"
-#include "hound/common/timer.hpp"
-#include "hound/sink/kafka_sink.hpp"
-#include "hound/encode/flow-encode.hpp"
-#include "hound/encode/transform.hpp"
+#include <hound/common/util.hpp>
+#include <hound/common/timer.hpp>
+#include <hound/sink/kafka_sink.hpp>
+#include <hound/encode/flow-encode.hpp>
+#include <hound/encode/transform.hpp>
 #include <torch/script.h>
 
 hd::sink::KafkaSink::KafkaSink() {
   ELOG_DEBUG << "创建 KafkaSink";
-  mSendTask = std::thread(&KafkaSink::sendToKafkaTask, this);
+  mSendTasks.reserve(4);
+  mSendTasks.emplace_back(std::thread(&KafkaSink::sendToKafkaTask, this));
+  mSendTasks.emplace_back(std::thread(&KafkaSink::sendToKafkaTask, this));
+  mSendTasks.emplace_back(std::thread(&KafkaSink::sendToKafkaTask, this));
+  mSendTasks.emplace_back(std::thread(&KafkaSink::sendToKafkaTask, this));
   mCleanTask = std::thread(&KafkaSink::cleanUnwantedFlowTask, this);
 }
 
 hd::sink::KafkaSink::~KafkaSink() {
-  ELOG_TRACE << __PRETTY_FUNCTION__;
-  cvMsgSender.notify_all();
-  mSendTask.detach();
+  // mSendTask.detach();
+  for (auto& _send_task : mSendTasks) {
+    _send_task.detach();
+  }
   mCleanTask.detach();
   while (mSendQueue.size_approx() > 0) {
     std::this_thread::sleep_for(10ms);
@@ -36,56 +41,31 @@ hd::sink::KafkaSink::~KafkaSink() {
 }
 
 /// Producer for mFlowTable
-void hd::sink::KafkaSink::MakeFlow(const std::shared_ptr<raw_list>& _raw_list) {
-  if (not _raw_list or _raw_list->size() <= 0) return;
-  parsed_list _parsed_list{};
-  _parsed_list.reserve(_raw_list->size());
-  std::ranges::for_each(*_raw_list, [&_parsed_list](raw_packet const& item) {
-    parsed_packet _parsed(item);
-    if (not _parsed.HasContent) return;
-    _parsed_list.emplace_back(_parsed);
-  });
-  /// 合并packet到flow
-  std::scoped_lock mapLock{mtxAccessToFlowTable};
-  std::ranges::for_each(_parsed_list, [this](parsed_packet const& _parsed) {
-    parsed_list& _existing = mFlowTable[_parsed.mKey];
-    if (util::IsFlowReady(_existing, _parsed)) {
-      //      std::scoped_lock queueLock(mtxAccessToQueue);
-      //      mSendQueue.emplace_back(_parsed.mKey, _existing);
-      mSendQueue.enqueue({_parsed.mKey, _existing});
-      //      cvMsgSender.notify_all();
-      ELOG_TRACE << "加入发送队列: " << mSendQueue.size_approx();
-    }
-    _existing.emplace_back(_parsed);
-    assert(_existing.size() <= opt.max_packets);
-  });
+void hd::sink::KafkaSink::MakeFlow(const shared_raw_vec& _raw_list) {
+  auto _parsed_list = pImpl_->parse_raw_packets(_raw_list);
+  this->pImpl_->merge_to_existing_flow(_parsed_list, this);
 }
 
 void hd::sink::KafkaSink::sendToKafkaTask() {
   while (mIsRunning) {
-    //    std::unique_lock lock(mtxAccessToQueue);
-    //    cvMsgSender.wait(lock, [&]() -> bool {
-    //      return not this->mSendQueue.empty() or not mIsRunning;
-    //    });
-    if (mSendQueue.size_approx() <= 0) continue;
     if (not mIsRunning) break;
-    //    flow_vector _flow_list{};
-    //    _flow_list.reserve(mSendQueue.size());
-    //    mSendQueue.swap(_flow_list);
-    //    lock.unlock();
     flow_vector _vector{};
     hd_flow flow_buffer;
     _vector.reserve(mSendQueue.size_approx());
     while (mSendQueue.try_dequeue(flow_buffer)) {
       _vector.emplace_back(flow_buffer);
     }
+    if(_vector.empty()) continue;
+    ELOG_TRACE << "取消息， mSendQueue:  " << mSendQueue.size_approx();
     auto p = std::make_shared<flow_vector>(_vector);
-    auto count = std::async(std::launch::async, &hd::sink::KafkaSink::SendEncoding, this, p);
-    ELOG_TRACE << __PRETTY_FUNCTION__ << ": " << count.get();
+    auto count =  this->SendEncoding(p);
+    // auto count = std::async(std::launch::async, [&] { return this->SendEncoding(p); });
+    ELOG_TRACE << "成功发送 " << count << "条消息";
   }
   ELOG_TRACE << WHITE("函数 void sendToKafkaTask() 结束");
 }
 
+/// 瓶颈
 void hd::sink::KafkaSink::cleanUnwantedFlowTask() {
   while (mIsRunning) {
     std::this_thread::sleep_for(60s);
@@ -99,102 +79,37 @@ void hd::sink::KafkaSink::cleanUnwantedFlowTask() {
         continue;
       }
       if (util::detail::_checkLength(_packets)) {
-        //        std::scoped_lock queueLock(mtxAccessToQueue);
-        //        mSendQueue.emplace_back(key, _packets);
         mSendQueue.enqueue({key, _packets});
       }
       it = mFlowTable.erase(it);
       count++;
     }
-    cvMsgSender.notify_all();
     if (not mIsRunning) break;
     if (count > 0) {
       ELOG_DEBUG << CYAN("Cleaner [")
                  << std::this_thread::get_id()
                  << CYAN("] 移除 ") << count
-                 << CYAN(" 个短流, 剩余: ") << mFlowTable.size();
+                 << CYAN(" mSendQueue: ") << mSendQueue.size_approx()
+                 << CYAN(", 剩余: ") << mFlowTable.size();
     }
   }
   ELOG_TRACE << WHITE("函数 void cleanUnwantedFlowTask() 结束");
 }
 
-int hd::sink::KafkaSink::SendEncoding(std::shared_ptr<flow_vector> const& long_flow_list) {
-  std::vector<flow_vector> flow_splits;
-  SplitFlows(long_flow_list, flow_splits, 1500);
-  constexpr auto r = 0;
-  std::ranges::for_each(flow_splits, [this](auto& item) {
-    std::thread([&item, this] {
-      this->_EncodeAndSend(item);
-    }).join();
+int32_t hd::sink::KafkaSink::SendEncoding(shared_flow_vec const& long_flow_list) {
+  int32_t res{};
+  vec_of_flow_vec flow_splits;
+  this->pImpl_->split_flows(long_flow_list, flow_splits, 1500);
+  std::ranges::for_each(flow_splits, [this, &res](auto& item) {
+    auto [feat, id] = this->pImpl_->encode_flow_tensors(item);
+    res += this->pImpl_->send_feature_to_kafka(feat, id);
   });
-  return r;
+  return res;
 }
 
-#pragma clang diagnostic push
-#pragma ide diagnostic ignored "UnreachableCallsOfFunction"
-
-// ReSharper disable once CppDFAUnreachableFunctionCall
-void hd::sink::KafkaSink::SplitFlows(std::shared_ptr<flow_vector> const& _list,
-                                     std::vector<flow_vector>& output, size_t const& by) {
-  std::ranges::remove_if(*_list, [](const hd_flow& item) -> bool {
-    return item.count < opt.min_packets;
-  });
-  if (_list->size() <= by) [[likely]] {
-    output.emplace_back(std::move(*_list));
-    return;
-  }
-  output.reserve(_list->size() / by);
-  while (not _list->empty()) {
-    const size_t current_batch_size = std::min(by, _list->size());
-    std::vector sub_vector(_list->begin(), _list->begin() + current_batch_size);
-    output.emplace_back(std::move(sub_vector));
-    _list->erase(_list->begin(), _list->begin() + current_batch_size);
-  }
-}
-
-#pragma clang diagnostic pop
-
-void hd::sink::KafkaSink::_EncodeAndSend(flow_vector& _flow_list) {
-  std::vector<torch::Tensor> flow_data;
-  flow_data.reserve(_flow_list.size());
-  /// 滑动窗口
-  auto transformed_view = _flow_list | std::views::transform(transform::ConvertToTensor);
-  std::ranges::copy(transformed_view, std::back_inserter(flow_data));
-  auto [slide_windows, flow_index_arr] = transform::BuildSlideWindow(flow_data, 5);
-  /// 编码 & 合并
-  const auto encoded_flows = EncodeFlowList(_flow_list, slide_windows);
-  /// 记得把GPU上的数据拿到CPU中
-  const auto encodings = transform::MergeFlow(encoded_flows, flow_index_arr).cpu();
-  /// 拼接flowId
-  std::string ordered_flow_id;
-  std::ranges::for_each(_flow_list, [&ordered_flow_id](const auto& _flow) {
-    ordered_flow_id.append(_flow.flowId).append("\n");
-  });
-  /// 发送
-  const auto data_size = encodings.element_size() * encodings.numel();// calculated in byte
-  scope_guard<hd::sink::ProducerUp> _guard(
-    [] { return producer_pool.acquire(); },
-    [](hd::sink::ProducerUp res) {
-      if (not res) return;
-      auto err_code = res->flush(10'000);
-      if (err_code not_eq RdKafka::ERR_NO_ERROR) [[unlikely]] {
-        ELOG_ERROR << "error code: " << err_code;
-      }
-      producer_pool.collect(std::move(res));
-    }
-  );
-  const auto& producer = _guard.resource();
-  producer->produce(
-    opt.topic,
-    0,
-    RdKafka::Producer::RK_MSG_COPY,
-    encodings.data_ptr(),
-    data_size,
-    ordered_flow_id.data(),
-    ordered_flow_id.length(), 0, nullptr);
-}
-
-torch::Tensor hd::sink::KafkaSink::EncodeFlowList(const flow_vector& _flow_list, torch::Tensor const& slide_window) {
+#pragma region Kafka Implementations
+torch::Tensor hd::sink::KafkaSink::Impl::EncodeFlowList(const flow_vector& _flow_list,
+                                                        torch::Tensor const& slide_window) {
   std::string msg;
   size_t ns{};
   torch::Tensor encoded_flows;
@@ -211,7 +126,93 @@ torch::Tensor hd::sink::KafkaSink::EncodeFlowList(const flow_vector& _flow_list,
   ELOG_DEBUG << msg << ", 流数量: " << _flow_list.size() << ", AVG: " << COUNT << " 条/s";
   return encoded_flows
 #if USE_CUDA
-    .to(torch::kCUDA)
+    .to(hd::global::calc_device)
 #endif
     ;
 }
+
+hd::type::parsed_vector hd::sink::KafkaSink::Impl::parse_raw_packets(const shared_raw_vec& _raw_list) {
+  parsed_vector _parsed_list{};
+  if (not _raw_list or _raw_list->size() <= 0) return _parsed_list;
+  _parsed_list.reserve(_raw_list->size());
+  std::ranges::for_each(*_raw_list, [&_parsed_list](raw_packet const& item) {
+    parsed_packet _parsed(item);
+    if (not _parsed.HasContent) return;
+    _parsed_list.emplace_back(_parsed);
+  });
+  return _parsed_list;
+}
+
+void hd::sink::KafkaSink::Impl::merge_to_existing_flow(parsed_vector& _parsed_list, KafkaSink* _this) const {
+  /// 合并packet到flow
+  std::scoped_lock mapLock{_this->mtxAccessToFlowTable};
+  std::ranges::for_each(_parsed_list, [&_this](auto const& _parsed) {
+    parsed_vector& _existing = _this->mFlowTable[_parsed.mKey];
+    if (util::IsFlowReady(_existing, _parsed)) {
+      _this->mSendQueue.enqueue({_parsed.mKey, _existing});
+      ELOG_TRACE << "加入发送队列: " << _this->mSendQueue.size_approx();
+    }
+    _existing.emplace_back(_parsed);
+    assert(_existing.size() <= opt.max_packets);
+  });
+}
+
+std::tuple<torch::Tensor, std::string> hd::sink::KafkaSink::Impl::encode_flow_tensors(flow_vector& _flow_list) {
+  std::vector<torch::Tensor> flow_data;
+  flow_data.reserve(_flow_list.size());
+  /// 滑动窗口 TODO： Convert放在BuildSlideWindow内部逻辑中
+  auto transformed_view = _flow_list | std::views::transform(transform::ConvertToTensor);
+  std::ranges::copy(transformed_view, std::back_inserter(flow_data));
+  auto [slide_windows, flow_index_arr] = transform::BuildSlideWindow(flow_data, 5);
+  /// 编码 & 合并
+  const auto encoded_flows = EncodeFlowList(_flow_list, slide_windows);
+  const auto encodings = transform::MergeFlow(encoded_flows, flow_index_arr);
+  /// 拼接flowId
+  std::string ordered_flow_id;
+  std::ranges::for_each(_flow_list, [&ordered_flow_id](const auto& _flow) {
+    ordered_flow_id.append(_flow.flowId).append("\n");
+  });
+  /// 记得把GPU上的encodings数据拿到CPU中
+  return {encodings.cpu(), ordered_flow_id};
+}
+
+void hd::sink::KafkaSink::Impl::split_flows(shared_flow_vec const& _list, vec_of_flow_vec& output, size_t const& by) {
+  std::ranges::remove_if(*_list, [](const hd_flow& item) -> bool {
+    return item.count < opt.min_packets;
+  });
+  if (_list->size() <= by) [[likely]] {
+    output.emplace_back(std::move(*_list));
+    return;
+  }
+  output.reserve(_list->size() / by);
+  while (not _list->empty()) {
+    const size_t current_batch_size = std::min(by, _list->size());
+    std::vector sub_vector(_list->begin(), _list->begin() + current_batch_size);
+    output.emplace_back(std::move(sub_vector));
+    _list->erase(_list->begin(), _list->begin() + current_batch_size);
+  }
+}
+
+bool hd::sink::KafkaSink::Impl::send_feature_to_kafka(const torch::Tensor& feature, const std::string& id) {
+  /// 发送
+  const auto feature_byte_count = feature.element_size() * feature.numel();
+  ProducerUp producer = producer_pool.acquire();
+  const auto errcode = producer->produce(
+    opt.topic,
+    // 不指定分区, 由patiotionerCB指定。
+    RdKafka::Topic::PARTITION_UA,
+    // 将payload复制一份给rdkafka, 其内存将由rdkafka管理
+    RdKafka::Producer::RK_MSG_COPY,
+    feature.data_ptr(),
+    feature_byte_count,
+    id.data(),// need compress
+    id.length(), 0, nullptr);
+  if (errcode == RdKafka::ERR_REQUEST_TIMED_OUT) {
+    /// flush: block wait.
+    const auto err_code = producer->flush(10'000);
+    ELOG_ERROR << err_code << " error(s)";
+  }
+  producer_pool.collect(std::move(producer));
+  return errcode == RdKafka::ERR_NO_ERROR;
+}
+#pragma endregion Kafka Implementations
