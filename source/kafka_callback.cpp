@@ -21,7 +21,7 @@ void MyReportCB::dr_cb(RdKafka::Message& message) {
   if (message.err()) {
     ELOG_ERROR << "消息推送失败: " << message.errstr();
   } else {
-    ELOG_TRACE << GREEN("消息推送成功至: ") << message.topic_name() << "["
+    ELOG_DEBUG << GREEN("消息推送成功至: ") << message.topic_name() << "["
                << message.partition() << "][" << message.offset() << "]";
   }
 }

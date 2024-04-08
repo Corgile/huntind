@@ -51,14 +51,16 @@ void hd::sink::KafkaSink::sendToKafkaTask() {
     if (not mIsRunning) break;
     flow_vector _vector{};
     hd_flow flow_buffer;
+    // bottleneck TODO: 出的太慢
     _vector.reserve(mSendQueue.size_approx());
     while (mSendQueue.try_dequeue(flow_buffer)) {
       _vector.emplace_back(flow_buffer);
     }
-    if(_vector.empty()) continue;
-    ELOG_TRACE << "取消息， mSendQueue:  " << mSendQueue.size_approx();
+    if (_vector.empty()) continue;
+    ELOG_WARN << YELLOW("从 mSendQueue 取消息 ") << _vector.size()
+              << YELLOW(", mSendQueue 剩余 ") << mSendQueue.size_approx();
     auto p = std::make_shared<flow_vector>(_vector);
-    auto count =  this->SendEncoding(p);
+    auto count = this->SendEncoding(p);
     // auto count = std::async(std::launch::async, [&] { return this->SendEncoding(p); });
     ELOG_TRACE << "成功发送 " << count << "条消息";
   }
@@ -96,6 +98,7 @@ void hd::sink::KafkaSink::cleanUnwantedFlowTask() {
   ELOG_TRACE << WHITE("函数 void cleanUnwantedFlowTask() 结束");
 }
 
+// ReSharper disable once CppDFAUnreachableFunctionCall
 int32_t hd::sink::KafkaSink::SendEncoding(shared_flow_vec const& long_flow_list) {
   int32_t res{};
   vec_of_flow_vec flow_splits;
@@ -108,14 +111,13 @@ int32_t hd::sink::KafkaSink::SendEncoding(shared_flow_vec const& long_flow_list)
 }
 
 #pragma region Kafka Implementations
-torch::Tensor hd::sink::KafkaSink::Impl::EncodeFlowList(const flow_vector& _flow_list,
-                                                        torch::Tensor const& slide_window) {
+torch::Tensor hd::sink::KafkaSink::
+Impl::EncodeFlowList(const size_t& count, torch::Tensor const& slide_window) {
   std::string msg;
   size_t ns{};
   torch::Tensor encoded_flows;
-  const auto count = _flow_list.size();
   {
-    hd::type::Timer<std::chrono::nanoseconds> timer(ns, GREEN("<<< 编码"), msg);
+    Timer<std::chrono::nanoseconds> timer(ns, GREEN("<<< 编码"), msg);
     const auto modelGuard = model_pool.borrowModel();
     ELOG_TRACE << BLUE(">>> 开始编码 ") << count;
     encoded_flows = BatchEncode(modelGuard.get(), slide_window, 8192);
@@ -123,19 +125,17 @@ torch::Tensor hd::sink::KafkaSink::Impl::EncodeFlowList(const flow_vector& _flow
   std::string COUNT;
   if (ns == 0) COUNT = RED("INF");
   else COUNT = std::to_string(count * 1000000000 / ns);
-  ELOG_DEBUG << msg << ", 流数量: " << _flow_list.size() << ", AVG: " << COUNT << " 条/s";
-  return encoded_flows
-#if USE_CUDA
-    .to(hd::global::calc_device)
-#endif
-    ;
+  ELOG_DEBUG << msg << ", 流数量: " << count << ", 本批次GPU编码: " << COUNT << " 条/s";
+  return encoded_flows;
 }
 
-hd::type::parsed_vector hd::sink::KafkaSink::Impl::parse_raw_packets(const shared_raw_vec& _raw_list) {
+hd::type::parsed_vector
+hd::sink::KafkaSink::Impl::
+parse_raw_packets(const shared_raw_vec& _raw_list) {
   parsed_vector _parsed_list{};
   if (not _raw_list or _raw_list->size() <= 0) return _parsed_list;
   _parsed_list.reserve(_raw_list->size());
-  std::ranges::for_each(*_raw_list, [&_parsed_list](raw_packet const& item) {
+  std::ranges::for_each(*_raw_list, [&](raw_packet const& item) {
     parsed_packet _parsed(item);
     if (not _parsed.HasContent) return;
     _parsed_list.emplace_back(_parsed);
@@ -149,7 +149,9 @@ void hd::sink::KafkaSink::Impl::merge_to_existing_flow(parsed_vector& _parsed_li
   std::ranges::for_each(_parsed_list, [&_this](auto const& _parsed) {
     parsed_vector& _existing = _this->mFlowTable[_parsed.mKey];
     if (util::IsFlowReady(_existing, _parsed)) {
-      _this->mSendQueue.enqueue({_parsed.mKey, _existing});
+      parsed_vector data{};
+      data.swap(_existing);
+      _this->mSendQueue.enqueue({_parsed.mKey, data});
       ELOG_TRACE << "加入发送队列: " << _this->mSendQueue.size_approx();
     }
     _existing.emplace_back(_parsed);
@@ -158,21 +160,14 @@ void hd::sink::KafkaSink::Impl::merge_to_existing_flow(parsed_vector& _parsed_li
 }
 
 std::tuple<torch::Tensor, std::string> hd::sink::KafkaSink::Impl::encode_flow_tensors(flow_vector& _flow_list) {
-  std::vector<torch::Tensor> flow_data;
-  flow_data.reserve(_flow_list.size());
-  /// 滑动窗口 TODO： Convert放在BuildSlideWindow内部逻辑中
-  auto transformed_view = _flow_list | std::views::transform(transform::ConvertToTensor);
-  std::ranges::copy(transformed_view, std::back_inserter(flow_data));
-  auto [slide_windows, flow_index_arr] = transform::BuildSlideWindow(flow_data, 5);
-  /// 编码 & 合并
-  const auto encoded_flows = EncodeFlowList(_flow_list, slide_windows);
+  auto [slide_windows, flow_index_arr] = transform::BuildSlideWindow(_flow_list, 5);
+  const auto encoded_flows = EncodeFlowList(_flow_list.size(), slide_windows);
   const auto encodings = transform::MergeFlow(encoded_flows, flow_index_arr);
   /// 拼接flowId
   std::string ordered_flow_id;
   std::ranges::for_each(_flow_list, [&ordered_flow_id](const auto& _flow) {
     ordered_flow_id.append(_flow.flowId).append("\n");
   });
-  /// 记得把GPU上的encodings数据拿到CPU中
   return {encodings.cpu(), ordered_flow_id};
 }
 

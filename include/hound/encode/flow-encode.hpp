@@ -15,14 +15,12 @@
  * @param retain true for calculated data should stay on the calculation device
  * @return encoded data
  */
-[[maybe_unused]] torch::Tensor
-BatchEncode(torch::jit::script::Module* model, const torch::Tensor& data, int64_t batch_size,
-                   int64_t max_batch = 20, bool retain = true);
-
-// 用于加载模型和配置的函数
-[[maybe_unused]] torch::jit::script::Module
-load_model(std::string model_file_path = "./");
+torch::Tensor
+BatchEncode(torch::jit::script::Module* model,
+            const torch::Tensor& data, int64_t batch_size,
+            int64_t max_batch = 20, bool retain = true);
 
 void print_shape(torch::Tensor const& tensor);
+void print_tensor(torch::Tensor const& tensor);
 
 #endif // ENCODER_LIBRARY_HPP

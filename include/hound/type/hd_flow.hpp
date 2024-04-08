@@ -22,7 +22,7 @@ concept OutStream = requires(T& os, const std::string& s)
 
 struct hd_flow {
   uint16_t protocol{};
-  size_t count{};
+  long count{};
   std::string flowId;
   parsed_vector _packet_list;
 

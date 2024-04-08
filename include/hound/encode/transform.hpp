@@ -11,20 +11,37 @@
 namespace transform {
 using namespace hd::type;
 
-/// @brief z score normalization checked
-/// @param data input
-/// @return normalized data
-torch::Tensor z_score_norm(torch::Tensor& data);
+/// @brief 标准化
+/// @param data Tensor indicating slide window list
+/// @return normalized Tensor
+torch::Tensor
+z_score_norm(torch::Tensor const& data);
 
-torch::Tensor ConvertToTensor(hd_flow const& flow);
+/// @brief 将flow转换成Tensor
+/// @param flow \p hd_flow& as input
+/// @param option tensor 选项(device, dtype,...)
+/// @return Tensor in \code (num_packets, 136)\endcode
+torch::Tensor
+FlowToTensor(hd_flow const& flow, torch::TensorOptions const& option);
 
-std::tuple<torch::Tensor, std::vector<std::pair<int, int>>>
-BuildSlideWindow(std::vector<torch::Tensor> const& flow_tensors, int width = 5);
+/// @brief 将packet中的二进制数转换成tensor中的数据
+/// @param packet parsed packet (we want its blob data)
+/// @param protocol packet transportation protocol (for slicing)
+/// @return Tensor in shape of \code (1, 136)\endcode
+torch::Tensor
+PacketToTensor(parsed_packet const& packet, long protocol);
 
-///
+/// @brief 构建滑动窗钩
+/// @param flow_list flow list / vector
+/// @param width window size
+/// @return tuple<Tensor, Tensor> (slide_windows, window_indices)
+std::tuple<torch::Tensor, torch::Tensor>
+BuildSlideWindow(flow_vector& flow_list, int width = 5);
+
 /// @param predict_flows 输入需要被分类的flow
-/// @param slide_windows 滑动窗口本口，<code>vector&</code> of <code>pair<start:int, end:int></code>
-/// @return Tensor in shape of (num_flows, flow_hidden_dim), here: (20, 128)
-torch::Tensor MergeFlow(torch::Tensor const& predict_flows, std::vector<std::pair<int, int>> const& slide_windows);
+/// @param index_arr 滑动窗口下标
+/// @return Tensor in shape of (num_flows, flow_hidden_dim), here: (num_flows, 128)
+torch::Tensor
+MergeFlow(torch::Tensor const& predict_flows, torch::Tensor const& index_arr);
 }
 #endif //HOUND_TRANSFORM_HPP
