@@ -45,6 +45,12 @@ void hd::util::OpenLiveHandle(capture_option& option, pcap_handle_t& handle) {
   pcap_set_promisc(handle.get(), 1);
   pcap_set_buffer_size(handle.get(), 25 << 22);
 }
+void hd::util::OpenDeadHandle(pcap_handle_t& handle) {
+  char err_buff[PCAP_ERRBUF_SIZE];
+  handle.reset(pcap_open_offline("../ssh_4.pcap", err_buff));
+  SetFilter(handle);
+  pcap_datalink(handle.get());
+}
 
 void hd::util::Doc() {
   std::cout << "\t用法: \n";

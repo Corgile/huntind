@@ -121,13 +121,14 @@ torch::Tensor hd::sink::KafkaSink::Impl::EncodeFlowList(const flow_vector& _flow
   const auto count = _flow_list.size();
   {
     hd::type::Timer<std::chrono::nanoseconds> timer(ns, GREEN("<<< 编码"), msg);
-    const auto modelGuard = model_pool.borrowModel();
+    const auto modelGuard = model_pool.getModel();
     ELOG_TRACE << BLUE(">>> 开始编码 ") << count;
-    encoded_flows = BatchEncode(modelGuard.get(), slide_window, 2048);
+    encoded_flows = BatchEncode(modelGuard, slide_window, 2048);
+    model_pool.returnModel(modelGuard);
   }
   std::string COUNT;
   if (ns == 0) COUNT = RED("INF");
-  else COUNT = std::to_string(count * 1000000000 / ns);
+  else COUNT = std::to_string(count * 1'000'000'000 / ns);
   ELOG_DEBUG << msg << ", 流数量: " << _flow_list.size() << ", AVG: " << COUNT << " 条/s";
   return encoded_flows
 #if USE_CUDA

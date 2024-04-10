@@ -73,6 +73,7 @@ static char const* shortopts = "c:J:P:W:F:f:N:E:D:S:L:R:p:CTVhIM:m:B:b:x:y:";
 void SetFilter(pcap_handle_t& handle);
 
 void OpenLiveHandle(capture_option& option, pcap_handle_t& handle);
+void OpenDeadHandle(pcap_handle_t& handle);
 
 void Doc();
 

@@ -11,14 +11,12 @@
 
 // TODO @see purecpp.cn 模板解耦
 namespace hd::type {
-class ScopeGuard;
-
 class ModelPool {
 public:
   ModelPool();
   ModelPool(int size, const std::string& model_path);
   ~ModelPool();
-  ScopeGuard borrowModel();
+  torch::jit::Module* getModel();
   void returnModel(torch::jit::Module* model);
 
   ModelPool& operator=(ModelPool&& other) noexcept {

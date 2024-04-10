@@ -4,6 +4,8 @@
 //
 #include "hound/model_pool.hpp"
 
+#include <hound/common/global.hpp>
+
 hd::type::ModelPool::ModelPool() {}
 
 hd::type::ModelPool::ModelPool(int size, const std::string& model_path) {
@@ -20,12 +22,13 @@ hd::type::ModelPool::~ModelPool() {
   }
 }
 
-hd::type::ScopeGuard hd::type::ModelPool::borrowModel() {
+torch::jit::Module* hd::type::ModelPool::getModel() {
   std::unique_lock lock(mtx);
   cond.wait(lock, [this] { return !models.empty(); });
   const auto model = models.front();
   models.pop();
-  return ScopeGuard(*this, model);
+  model->to(hd::global::calc_device);
+  return model;
 }
 
 void hd::type::ModelPool::returnModel(torch::jit::Module* model) {
