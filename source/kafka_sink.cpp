@@ -73,7 +73,7 @@ void hd::sink::KafkaSink::cleanUnwantedFlowTask() {
     std::this_thread::sleep_for(60s);
     if (not mIsRunning) break;
     std::scoped_lock lock(mtxAccessToFlowTable);
-    int count = 0;
+    int count = 0, transferred = 0;
     for (flow_iter it = mFlowTable.begin(); it not_eq mFlowTable.end();) {
       auto& [key, _packets] = *it;
       if (not util::detail::_isTimeout(_packets)) {
@@ -82,17 +82,20 @@ void hd::sink::KafkaSink::cleanUnwantedFlowTask() {
       }
       if (util::detail::_checkLength(_packets)) {
         mSendQueue.enqueue({key, _packets});
+        transferred++;
       }
       it = mFlowTable.erase(it);
       count++;
     }
     if (not mIsRunning) break;
     if (count > 0) {
-      ELOG_DEBUG << CYAN("Cleaner [")
-                 << std::this_thread::get_id()
-                 << CYAN("] 移除 ") << count
-                 << CYAN(" mSendQueue: ") << mSendQueue.size_approx()
-                 << CYAN(", 剩余: ") << mFlowTable.size();
+      ELOG_DEBUG << CYAN("FlowTable") << RED("-") << count
+                 << "=" << GREEN("EncodeQueue") << GREEN("+") << transferred
+                 << RED("Drop(") << count - transferred << RED(")")
+                 << BLUE(". Queue:")
+                 << mSendQueue.size_approx()
+                 << BLUE(",Table")
+                 << mFlowTable.size();
     }
   }
   ELOG_TRACE << WHITE("函数 void cleanUnwantedFlowTask() 结束");
@@ -104,7 +107,7 @@ int32_t hd::sink::KafkaSink::SendEncoding(shared_flow_vec const& long_flow_list)
   vec_of_flow_vec flow_splits;
   this->pImpl_->split_flows(long_flow_list, flow_splits, 1500);
   std::ranges::for_each(flow_splits, [this, &res](auto& item) {
-    auto [feat, id] = this->pImpl_->encode_flow_tensors(item);
+    auto [feat, id] = this->pImpl_->encode_flow_tensors(item, 0);
     res += this->pImpl_->send_feature_to_kafka(feat, id);
   });
   return res;
@@ -159,7 +162,7 @@ void hd::sink::KafkaSink::Impl::merge_to_existing_flow(parsed_vector& _parsed_li
   });
 }
 
-std::tuple<torch::Tensor, std::string> hd::sink::KafkaSink::Impl::encode_flow_tensors(flow_vector& _flow_list) {
+std::tuple<torch::Tensor, std::string> hd::sink::KafkaSink::Impl::encode_flow_tensors(flow_vector& _flow_list, int on) {
   auto [slide_windows, flow_index_arr] = transform::BuildSlideWindow(_flow_list, 5);
   const auto encoded_flows = EncodeFlowList(_flow_list.size(), slide_windows);
   const auto encodings = transform::MergeFlow(encoded_flows, flow_index_arr);
