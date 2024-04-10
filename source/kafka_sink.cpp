@@ -28,9 +28,7 @@ hd::sink::KafkaSink::~KafkaSink() {
     _send_task.detach();
   }
   mCleanTask.detach();
-  while (mSendQueue.size_approx() > 0) {
-    std::this_thread::sleep_for(10ms);
-  }
+  while (mSendQueue.size_approx() > 0) {}
   mIsRunning = false;
   ELOG_DEBUG << CYAN("退出时， Producer [")
              << std::this_thread::get_id()
@@ -55,10 +53,11 @@ void hd::sink::KafkaSink::sendToKafkaTask() {
     while (mSendQueue.try_dequeue(flow_buffer)) {
       _vector.emplace_back(flow_buffer);
     }
-    if(_vector.empty()) continue;
-    ELOG_TRACE << "取消息， mSendQueue:  " << mSendQueue.size_approx();
+    if (_vector.empty()) continue;
+    ELOG_WARN << YELLOW("取消息: ") << _vector.size()
+               << YELLOW(", mSendQueue: ") << mSendQueue.size_approx();
     auto p = std::make_shared<flow_vector>(_vector);
-    auto count =  this->SendEncoding(p);
+    auto count = this->SendEncoding(p);
     // auto count = std::async(std::launch::async, [&] { return this->SendEncoding(p); });
     ELOG_TRACE << "成功发送 " << count << "条消息";
   }
@@ -71,7 +70,7 @@ void hd::sink::KafkaSink::cleanUnwantedFlowTask() {
     std::this_thread::sleep_for(60s);
     if (not mIsRunning) break;
     std::scoped_lock lock(mtxAccessToFlowTable);
-    int count = 0;
+    int count = 0, transferred = 0;
     for (flow_iter it = mFlowTable.begin(); it not_eq mFlowTable.end();) {
       auto& [key, _packets] = *it;
       if (not util::detail::_isTimeout(_packets)) {
@@ -80,28 +79,34 @@ void hd::sink::KafkaSink::cleanUnwantedFlowTask() {
       }
       if (util::detail::_checkLength(_packets)) {
         mSendQueue.enqueue({key, _packets});
+        transferred++;
       }
       it = mFlowTable.erase(it);
       count++;
     }
     if (not mIsRunning) break;
     if (count > 0) {
-      ELOG_DEBUG << CYAN("Cleaner [")
-                 << std::this_thread::get_id()
-                 << CYAN("] 移除 ") << count
-                 << CYAN(" mSendQueue: ") << mSendQueue.size_approx()
-                 << CYAN(", 剩余: ") << mFlowTable.size();
+      ELOG_DEBUG << CYAN("FlowTable") << RED("-") << count
+                 << "=" << GREEN("EncodeQueue") << GREEN("+") << transferred
+                 << RED("Drop(") << count - transferred << RED(")")
+                 << BLUE(". Queue:")
+                 << mSendQueue.size_approx()
+                 << BLUE(",Table")
+                 << mFlowTable.size();
     }
   }
   ELOG_TRACE << WHITE("函数 void cleanUnwantedFlowTask() 结束");
 }
 
-int32_t hd::sink::KafkaSink::SendEncoding(shared_flow_vec const& long_flow_list) {
+// ReSharper disable once CppDFAUnreachableFunctionCall
+int32_t inline hd::sink::KafkaSink::SendEncoding(shared_flow_vec const& long_flow_list) {
   int32_t res{};
   vec_of_flow_vec flow_splits;
+  /// TODO： 转到不同的GPU上计算
   this->pImpl_->split_flows(long_flow_list, flow_splits, 1500);
   std::ranges::for_each(flow_splits, [this, &res](auto& item) {
-    auto [feat, id] = this->pImpl_->encode_flow_tensors(item);
+    auto [feat, id] = this->pImpl_->encode_flow_tensors(item, 1);
+    /// TODO： 转到不同的GPU上计算
     res += this->pImpl_->send_feature_to_kafka(feat, id);
   });
   return res;
@@ -118,7 +123,7 @@ torch::Tensor hd::sink::KafkaSink::Impl::EncodeFlowList(const flow_vector& _flow
     hd::type::Timer<std::chrono::nanoseconds> timer(ns, GREEN("<<< 编码"), msg);
     const auto modelGuard = model_pool.borrowModel();
     ELOG_TRACE << BLUE(">>> 开始编码 ") << count;
-    encoded_flows = BatchEncode(modelGuard.get(), slide_window, 8192);
+    encoded_flows = BatchEncode(modelGuard.get(), slide_window, 2048);
   }
   std::string COUNT;
   if (ns == 0) COUNT = RED("INF");
@@ -157,7 +162,7 @@ void hd::sink::KafkaSink::Impl::merge_to_existing_flow(parsed_vector& _parsed_li
   });
 }
 
-std::tuple<torch::Tensor, std::string> hd::sink::KafkaSink::Impl::encode_flow_tensors(flow_vector& _flow_list) {
+std::tuple<torch::Tensor, std::string> hd::sink::KafkaSink::Impl::encode_flow_tensors(flow_vector& _flow_list, int on) {
   std::vector<torch::Tensor> flow_data;
   flow_data.reserve(_flow_list.size());
   /// 滑动窗口 TODO： Convert放在BuildSlideWindow内部逻辑中
