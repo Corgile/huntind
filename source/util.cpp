@@ -79,6 +79,10 @@ void hd::util::Doc() {
 }
 
 void hd::util::ParseOptions(capture_option& arg, int argc, char** argv) {
+  if (argc <= 1) [[unlikely]]{
+    hd::util::Doc();
+    exit(EXIT_SUCCESS);
+  }
   int longind = 0, option, j;
   opterr = 0;
   while ((option = getopt_long(argc, argv, shortopts, longopts, &longind)) not_eq -1) {

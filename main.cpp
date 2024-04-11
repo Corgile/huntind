@@ -30,15 +30,11 @@ static void quit_guard(const int max_, int& ctrlc) {
 int main(const int argc, char* argv[]) {
   using namespace hd::global;
   using namespace hd::type;
-  if (argc <= 1) [[unlikely]]{
-    hd::util::Doc();
-    exit(EXIT_SUCCESS);
-  }
   hd::util::ParseOptions(opt, argc, argv);
-  if (opt.stride == 1) opt.fill_bit = 0;
+  calc_device = torch::Device(torch::kCUDA, opt.cudaId);
   producer_pool = ProducerPool(opt.poolSize, opt.brokers);
   model_pool = ModelPool(20, opt.model_path);
-  calc_device = torch::Device(torch::kCUDA, opt.cudaId);
+  if (opt.stride == 1) opt.fill_bit = 0;
 
   static LiveParser _live_parser;
   static int ctrlc = 0, max_ = 5;

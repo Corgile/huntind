@@ -15,9 +15,9 @@ class ScopeGuard;
 
 class ModelPool {
 public:
-  ModelPool();
+  ModelPool() = default;
   ModelPool(int size, const std::string& model_path);
-  ~ModelPool();
+
   ScopeGuard borrowModel();
   void returnModel(torch::jit::Module* model);
 
@@ -26,6 +26,8 @@ public:
     models.swap(other.models);
     return *this;
   }
+
+  ~ModelPool();
 
 private:
   std::mutex mtx;

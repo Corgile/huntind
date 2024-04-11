@@ -115,37 +115,36 @@ void print_tensor(torch::Tensor const& tensor) {
 }
 
 torch::Tensor
-BatchEncode(torch::jit::Module* model, const torch::Tensor& data,
-            int64_t batch_size, int64_t max_batch, bool retain) {
-  model->to(hd::global::calc_device);
-  model->eval();
-  const int64_t data_length = data.size(0);
-  if (data_length <= batch_size) {
-    auto const output = model->forward({data}).toTuple();
-    auto flow_hidden = output->elements()[1].toTensor().to(hd::global::calc_device);
-    return retain ? flow_hidden : flow_hidden.cpu();
-  }
-  int64_t batch_count = 0;
-  std::vector<torch::Tensor> results_cpu, results;
-  results.reserve(data_length / batch_size + 1);
-  results_cpu.reserve(data_length / batch_size + 1);
+BatchEncode(const torch::Tensor& data, int64_t batch_size,
+            int64_t max_batch, bool stay_on_gpu) {
+  const auto modelGuard = hd::global::model_pool.borrowModel();
+  const auto model = modelGuard.get();
 
-  for (int64_t start = 0; start < data_length; start += batch_size) {
-    auto end = std::min(start + batch_size, data_length);
+  const int64_t data_size = data.size(0);
+  std::vector<torch::Tensor> CPU_results, GPU_results;
+  GPU_results.reserve(data_size / batch_size + 1);
+  CPU_results.reserve(data_size / batch_size + 1);
+
+  for (int64_t start = 0; start < data_size; start += batch_size) {
+    auto end = std::min(start + batch_size, data_size);
     auto batch_data = data.slice(0, start, end);
-    const auto output = model->forward({batch_data}).toTuple();
-    results.emplace_back(output->elements()[1].toTensor().to(hd::global::calc_device));
-    batch_count++;
-    // ↓↓↓ 把数据转移至CPU， 这在纯CPU的实现中是不必要的
-    if (retain or batch_count <= max_batch) continue;
-    batch_count = 0;
-    results_cpu.emplace_back(concat(results, 0).cpu());
-    results.clear();
+    GPU_results.emplace_back(EncodeOneBatch(model, batch_data, stay_on_gpu));
+    if (stay_on_gpu) continue;
+    // ↓↓↓ 把数据转移至CPU防止GPU-OOM
+    if (GPU_results.size() < max_batch) continue;
+    CPU_results.emplace_back(concat(GPU_results, 0).cpu());
+    GPU_results.clear();
   }
-  if (retain) return concat(results, 0).to(hd::global::calc_device);
-  if (batch_count > 0) results_cpu.emplace_back(concat(results, 0).cpu());
-  if (results_cpu.size() == 1) return results_cpu.at(0);
-  return concat(results_cpu, 0);
+  if (stay_on_gpu) return concat(GPU_results, 0);//.to(hd::global::calc_device);
+  CPU_results.emplace_back(concat(GPU_results, 0).cpu());
+  GPU_results.clear();
+  return concat(CPU_results, 0);
+}
+
+torch::Tensor EncodeOneBatch(torch::jit::script::Module* model, const torch::Tensor& data, bool stay_on_gpu) {
+  auto const output = model->forward({data}).toTuple();
+  auto flow_hidden = output->elements()[1].toTensor();
+  return stay_on_gpu ? flow_hidden : flow_hidden.cpu();
 }
 
 #pragma endregion Exported API

@@ -2,13 +2,15 @@
 // hound-torch / model_pool.cpp.
 // Created by brian on 2024-03-26.
 //
-#include "hound/model_pool.hpp"
-
-hd::type::ModelPool::ModelPool() {}
+#include <hound/model_pool.hpp>
+#include <hound/common/global.hpp>
 
 hd::type::ModelPool::ModelPool(int size, const std::string& model_path) {
+  auto m = torch::jit::load(model_path);
   for (int i = 0; i < size; ++i) {
-    auto model = new torch::jit::Module(torch::jit::load(model_path));
+    auto model = new torch::jit::Module(m);
+    model->to(hd::global::calc_device);
+    model->eval();
     models.push(model);
   }
 }

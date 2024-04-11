@@ -121,9 +121,8 @@ Impl::EncodeFlowList(const size_t& count, torch::Tensor const& slide_window) {
   torch::Tensor encoded_flows;
   {
     Timer<std::chrono::nanoseconds> timer(ns, GREEN("<<< 编码"), msg);
-    const auto modelGuard = model_pool.borrowModel();
     ELOG_TRACE << BLUE(">>> 开始编码 ") << count;
-    encoded_flows = BatchEncode(modelGuard.get(), slide_window, 8192);
+    encoded_flows = BatchEncode(slide_window, 8192);
   }
   std::string COUNT;
   if (ns == 0) COUNT = RED("INF");
