@@ -129,15 +129,17 @@ BatchEncode(const torch::Tensor& data, int64_t batch_size,
     auto end = std::min(start + batch_size, data_size);
     auto batch_data = data.slice(0, start, end);
     GPU_results.emplace_back(EncodeOneBatch(model, batch_data, stay_on_gpu));
-    if (stay_on_gpu) continue;
+    // if (stay_on_gpu) continue;
     // ↓↓↓ 把数据转移至CPU防止GPU-OOM
     if (GPU_results.size() < max_batch) continue;
     CPU_results.emplace_back(concat(GPU_results, 0).cpu());
     GPU_results.clear();
   }
-  if (stay_on_gpu) return concat(GPU_results, 0);//.to(hd::global::calc_device);
-  CPU_results.emplace_back(concat(GPU_results, 0).cpu());
-  GPU_results.clear();
+  // if (stay_on_gpu) return concat(GPU_results, 0);//.to(hd::global::calc_device);
+  if (not GPU_results.empty()) {
+    CPU_results.emplace_back(concat(GPU_results, 0).cpu());
+    GPU_results.clear();
+  }
   return concat(CPU_results, 0);
 }
 

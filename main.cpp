@@ -30,6 +30,11 @@ static void quit_guard(const int max_, int& ctrlc) {
 int main(const int argc, char* argv[]) {
   using namespace hd::global;
   using namespace hd::type;
+
+  easylog::set_min_severity(easylog::Severity::DEBUG);
+  easylog::set_async(true);
+  easylog::init_log(easylog::Severity::DEBUG, "log", true, true, 8192'000, 4);
+
   hd::util::ParseOptions(opt, argc, argv);
   calc_device = torch::Device(torch::kCUDA, opt.cudaId);
   producer_pool = ProducerPool(opt.poolSize, opt.brokers);
@@ -53,8 +58,6 @@ int main(const int argc, char* argv[]) {
   std::signal(SIGTERM, handler);
   std::signal(SIGKILL, handler);
 
-  easylog::set_min_severity(easylog::Severity::DEBUG);
-  easylog::set_async(true);
   ELOG_INFO << GREEN("已经开始捕获流消息....");
   try {
     _live_parser.startCapture();
