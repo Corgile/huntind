@@ -7,6 +7,7 @@
 #define MODEL_POOL_HPP
 
 #include <queue>
+#include <torch/torch.h>
 #include <torch/script.h>
 
 // TODO @see purecpp.cn 模板解耦

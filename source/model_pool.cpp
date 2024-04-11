@@ -9,8 +9,6 @@ hd::type::ModelPool::ModelPool(int size, const std::string& model_path) {
   auto m = torch::jit::load(model_path);
   for (int i = 0; i < size; ++i) {
     auto model = new torch::jit::Module(m);
-    model->to(hd::global::calc_device);
-    model->eval();
     models.push(model);
   }
 }

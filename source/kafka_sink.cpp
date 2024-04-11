@@ -102,27 +102,31 @@ void hd::sink::KafkaSink::cleanUnwantedFlowTask() {
 }
 
 // ReSharper disable once CppDFAUnreachableFunctionCall
-int32_t hd::sink::KafkaSink::SendEncoding(shared_flow_vec const& long_flow_list) {
+int32_t hd::sink::KafkaSink::SendEncoding(shared_flow_vec const& long_flow_list) const {
   int32_t res{};
   vec_of_flow_vec flow_splits;
   this->pImpl_->split_flows(long_flow_list, flow_splits, 1500);
-  std::ranges::for_each(flow_splits, [this, &res](auto& item) {
-    auto [feat, id] = this->pImpl_->encode_flow_tensors(item, 0);
-    res += this->pImpl_->send_feature_to_kafka(feat, id);
-  });
+  constexpr int available_cuda[] = {0, 1, 2, 4, 5, 6, 7};//because 3 is down.
+  for (int i = 1; i <= flow_splits.size(); ++i) {
+    std::thread([&] {
+      auto _device = torch::Device(torch::kCUDA, available_cuda[i % 6]);
+      auto [feat, id] = pImpl_->encode_flow_tensors(flow_splits.at(i - 1), _device);
+      res += this->pImpl_->send_feature_to_kafka(feat, id);
+    }).join();
+  }
   return res;
 }
 
 #pragma region Kafka Implementations
 torch::Tensor hd::sink::KafkaSink::
-Impl::EncodeFlowList(const size_t& count, torch::Tensor const& slide_window) {
+Impl::EncodeFlowList(const size_t& count, torch::Tensor const& slide_window, torch::Device& device) {
   std::string msg;
   size_t ns{};
   torch::Tensor encoded_flows;
   {
     Timer<std::chrono::nanoseconds> timer(ns, GREEN("<<< 编码"), msg);
     ELOG_TRACE << BLUE(">>> 开始编码 ") << count;
-    encoded_flows = BatchEncode(slide_window, 8192);
+    encoded_flows = BatchEncode(slide_window, 8192, 500, false, device);
   }
   std::string COUNT;
   if (ns == 0) COUNT = RED("INF");
@@ -161,10 +165,11 @@ void hd::sink::KafkaSink::Impl::merge_to_existing_flow(parsed_vector& _parsed_li
   });
 }
 
-std::tuple<torch::Tensor, std::string> hd::sink::KafkaSink::Impl::encode_flow_tensors(flow_vector& _flow_list, int on) {
-  auto [slide_windows, flow_index_arr] = transform::BuildSlideWindow(_flow_list, 5);
-  const auto encoded_flows = EncodeFlowList(_flow_list.size(), slide_windows);
-  const auto encodings = transform::MergeFlow(encoded_flows, flow_index_arr);
+std::tuple<torch::Tensor, std::string> hd::sink::KafkaSink::Impl::encode_flow_tensors(
+  flow_vector& _flow_list, torch::Device& device) {
+  auto [slide_windows, flow_index_arr] = transform::BuildSlideWindow(_flow_list, 5, device);
+  const auto encoded_flows = EncodeFlowList(_flow_list.size(), slide_windows, device);
+  const auto encodings = transform::MergeFlow(encoded_flows, flow_index_arr, device);
   /// 拼接flowId
   std::string ordered_flow_id;
   std::ranges::for_each(_flow_list, [&ordered_flow_id](const auto& _flow) {

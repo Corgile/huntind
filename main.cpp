@@ -11,7 +11,7 @@ namespace hd::global {
 type::capture_option opt;
 ProducerPool producer_pool;
 type::ModelPool model_pool;
-torch::Device calc_device(torch::kCUDA, 5);
+// torch::Device calc_device(torch::kCUDA, 5);
 #if defined(BENCHMARK)
 std::atomic<int32_t> packet_index = 0;
 std::atomic<int32_t> num_captured_packet = 0;
@@ -36,7 +36,7 @@ int main(const int argc, char* argv[]) {
   easylog::init_log(easylog::Severity::DEBUG, "log", true, true, 8192'000, 4);
 
   hd::util::ParseOptions(opt, argc, argv);
-  calc_device = torch::Device(torch::kCUDA, opt.cudaId);
+  // calc_device = torch::Device(torch::kCUDA, opt.cudaId);
   producer_pool = ProducerPool(opt.poolSize, opt.brokers);
   model_pool = ModelPool(20, opt.model_path);
   if (opt.stride == 1) opt.fill_bit = 0;
