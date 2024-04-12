@@ -47,7 +47,7 @@ transform::PacketToTensor(parsed_packet const& packet, long protocol, torch::Dev
       _ft.slice(0, 0, 12),
       _ft.slice(0, 20, _end),
       _ft.slice(0, _start)
-    }, 0);//.to(hd::global::calc_device);
+    }, 0);
 }
 
 std::tuple<torch::Tensor, torch::Tensor>
@@ -63,10 +63,11 @@ transform::BuildSlideWindow(flow_vector& flow_list, int width, torch::Device& de
     });
     return res;
   }(flow_list);
-  torch::Tensor index_list = torch::empty({static_cast<int>(flow_list.size()), 2}, index_option);
+  long flow_list_len = flow_list.size();
+  torch::Tensor index_list = torch::empty({flow_list_len, 2}, index_option);
   torch::Tensor window_list = torch::empty({num_windows, (width - 1) * 136}, window_option);
 
-  for (long offset = 0, flow_idx = 0; flow_idx < flow_list.size(); ++flow_idx) {
+  for (long offset = 0, flow_idx = 0; flow_idx < flow_list_len; ++flow_idx) {
     hd_flow const& flow = flow_list[flow_idx];
     const int packet_count = flow._packet_list.size();
     torch::Tensor flow_tensor = FlowToTensor(flow, window_option, device);
