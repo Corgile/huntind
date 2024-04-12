@@ -43,7 +43,7 @@ private:
   std::mutex mtxAccessToFlowTable;
   flow_map mFlowTable;
 
-  flow_queue mSendQueue;
+  flow_queue mEncodingQueue;
 
   std::vector<std::thread> mSendTasks;
   std::thread mCleanTask;
@@ -56,8 +56,7 @@ private:
 struct KafkaSink::Impl {
 
   void merge_to_existing_flow(parsed_vector&, KafkaSink*) const;
-  static torch::Tensor EncodeFlowList(const size_t& count, torch::Tensor const& slide_window, torch::Device& device);
-  static std::tuple<torch::Tensor, std::string> encode_flow_tensors(flow_vector& _flow_list, torch::Device& device);
+  static torch::Tensor encode_flow_tensors(flow_vector& _flow_list, torch::Device& device);
   static parsed_vector parse_raw_packets(const shared_raw_vec& _raw_list);
   static bool send_feature_to_kafka(const torch::Tensor& feature, const std::string& id);
   static void split_flows(shared_flow_vec const&, vec_of_flow_vec&, size_t const&);

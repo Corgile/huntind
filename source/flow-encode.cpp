@@ -5,6 +5,7 @@
 #include "hound/encode/flow-encode.hpp"
 
 #include <hound/common/macro.hpp>
+#include <hound/common/timer.hpp>
 #include <ylt/easylog.hpp>
 
 #include "hound/encode/transform.hpp"
@@ -51,6 +52,7 @@ transform::PacketToTensor(parsed_packet const& packet, long protocol, torch::Dev
 
 std::tuple<torch::Tensor, torch::Tensor>
 transform::BuildSlideWindow(flow_vector& flow_list, int width, torch::Device& device) {
+  hd::type::Timer<std::chrono::microseconds> t(__FUNCTION__);
   const auto index_option = torch::TensorOptions().dtype(torch::kInt32).device(device);
   const auto window_option = torch::TensorOptions().dtype(torch::kFloat32).device(device);
 
@@ -123,7 +125,6 @@ BatchEncode(const torch::Tensor& data, int64_t batch_size,
   const auto modelGuard = hd::global::model_pool.borrowModel();
 
   const auto model = modelGuard.get();
-  ELOG_WARN << "Try using cuda:" << device.index();
   model->to(device);
   model->eval();
 

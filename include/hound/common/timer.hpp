@@ -39,13 +39,26 @@ public:
       msg_buf(msg_buf),
       task_name(task), start(std::chrono::high_resolution_clock::now()) {}
 
+  [[maybe_unused]]
+  Timer(const std::string_view task)
+    : elapsed(mElapsed), msg_buf(msg_buf),
+      task_name(task), start(std::chrono::high_resolution_clock::now()) {}
+
   ~Timer() {
     auto const end = std::chrono::high_resolution_clock::now();
-    elapsed = std::chrono::duration_cast<T>(end - start).count();
-    msg_buf.append(task_name)
-      .append(" 耗时: ")
-      .append(std::to_string(elapsed))
-      .append(unit());
+    auto __elapsed = std::chrono::duration_cast<T>(end - start).count();
+    if (__elapsed == 0) __elapsed = 1;
+    std::string _msg;
+    _msg.append(task_name)
+        .append("耗时:")
+        .append(std::to_string(__elapsed))
+        .append(unit());
+    if (elapsed == std::numeric_limits<size_t>::max()) {
+      ELOG_ERROR << _msg;
+    } else {
+      elapsed = __elapsed;
+      msg_buf = _msg;
+    }
   }
 
 private:
@@ -53,7 +66,7 @@ private:
   std::string& msg_buf;
   std::string task_name;
   std::chrono::time_point<std::chrono::high_resolution_clock> start;
-  size_t mElapsed{};
+  size_t mElapsed{std::numeric_limits<size_t>::max()};
 
   static constexpr const char* unit() {
     if constexpr (std::is_same_v<T, std::chrono::seconds>) return " s";

@@ -24,7 +24,7 @@ struct parsed_packet;
 using parsed_vector = std::vector<parsed_packet>;
 
 struct parsed_packet final {
-  bool HasContent{true};
+
   uint16_t protocol;
   long mTsSec, mTSuSec, mCapLen;
   std::string mKey, mBlobData;
@@ -39,6 +39,8 @@ public:
   parsed_packet(parsed_packet&& other) noexcept;
   /// swap
   parsed_packet& operator=(parsed_packet other);
+
+  bool present() const;
 
   friend std::ostream& operator<<(std::ostream& os, parsed_packet const& packet) {
     os
@@ -74,6 +76,9 @@ private:
       mBlobData.append(padding, '\0');
     }
   }
+
+private:
+  bool HasContent{true};
 };
 } // hd
 

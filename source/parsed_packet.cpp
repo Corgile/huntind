@@ -90,3 +90,7 @@ hd::type::parsed_packet& hd::type::parsed_packet::operator=(parsed_packet other)
   swap(*this, other);
   return *this;
 }
+
+bool hd::type::parsed_packet::present() const {
+  return HasContent;
+}
