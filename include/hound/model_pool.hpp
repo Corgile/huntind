@@ -14,13 +14,38 @@
 namespace hd::type {
 class ScopeGuard;
 
+struct ModelWrapper {
+  ModelWrapper(torch::jit::Module* model, int device)
+    : model(model),
+      device(device) {}
+
+  ModelWrapper() = default;
+
+  ModelWrapper(ModelWrapper&& other) noexcept
+    : model{other.model},
+      device{other.device} {
+    other.model = nullptr;
+  }
+
+  ModelWrapper& operator=(ModelWrapper&& other) noexcept {
+    if (this == &other) return *this;
+    model = other.model;
+    device = other.device;
+    other.model = nullptr;
+    return *this;
+  }
+
+  torch::jit::Module* model;
+  int device;
+};
+
 class ModelPool {
 public:
   ModelPool() = default;
-  ModelPool(int size, const std::string& model_path);
+  ModelPool(const std::string& model_path);
 
   ScopeGuard borrowModel();
-  void returnModel(torch::jit::Module* model);
+  void returnModel(ModelWrapper model);
 
   ModelPool& operator=(ModelPool&& other) noexcept {
     if (this == &other) return *this;
@@ -33,20 +58,22 @@ public:
 private:
   std::mutex mtx;
   std::condition_variable cond;
-  std::queue<torch::jit::Module*> models;
+  std::queue<ModelWrapper> models;
 };
 
 class ScopeGuard {
 public:
-  ScopeGuard(hd::type::ModelPool& pool, torch::jit::Module* model);
+  ScopeGuard(hd::type::ModelPool& pool, ModelWrapper model);
 
   ~ScopeGuard();
 
-  torch::jit::Module* get() const;
+  torch::jit::Module* getModel() const;
+
+  int getDeviceId() const;
 
 private:
   hd::type::ModelPool& pool;
-  torch::jit::Module* model;
+  ModelWrapper modelWrapper;
 };
 } // type
 

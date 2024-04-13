@@ -25,11 +25,11 @@ torch::Tensor transform::z_score_norm(torch::Tensor const& data, torch::Device& 
 }
 
 torch::Tensor
-transform::FlowToTensor(hd_flow const& flow, torch::TensorOptions const& option, torch::Device& device) {
-  torch::Tensor flow_tensor = torch::empty({flow.count, 136}, option);
-  for (size_t packet_idx = 0; packet_idx < flow._packet_list.size(); ++packet_idx) {
-    const parsed_packet& packet = flow._packet_list[packet_idx];
-    flow_tensor[packet_idx] = PacketToTensor(packet, flow.protocol, device);
+transform::FlowToTensor(hd_flow& flow, torch::TensorOptions const& option, torch::Device& device, int width) {
+  const auto w = flow.count - flow.count % width;
+  torch::Tensor flow_tensor = torch::empty({w, 136}, option);
+  for (size_t _idx = 0; _idx < w; ++_idx) {
+    flow_tensor[_idx] = PacketToTensor(flow.at(_idx), flow.protocol, device);
   }
   return flow_tensor;
 }
@@ -53,38 +53,41 @@ transform::PacketToTensor(parsed_packet const& packet, long protocol, torch::Dev
 std::tuple<torch::Tensor, torch::Tensor>
 transform::BuildSlideWindow(flow_vector& flow_list, int width, torch::Device& device) {
   hd::type::Timer<std::chrono::microseconds> t(__FUNCTION__);
-  const auto index_option = torch::TensorOptions().dtype(torch::kInt32).device(device);
-  const auto window_option = torch::TensorOptions().dtype(torch::kFloat32).device(device);
+  const auto index_option = torch::TensorOptions().dtype(torch::kI32).device(device);
+  const auto window_option = torch::TensorOptions().dtype(torch::kF32).device(device);
 
-  long num_windows = [width](flow_vector const& vec) {
+  const long num_windows = [width](flow_vector const& vec) {
     long res = 0;
     std::ranges::for_each(vec, [&res, width](hd_flow const& flow) {
-      res += flow.count - width + 1;
+      res += flow.count / width;
     });
     return res;
   }(flow_list);
-  long flow_list_len = flow_list.size();
-  torch::Tensor index_list = torch::empty({flow_list_len, 2}, index_option);
-  torch::Tensor window_list = torch::empty({num_windows, (width - 1) * 136}, window_option);
+  const long flow_list_len = flow_list.size();
 
-  for (long offset = 0, flow_idx = 0; flow_idx < flow_list_len; ++flow_idx) {
-    hd_flow const& flow = flow_list[flow_idx];
-    const int packet_count = flow._packet_list.size();
-    torch::Tensor flow_tensor = FlowToTensor(flow, window_option, device);
-    for (int left = 0, right = width; right <= packet_count; ++left, ++right) {
-      window_list[offset + left] = flow_tensor.slice(0, left, right - 1).flatten();
-    }
-    long _window_count = offset + packet_count - width + 1;
-    index_list[flow_idx] = torch::tensor({offset, _window_count}, index_option);
-    offset = _window_count;
-  }
-  window_list = z_score_norm(window_list, device);
-  return std::make_tuple(window_list, index_list);
+  std::vector<torch::Tensor> index_list;
+  index_list.reserve(flow_list_len);
+
+  std::vector<torch::Tensor> window_list;
+  window_list.reserve(num_windows);
+
+  long offset = 0;
+  std::ranges::for_each(flow_list, [&](hd_flow& flow) {
+    const torch::Tensor flow_tensor = FlowToTensor(flow, window_option, device, width);
+    auto viewd = flow_tensor.reshape({-1, 5, 136}).slice(1, 0, 4).reshape({-1, 544});
+    window_list.emplace_back(viewd);
+    index_list.emplace_back(torch::tensor({offset, offset + viewd.size(0)}, index_option));
+    offset += viewd.size(0);
+  });
+
+  const auto input_window = torch::concat(window_list, 0).to(device);
+  const auto index_tensor = torch::stack(index_list, 0).to(device);
+  return std::make_tuple(z_score_norm(input_window, device), index_tensor);
 }
 
 torch::Tensor
 transform::MergeFlow(torch::Tensor const& predict_flows, torch::Tensor const& index_arr, torch::Device& device) {
-  auto options = torch::TensorOptions().dtype(torch::kFloat32).device(device);
+  const auto options = torch::TensorOptions().dtype(torch::kFloat32).device(device);
   torch::Tensor temp_tensors = torch::empty({index_arr.size(0), 128}, options);
   const auto temp = index_arr.cpu();
   auto ptr = temp.accessor<int32_t, 2>();
@@ -113,7 +116,7 @@ void print_tensor(torch::Tensor const& tensor) {
     std::cerr << "Error: Tensor is not of shape n x 2" << std::endl;
     return;
   }
-  auto temp = tensor.cpu();
+  const auto temp = tensor.cpu();
   auto tensor_accessor = temp.accessor<int32_t, 2>();  // 使用 float 类型和 2D 访问器
   for (int i = 0; i < std::min(10, (int)tensor_accessor.size(0)); ++i) {
     std::cout << "(" << tensor_accessor[i][0] << ", " << tensor_accessor[i][1] << ")\n";
@@ -121,19 +124,12 @@ void print_tensor(torch::Tensor const& tensor) {
 }
 
 torch::Tensor
-BatchEncode(const torch::Tensor& data, int64_t batch_size,
-            int64_t max_batch, bool stay_on_gpu, torch::Device& device) {
-  const auto modelGuard = hd::global::model_pool.borrowModel();
-
-  const auto model = modelGuard.get();
-  model->to(device);
-  model->eval();
-
+BatchEncode(torch::jit::Module* model, const torch::Tensor& data,
+            int64_t batch_size, int64_t max_batch, bool stay_on_gpu) {
   const int64_t data_size = data.size(0);
   std::vector<torch::Tensor> CPU_results, GPU_results;
   GPU_results.reserve(data_size / batch_size + 1);
   CPU_results.reserve(data_size / batch_size + 1);
-
   for (int64_t start = 0; start < data_size; start += batch_size) {
     auto end = std::min(start + batch_size, data_size);
     auto batch_data = data.slice(0, start, end);

@@ -3,6 +3,10 @@
 //
 #include "hound/type/hd_flow.hpp"
 
+hd::type::parsed_packet& hd::type::hd_flow::at(size_t idx) {
+  return _packet_list[idx];
+}
+
 hd::type::hd_flow::hd_flow(std::string _flowId, parsed_vector& _data) {
   protocol = static_cast<int>(_data[0].protocol);
   flowId = std::move(_flowId);

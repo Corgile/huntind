@@ -34,7 +34,7 @@ struct capture_option final {
   bool write_file{false};
   size_t poolSize{50};
   int32_t partition{1};
-  int32_t cudaId{4};
+  int32_t num_gpus{4};
   std::string brokers{};
   std::string topic{};
 

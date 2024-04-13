@@ -95,7 +95,7 @@ void hd::util::ParseOptions(capture_option& arg, int argc, char** argv) {
       break;
     case 'F': arg.filter = optarg;
       break;
-    case 'c': arg.cudaId = std::stoi(optarg);
+    case 'c': arg.num_gpus = std::stoi(optarg);
       break;
     case 'f': arg.fill_bit = std::stoi(optarg);
       break;

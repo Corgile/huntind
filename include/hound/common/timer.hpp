@@ -47,7 +47,6 @@ public:
   ~Timer() {
     auto const end = std::chrono::high_resolution_clock::now();
     auto __elapsed = std::chrono::duration_cast<T>(end - start).count();
-    if (__elapsed == 0) __elapsed = 1;
     std::string _msg;
     _msg.append(task_name)
         .append("耗时:")

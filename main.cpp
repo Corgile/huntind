@@ -10,7 +10,8 @@
 namespace hd::global {
 type::capture_option opt;
 ProducerPool producer_pool;
-type::ModelPool model_pool;
+// type::ModelPool model_pool;
+torch::jit::Module* model_;
 // torch::Device calc_device(torch::kCUDA, 5);
 #if defined(BENCHMARK)
 std::atomic<int32_t> packet_index = 0;
@@ -38,7 +39,10 @@ int main(const int argc, char* argv[]) {
   hd::util::ParseOptions(opt, argc, argv);
   // calc_device = torch::Device(torch::kCUDA, opt.cudaId);
   producer_pool = ProducerPool(opt.poolSize, opt.brokers);
-  model_pool = ModelPool(20, opt.model_path);
+  // model_pool = ModelPool(opt.model_path);
+  opt.num_gpus = torch::cuda::device_count();
+
+  model_ = new torch::jit::Module(torch::jit::load(opt.model_path));
   if (opt.stride == 1) opt.fill_bit = 0;
 
   static LiveParser _live_parser;
@@ -65,5 +69,6 @@ int main(const int argc, char* argv[]) {
     ELOG_ERROR << RED("发生一个torch内部错误");
   }
   ELOG_INFO << YELLOW("程序退出信号: ") << _signal;
+  delete model_;
   return 0;
 }

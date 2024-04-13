@@ -104,25 +104,21 @@ void hd::sink::KafkaSink::cleanUnwantedFlowTask() {
 int32_t hd::sink::KafkaSink::SendEncoding(shared_flow_vec const& long_flow_list) const {
   std::atomic_int32_t res{0};
   vec_of_flow_vec flow_splits;
-  this->pImpl_->split_flows(long_flow_list, flow_splits, 1500);
+  this->pImpl_->split_flows_by_count(long_flow_list, flow_splits, 1500);
   std::vector<std::thread> encoding_jobs;
   encoding_jobs.reserve(flow_splits.size());
   for (int i = 0; i < flow_splits.size(); ++i) {
-    const int _index = i % 6;
-    const int _f_index = i;
-    encoding_jobs.emplace_back([&flow_splits, _f_index, _index, this, &res] {
+    encoding_jobs.emplace_back(std::thread([&flow_splits, _f_index = i, this, &res] {
       auto& _flow_list = flow_splits.at(_f_index);
-      constexpr int _cuda[] = {0, 1, 2, 4, 5, 6, 7};//because 3 is down.
-      auto _device = torch::Device(torch::kCUDA, _cuda[_index]);
-      const auto feat = pImpl_->encode_flow_tensors(_flow_list, _device);
+      auto device = torch::Device(torch::kCUDA, _f_index % opt.num_gpus);
+      const auto feat = pImpl_->encode_flow_tensors(_flow_list, device);
       if (feat.equal(torch::empty({1}))) return;
-      /// 拼接flowId
       std::string ordered_flow_id;
       std::ranges::for_each(_flow_list, [&ordered_flow_id](const auto& _flow) {
         ordered_flow_id.append(_flow.flowId).append("\n");
       });
       res += this->pImpl_->send_feature_to_kafka(feat, ordered_flow_id);
-    });
+    }));
   }
   for (auto& _encoding_job : encoding_jobs) {
     _encoding_job.join();
@@ -163,14 +159,18 @@ void hd::sink::KafkaSink::Impl::merge_to_existing_flow(parsed_vector& _parsed_li
 }
 
 torch::Tensor
-hd::sink::KafkaSink::Impl::encode_flow_tensors(flow_vector& _flow_list, torch::Device& device) {
+hd::sink::KafkaSink::Impl::encode_flow_tensors(flow_vector& _flow_list,
+                                               torch::Device& device) {
   std::string msg;
   size_t _us{};
   torch::Tensor encodings;
   try {
+    ELOG_DEBUG << CYAN("尝试使用设备") << "CUDA:" << device.index();
+    hd::global::model_->to(device);
+    hd::global::model_->eval();
     auto [slide_windows, flow_index_arr] = transform::BuildSlideWindow(_flow_list, 5, device);
     Timer<std::chrono::microseconds> timer(_us, GREEN("编码"), msg);
-    const auto encoded_flows = BatchEncode(slide_windows, 8192, 500, false, device);
+    const auto encoded_flows = BatchEncode(hd::global::model_, slide_windows, 8192, 500, false);
     encodings = transform::MergeFlow(encoded_flows, flow_index_arr, device);
   } catch (c10::Error& e) {
     const std::string err_msg{e.msg()};
@@ -183,24 +183,31 @@ hd::sink::KafkaSink::Impl::encode_flow_tensors(flow_vector& _flow_list, torch::D
     ELOG_ERROR << RED("RunTimeErr: ") << "\x1B[31;1m" << err_msg.substr(0, pos) << "\x1B[0m";
     return torch::empty({1});
   }
+  if (_us == 0) _us = 1;
   const long count = _flow_list.size();
-  ELOG_DEBUG << CYAN("设备") << "CUDA:" << device.index() << ", "
-              << msg << GREEN(",流数量:") << count
+  ELOG_DEBUG << msg << GREEN(",流数量:") << count
               << ",本批次GPU编码 ≈ " << count * 1000000 / _us << " 条/s";
   return encodings.cpu();
 }
 
-void hd::sink::KafkaSink::Impl::split_flows(shared_flow_vec const& _list, vec_of_flow_vec& output, size_t const& by) {
+void hd::sink::KafkaSink::Impl::split_flows_by_count(
+  shared_flow_vec const& _list, vec_of_flow_vec& output, size_t const& count) {
   std::ranges::remove_if(*_list, [](const hd_flow& item) -> bool {
     return item.count < opt.min_packets;
   });
-  output.reserve(_list->size() / by + 1);
+  output.reserve(_list->size() / count + 1);
   while (not _list->empty()) {
-    const size_t current_batch_size = std::min(by, _list->size());
+    const size_t current_batch_size = std::min(count, _list->size());
     std::vector sub_vector(_list->begin(), _list->begin() + current_batch_size);
     output.emplace_back(std::move(sub_vector));
     _list->erase(_list->begin(), _list->begin() + current_batch_size);
   }
+}
+
+void hd::sink::KafkaSink::Impl::split_flows_to(shared_flow_vec const& _list,
+                                               vec_of_flow_vec& output,
+                                               size_t const& by) {
+// TODO
 }
 
 bool hd::sink::KafkaSink::Impl::send_feature_to_kafka(const torch::Tensor& feature, const std::string& id) {

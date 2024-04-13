@@ -18,7 +18,8 @@
 namespace hd::global {
 extern type::capture_option opt;
 extern ProducerPool producer_pool;
-extern type::ModelPool model_pool;
+// extern type::ModelPool model_pool;
+extern torch::jit::Module *model_;
 // extern torch::Device calc_device;
 #if defined(BENCHMARK)
 extern std::atomic<int32_t> packet_index;

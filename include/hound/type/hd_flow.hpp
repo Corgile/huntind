@@ -26,6 +26,8 @@ struct hd_flow {
   std::string flowId;
   parsed_vector _packet_list;
 
+  parsed_packet& at(size_t idx);
+
   hd_flow() = default;
 
   hd_flow(std::string _flowId, parsed_vector& _data);
