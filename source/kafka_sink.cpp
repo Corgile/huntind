@@ -20,6 +20,7 @@ hd::sink::KafkaSink::KafkaSink() {
   mSendTasks.emplace_back(std::thread(&KafkaSink::sendToKafkaTask, this));
   mSendTasks.emplace_back(std::thread(&KafkaSink::sendToKafkaTask, this));
   mCleanTask = std::thread(&KafkaSink::cleanUnwantedFlowTask, this);
+  pImpl_ = std::make_unique<Impl>(hd::global::opt.model_path);
 }
 
 hd::sink::KafkaSink::~KafkaSink() {
@@ -60,6 +61,7 @@ void hd::sink::KafkaSink::sendToKafkaTask() {
               << YELLOW(",剩余") << mEncodingQueue.size_approx();
     auto p = std::make_shared<flow_vector>(_vector);
     // auto count = this->SendEncoding(p);
+    /// TODO: 流消息在async函数内部积压，导致RAM爆掉, 然后进程被kill.
     auto count = std::async(std::launch::async, [&] { return this->SendEncoding(p); });
     ELOG_TRACE << "成功发送 " << count.get() << "条消息";
   }
@@ -105,11 +107,9 @@ int32_t hd::sink::KafkaSink::SendEncoding(shared_flow_vec const& long_flow_list)
   std::atomic_int32_t res{0};
   vec_of_flow_vec flow_splits;
   this->pImpl_->split_flows_by_count(long_flow_list, flow_splits, 1500);
-  std::vector<std::thread> encoding_jobs;
-  encoding_jobs.reserve(flow_splits.size());
   for (int i = 0; i < flow_splits.size(); ++i) {
-    encoding_jobs.emplace_back(std::thread([&flow_splits, _f_index = i, this, &res] {
-      auto& _flow_list = flow_splits.at(_f_index);
+    std::thread([&flow_splits, _f_index = i, this, &res] {
+      auto& _flow_list = flow_splits[_f_index];
       auto device = torch::Device(torch::kCUDA, _f_index % opt.num_gpus);
       const auto feat = pImpl_->encode_flow_tensors(_flow_list, device);
       if (feat.equal(torch::empty({1}))) return;
@@ -118,10 +118,7 @@ int32_t hd::sink::KafkaSink::SendEncoding(shared_flow_vec const& long_flow_list)
         ordered_flow_id.append(_flow.flowId).append("\n");
       });
       res += this->pImpl_->send_feature_to_kafka(feat, ordered_flow_id);
-    }));
-  }
-  for (auto& _encoding_job : encoding_jobs) {
-    _encoding_job.join();
+    }).join();
   }
   return res;
 }
@@ -160,17 +157,19 @@ void hd::sink::KafkaSink::Impl::merge_to_existing_flow(parsed_vector& _parsed_li
 
 torch::Tensor
 hd::sink::KafkaSink::Impl::encode_flow_tensors(flow_vector& _flow_list,
-                                               torch::Device& device) {
+                                               torch::Device& device) const {
   std::string msg;
   size_t _us{};
   torch::Tensor encodings;
+  int width = 10;
   try {
     ELOG_DEBUG << CYAN("尝试使用设备") << "CUDA:" << device.index();
-    hd::global::model_->to(device);
-    hd::global::model_->eval();
-    auto [slide_windows, flow_index_arr] = transform::BuildSlideWindow(_flow_list, 5, device);
     Timer<std::chrono::microseconds> timer(_us, GREEN("编码"), msg);
-    const auto encoded_flows = BatchEncode(hd::global::model_, slide_windows, 8192, 500, false);
+    /// TODO: encode_flow_tensors函数中， BuildSlideWindow 函数占了50%~98%的时间
+    auto [slide_windows, flow_index_arr] = transform::BuildSlideWindow(_flow_list, width, device);
+    model_->to(device);
+    model_->eval();
+    const auto encoded_flows = BatchEncode(model_, slide_windows, 8192, 500, false);
     encodings = transform::MergeFlow(encoded_flows, flow_index_arr, device);
   } catch (c10::Error& e) {
     const std::string err_msg{e.msg()};
