@@ -53,7 +53,7 @@ public:
         .append(std::to_string(__elapsed))
         .append(unit());
     if (elapsed == std::numeric_limits<size_t>::max()) {
-      ELOG_ERROR << _msg;
+      ELOG_INFO << _msg;
     } else {
       elapsed = __elapsed;
       msg_buf = _msg;

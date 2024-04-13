@@ -57,7 +57,7 @@ void hd::sink::KafkaSink::sendToKafkaTask() {
       _vector.emplace_back(flow_buffer);
     }
     if (_vector.empty()) continue;
-    ELOG_WARN << YELLOW("编码队列") << RED("↓") << _vector.size()
+    ELOG_INFO << YELLOW("编码队列") << RED("↓") << _vector.size()
               << YELLOW(",剩余") << mEncodingQueue.size_approx();
     auto p = std::make_shared<flow_vector>(_vector);
     // auto count = this->SendEncoding(p);
@@ -164,11 +164,11 @@ hd::sink::KafkaSink::Impl::encode_flow_tensors(flow_vector& _flow_list,
   int width = 10;
   try {
     ELOG_DEBUG << CYAN("尝试使用设备") << "CUDA:" << device.index();
-    Timer<std::chrono::microseconds> timer(_us, GREEN("编码"), msg);
     /// TODO: encode_flow_tensors函数中， BuildSlideWindow 函数占了50%~98%的时间
     auto [slide_windows, flow_index_arr] = transform::BuildSlideWindow(_flow_list, width, device);
     model_->to(device);
     model_->eval();
+    Timer<std::chrono::microseconds> timer(_us, GREEN("编码"), msg);
     const auto encoded_flows = BatchEncode(model_, slide_windows, 8192, 500, false);
     encodings = transform::MergeFlow(encoded_flows, flow_index_arr, device);
   } catch (c10::Error& e) {
@@ -184,7 +184,7 @@ hd::sink::KafkaSink::Impl::encode_flow_tensors(flow_vector& _flow_list,
   }
   if (_us == 0) _us = 1;
   const long count = _flow_list.size();
-  ELOG_DEBUG << msg << GREEN(",流数量:") << count
+  ELOG_INFO << msg << GREEN(",流数量:") << count
               << ",本批次GPU编码 ≈ " << count * 1000000 / _us << " 条/s";
   return encodings.cpu();
 }

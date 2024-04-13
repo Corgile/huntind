@@ -33,9 +33,8 @@ int main(const int argc, char* argv[]) {
   using namespace hd::global;
   using namespace hd::type;
 
-  easylog::set_min_severity(easylog::Severity::DEBUG);
   easylog::set_async(true);
-  easylog::init_log(easylog::Severity::DEBUG, "log", true, true, 8192'000, 4);
+  easylog::init_log(easylog::Severity::INFO, "log", true, true, 8192'000, 4);
 
   hd::util::ParseOptions(opt, argc, argv);
   // calc_device = torch::Device(torch::kCUDA, opt.cudaId);
