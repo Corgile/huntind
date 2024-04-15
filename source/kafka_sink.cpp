@@ -57,7 +57,7 @@ void hd::sink::KafkaSink::sendToKafkaTask() {
     }
     if (_vector.empty()) continue;
     mNumBlockedFlows.fetch_add(_vector.size());
-    ELOG_INFO << GREEN("新增：") << _vector.size() << RED("排队：") << mNumBlockedFlows.load();
+    ELOG_INFO << GREEN("新增:") << _vector.size() << RED("排队:") << mNumBlockedFlows.load();
     auto p = std::make_shared<flow_vector>(_vector);
     auto _encoding = std::async(std::launch::async, [&] { return this->EncodeFlowList(p); });
 
