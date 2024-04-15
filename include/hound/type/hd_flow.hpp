@@ -13,7 +13,6 @@
 #include <hound/type/parsed_packet.hpp>
 
 namespace hd::type {
-
 template <typename T>
 concept OutStream = requires(T& os, const std::string& s)
 {
@@ -60,7 +59,7 @@ struct hd_flow {
 
 using flow_queue = moodycamel::ConcurrentQueue<hd_flow>;
 using flow_vector = std::vector<hd_flow>;
-
+using flow_vec_ref = std::vector<std::reference_wrapper<hd_flow>>;
 } // type
 
 #endif //HOUND_HD_FLOW_HPP

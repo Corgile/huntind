@@ -32,9 +32,10 @@ static void quit_guard(const int max_, int& ctrlc) {
 int main(const int argc, char* argv[]) {
   using namespace hd::global;
   using namespace hd::type;
+  using namespace hd::util::literals;
 
   easylog::set_async(true);
-  easylog::init_log(easylog::Severity::INFO, "log", true, true, 8192'000, 4);
+  easylog::init_log(easylog::Severity::INFO, "log", true, true, 10_MB, 4);
 
   hd::util::ParseOptions(opt, argc, argv);
   // calc_device = torch::Device(torch::kCUDA, opt.cudaId);

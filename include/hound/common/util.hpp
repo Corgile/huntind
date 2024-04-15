@@ -96,5 +96,23 @@ static long timestampNow() {
   return std::chrono::duration_cast<TimeUnit>(duration).count();
 }
 }
+
+namespace literals {
+constexpr unsigned long long operator""_B(unsigned long long bytes) {
+  return bytes;
+}
+
+constexpr unsigned long long operator""_KB(unsigned long long kilobytes) {
+  return kilobytes << 10;
+}
+
+constexpr unsigned long long operator""_MB(unsigned long long megabytes) {
+  return megabytes << 20;
+}
+
+constexpr unsigned long long operator""_GB(unsigned long long gigabytes) {
+  return gigabytes << 30;
+}
+}
 } // namespace hd::util
 #endif //HOUND_UTILS_HPP

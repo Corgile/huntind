@@ -1,14 +1,13 @@
 // ReSharper disable CppParameterMayBeConstPtrOrRef
 // ReSharper disable CppParameterMayBeConst
+#include <future>
 #include <iostream>
-
-#include "hound/encode/flow-encode.hpp"
 
 #include <hound/common/macro.hpp>
 #include <hound/common/timer.hpp>
-#include <ylt/easylog.hpp>
 
-#include "hound/encode/transform.hpp"
+#include <hound/encode/flow-encode.hpp>
+#include <hound/encode/transform.hpp>
 
 #pragma region transform
 
@@ -38,8 +37,7 @@ torch::Tensor
 transform::PacketToTensor(parsed_packet const& packet, long protocol, torch::Device& device) {
   constexpr int n_digits = 148;
   const auto _blob_data = (void*)packet.mBlobData.data();
-  const auto options = torch::TensorOptions().dtype(torch::kU8);
-  const auto _ft = torch::from_blob(_blob_data, {n_digits}, options).to(device);
+  const auto _ft = torch::from_blob(_blob_data, {n_digits}, torch::kU8).to(device);
   long _end = protocol == IPPROTO_TCP ? 60 : 120;
   long _start = protocol == IPPROTO_TCP ? 64 : 124;
   return torch::concat(
@@ -50,19 +48,59 @@ transform::PacketToTensor(parsed_packet const& packet, long protocol, torch::Dev
     }, 0);
 }
 
-std::tuple<torch::Tensor, torch::Tensor>
-transform::BuildSlideWindow(flow_vector& flow_list, int width, torch::Device& device) {
-  // hd::type::Timer<std::chrono::microseconds> t(__FUNCTION__);
+std::pair<torch::Tensor, torch::Tensor>
+transform::BuildSlideWindowConcurrently(flow_vec_ref const& flow_list, int width, torch::Device& device) {
   const auto index_option = torch::TensorOptions().dtype(torch::kI32).device(device);
   const auto window_option = torch::TensorOptions().dtype(torch::kF32).device(device);
 
-  const long num_windows = [width](flow_vector const& vec) {
-    long res = 0;
-    std::ranges::for_each(vec, [&res, width](hd_flow const& flow) {
-      res += flow.count / width;
-    });
-    return res;
-  }(flow_list);
+  const int batch_count = std::thread::hardware_concurrency();
+  const int data_size = flow_list.size();
+  const int batch_size = (flow_list.size() + batch_count - 1) / batch_count;
+
+  using future_type = std::pair<std::vector<torch::Tensor>, std::vector<torch::Tensor>>;
+  std::vector<std::future<future_type>> futures;
+  futures.reserve(batch_count);
+  for (int i = 0; i < data_size; i += batch_size) {
+    futures.emplace_back(std::async(std::launch::async, [&, start=i, end=std::min(i + batch_size, data_size)] {
+      std::vector<torch::Tensor> _window_list;
+      std::vector<torch::Tensor> _index_list;
+      _window_list.reserve(batch_size);
+      _index_list.reserve(batch_size);
+
+      long offset = 0;
+      for (int j = start; j < end; ++j) {
+        hd_flow& flow = flow_list[j];
+        torch::Tensor flow_tensor = FlowToTensor(flow, window_option, device, width);
+        auto _windows = flow_tensor.reshape({-1, 5, 136}).slice(1, 0, 4).reshape({-1, 544});
+        _window_list.emplace_back(_windows);
+        _index_list.emplace_back(torch::tensor({offset, offset + _windows.size(0)}, index_option));
+        offset += _windows.size(0);
+      }
+      return std::make_pair(_window_list, _index_list);
+    }));
+  }
+  std::vector<torch::Tensor> combined_window_list;
+  std::vector<torch::Tensor> combined_index_list;
+  for (auto& future : futures) {
+    auto [window_list, index_list] = future.get();
+    combined_window_list.insert(combined_window_list.end(), window_list.begin(), window_list.end());
+    combined_index_list.insert(combined_index_list.end(), index_list.begin(), index_list.end());
+  }
+  const auto input_window = torch::concat(combined_window_list, 0).to(device);
+  const auto index_tensor = torch::stack(combined_index_list, 0).to(device);
+  return std::make_pair(z_score_norm(input_window, device), index_tensor);
+}
+
+std::tuple<torch::Tensor, torch::Tensor>
+transform::BuildSlideWindow(flow_vec_ref const& flow_list, int width, torch::Device& device) {
+  hd::type::Timer<std::chrono::microseconds> t(__FUNCTION__);
+  const auto index_option = torch::TensorOptions().dtype(torch::kI32).device(device);
+  const auto window_option = torch::TensorOptions().dtype(torch::kF32).device(device);
+
+  long num_windows = 0;
+  std::ranges::for_each(flow_list, [&num_windows, width](hd_flow const& flow) {
+    num_windows += flow.count / width;
+  });
   const long flow_list_len = flow_list.size();
 
   std::vector<torch::Tensor> index_list;

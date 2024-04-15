@@ -37,7 +37,10 @@ private:
   /// \brief 将<code>mFlowTable</code>里面超过 timeout 但是数量不足的flow删掉
   void cleanUnwantedFlowTask();
 
-  int32_t SendEncoding(shared_flow_vec const& long_flow_list) const;
+  // [[deprecated]]
+  // int32_t SendEncoding(shared_flow_vec const& long_flow_list) const;
+
+  torch::Tensor EncodeFlowList(const shared_flow_vec& long_flow_list);
 
 private:
   std::mutex mtxAccessToFlowTable;
@@ -49,6 +52,7 @@ private:
   std::thread mCleanTask;
 
   std::atomic_bool mIsRunning{true};
+  std::atomic_size_t mNumBlockedFlows{0};
   struct Impl;
   std::unique_ptr<Impl> pImpl_;
 };
@@ -71,11 +75,10 @@ struct KafkaSink::Impl {
   }
 
   void merge_to_existing_flow(parsed_vector&, KafkaSink*) const;
-  torch::Tensor encode_flow_tensors(flow_vector& _flow_list, torch::Device& device) const;
+  torch::Tensor encode_flow_tensors(flow_vec_ref const& _flow_list, torch::Device& device) const;
   static parsed_vector parse_raw_packets(const shared_raw_vec& _raw_list);
   static bool send_feature_to_kafka(const torch::Tensor& feature, const std::string& id);
   static void split_flows_by_count(shared_flow_vec const&, vec_of_flow_vec&, size_t const&);
-  static void split_flows_to(shared_flow_vec const&, vec_of_flow_vec&, size_t const&);
 
   ~Impl() {
     delete model_;

@@ -5,7 +5,6 @@
 #ifndef HOUND_TRANSFORM_HPP
 #define HOUND_TRANSFORM_HPP
 
-#include <torch/torch.h>
 #include "hound/type/hd_flow.hpp"
 
 namespace transform {
@@ -41,7 +40,11 @@ PacketToTensor(parsed_packet const& packet, long protocol, torch::Device& device
 /// @param device cuda设备
 /// @return tuple<Tensor, Tensor> (slide_windows, window_indices)
 std::tuple<torch::Tensor, torch::Tensor>
-BuildSlideWindow(flow_vector& flow_list, int width, torch::Device& device);
+BuildSlideWindow(flow_vec_ref const& flow_list, int width, torch::Device& device);
+
+std::pair<torch::Tensor, torch::Tensor>
+BuildSlideWindowConcurrently(flow_vec_ref const& flow_list, int width, torch::Device& device);
+
 
 /// @param predict_flows 输入需要被分类的flow
 /// @param index_arr 滑动窗口下标
