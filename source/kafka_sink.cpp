@@ -14,13 +14,19 @@
 
 hd::sink::KafkaSink::KafkaSink() {
   ELOG_DEBUG << "创建 KafkaSink";
-  mSendTasks.reserve(4);
-  mSendTasks.emplace_back(std::thread(&KafkaSink::sendToKafkaTask, this));
-  mSendTasks.emplace_back(std::thread(&KafkaSink::sendToKafkaTask, this));
-  mSendTasks.emplace_back(std::thread(&KafkaSink::sendToKafkaTask, this));
-  mSendTasks.emplace_back(std::thread(&KafkaSink::sendToKafkaTask, this));
+  mSendTasks.reserve(opt.num_gpus);
+  for (int i = 0; i < opt.num_gpus; ++i) {
+    mSendTasks.emplace_back(std::thread([this, ith = i] {
+      const auto mdl = torch::jit::load(hd::global::opt.model_path);
+      torch::Device device(torch::kCUDA, ith);
+      auto model = new torch::jit::Module(mdl);
+      model->to(device);
+      model->eval();
+      this->KafkaSink::sendToKafkaTask(model, device);
+    }));
+  }
   mCleanTask = std::thread(&KafkaSink::cleanUnwantedFlowTask, this);
-  pImpl_ = std::make_unique<Impl>(hd::global::opt.model_path);
+  pImpl_ = std::make_unique<Impl>();
 }
 
 hd::sink::KafkaSink::~KafkaSink() {
@@ -46,7 +52,7 @@ void hd::sink::KafkaSink::MakeFlow(const shared_raw_vec& _raw_list) {
   this->pImpl_->merge_to_existing_flow(_parsed_list, this);
 }
 
-void hd::sink::KafkaSink::sendToKafkaTask() {
+void hd::sink::KafkaSink::sendToKafkaTask(torch::jit::Module* model, torch::Device& device) {
   while (mIsRunning) {
     if (not mIsRunning) break;
     flow_vector _vector{};
@@ -59,7 +65,7 @@ void hd::sink::KafkaSink::sendToKafkaTask() {
     mNumBlockedFlows.fetch_add(_vector.size());
     ELOG_INFO << GREEN("新增:") << _vector.size() << RED("排队:") << mNumBlockedFlows.load();
     auto p = std::make_shared<flow_vector>(_vector);
-    auto _encoding = std::async(std::launch::async, [&] { return this->EncodeFlowList(p); });
+    auto _encoding = std::async(std::launch::async, [&] { return this->EncodeFlowList(p, model, device); });
 
     std::vector<std::string> ordered_id;
     ordered_id.reserve(_vector.size());
@@ -118,7 +124,8 @@ int32_t hd::sink::KafkaSink::SendEncoding(shared_flow_vec const& long_flow_list)
 }
 #endif
 
-torch::Tensor hd::sink::KafkaSink::EncodeFlowList(const shared_flow_vec& long_flow_list) {
+torch::Tensor hd::sink::KafkaSink::EncodeFlowList(const shared_flow_vec& long_flow_list, torch::jit::Module* model,
+                                                  torch::Device& device) {
   std::mutex r;
   const int data_size = long_flow_list->size();
   constexpr int batch_size = 3000;
@@ -129,12 +136,11 @@ torch::Tensor hd::sink::KafkaSink::EncodeFlowList(const shared_flow_vec& long_fl
   threads.reserve(batch_count);
 
   for (size_t i = 0; i < data_size; i += batch_size) {
-    threads.emplace_back([f_index = i, &long_flow_list, batch_size, this, &r, &result] {
-      auto device = torch::Device(torch::kCUDA, f_index % opt.num_gpus);
+    threads.emplace_back([f_index = i, &long_flow_list, batch_size, this, &r, &result, &device, &model] {
       const auto _it_start = long_flow_list->begin() + f_index;
       const auto _it___end = std::min(_it_start + batch_size, long_flow_list->end());
       const flow_vec_ref subvec(_it_start, _it___end);
-      const auto feat = pImpl_->encode_flow_tensors(subvec, device);
+      const auto feat = pImpl_->encode_flow_tensors(subvec, device, model);
       mNumBlockedFlows -= subvec.size();
       std::scoped_lock lock(r);
       result.emplace_back(feat);
@@ -178,19 +184,18 @@ void hd::sink::KafkaSink::Impl::merge_to_existing_flow(parsed_vector& _parsed_li
 }
 
 torch::Tensor
-hd::sink::KafkaSink::Impl::encode_flow_tensors(flow_vec_ref const& _flow_list, torch::Device& device) const {
+hd::sink::KafkaSink::Impl::encode_flow_tensors(flow_vec_ref const& _flow_list, torch::Device& device,
+                                               torch::jit::Module* model) {
   std::string msg;
   size_t _us{};
   torch::Tensor encodings;
   constexpr int width = 5;
   try {
-    model_->to(device);
-    model_->eval();
     ELOG_DEBUG << CYAN("尝试使用设备") << "CUDA:" << device.index();
     /// TODO: encode_flow_tensors函数中， BuildSlideWindow 函数占了50%~98%的时间
     auto [slide_windows, flow_index_arr] = transform::BuildSlideWindowConcurrently(_flow_list, width, device);
     Timer<std::chrono::microseconds> timer(_us, CYAN("<<<编码"), msg);
-    const auto encoded_flows = BatchEncode(model_, slide_windows, 8192, 500, false);
+    const auto encoded_flows = BatchEncode(model, slide_windows, 8192, 500, false);
     encodings = transform::MergeFlow(encoded_flows, flow_index_arr, device);
   } catch (c10::Error& e) {
     const std::string err_msg{e.msg()};
