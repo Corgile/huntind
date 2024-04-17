@@ -24,11 +24,14 @@ public:
   }
 
   ~ManagedProducer() {
+    easylog::set_console(true);
     stop_polling_ = true;
     if (polling_thread_.joinable()) {
+      ELOG_INFO << "polling_thread_";
       polling_thread_.join();
     }
     if (not producer_) return;
+    ELOG_INFO << "producer_->flush(10'000)";
     const auto err_code = producer_->flush(10'000);
     if (err_code not_eq RdKafka::ERR_NO_ERROR) [[unlikely]] {
       ELOG_ERROR << "error code: " << err_code;

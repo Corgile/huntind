@@ -13,15 +13,10 @@
 
 #include <hound/type/capture_option.hpp>
 #include <hound/sink/kafka/producer_pool.hpp>
-#include <hound/model_pool.hpp>
 
 namespace hd::global {
 extern type::capture_option opt;
 extern ProducerPool producer_pool;
-// extern type::ModelPool model_pool;
-extern torch::jit::Module *pModel_;
-extern torch::jit::Module model_;
-// extern torch::Device calc_device;
 #if defined(BENCHMARK)
 extern std::atomic<int32_t> packet_index;
 extern std::atomic<int32_t> num_captured_packet;

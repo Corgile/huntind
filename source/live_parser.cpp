@@ -49,8 +49,7 @@ void hd::type::LiveParser::consumer_job() {
   hd::sink::KafkaSink sink;
   while (is_running) {
     std::unique_lock lock(this->mQueueLock);
-    this->cv_consumer.wait(lock, [this] { return not this->mPacketQueue.empty() or not is_running; });
-    if (not is_running) break;
+    this->cv_consumer.wait(lock, [this] { return not mPacketQueue.empty() or not is_running; });
     if (this->mPacketQueue.empty()) continue;
     raw_vector _swapped_buff;
     _swapped_buff.reserve(mPacketQueue.size());
@@ -63,7 +62,7 @@ void hd::type::LiveParser::consumer_job() {
       sink.MakeFlow(shared_buff);
     });
   }
-  ELOG_INFO << YELLOW("发送消息任务 [") << std::this_thread::get_id() << YELLOW("] 结束");
+  ELOG_DEBUG << YELLOW("发送消息任务 [") << std::this_thread::get_id() << YELLOW("] 结束");
 }
 
 void hd::type::LiveParser::stopCapture() {
@@ -78,6 +77,7 @@ hd::type::LiveParser::~LiveParser() {
   for (std::thread& item : mConsumerTasks) {
     item.detach();
   }
+  cv_consumer.notify_all();
   /// 先等待worker线程消费队列直至为空
   while (not mPacketQueue.empty()) {
     std::this_thread::sleep_for(10ms);

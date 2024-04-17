@@ -11,10 +11,6 @@
 namespace hd::global {
 type::capture_option opt;
 ProducerPool producer_pool;
-// type::ModelPool model_pool;
-torch::jit::Module* pModel_;
-torch::jit::Module model_;
-// torch::Device calc_device(torch::kCUDA, 5);
 #if defined(BENCHMARK)
 std::atomic<int32_t> packet_index = 0;
 std::atomic<int32_t> num_captured_packet = 0;
@@ -41,7 +37,6 @@ int main(const int argc, char* argv[]) {
   producer_pool = ProducerPool(opt.poolSize, opt.brokers);
   // model_pool = ModelPool(opt.model_path);
   opt.num_gpus = torch::cuda::device_count();
-  model_ = torch::jit::load(opt.model_path);
   if (opt.stride == 1) opt.fill_bit = 0;
 
   static LiveParser _live_parser;
@@ -64,7 +59,7 @@ int main(const int argc, char* argv[]) {
   std::signal(SIGTERM, handler);
   std::signal(SIGKILL, handler);
 
-  ELOG_INFO << "进程：" RED("PID[") << pid << RED("] PPID[") << ppid << CYAN("已开始运行。 你可以通过 tail -f ./log 查看日志。");
+  ELOG_INFO << "进程：" RED("PID") << pid << RED(" PPID") << ppid << CYAN("已开始运行。 你可以通过 tail -f ./log 查看日志。");
   easylog::init_log(easylog::Severity::INFO, "log", true, false, 10_MB, 4);
   try {
     _live_parser.startCapture();

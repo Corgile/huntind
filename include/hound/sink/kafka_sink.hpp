@@ -10,6 +10,7 @@
 #include <hound/type/hd_flow.hpp>
 #include <hound/type/parsed_packet.hpp>
 #include <ylt/util/concurrentqueue.h>
+#include <hound/interruptible_sleep.hpp>
 
 namespace hd::sink {
 using namespace hd::type;
@@ -48,11 +49,12 @@ private:
 
   flow_queue mEncodingQueue;
 
-  std::vector<std::thread> mSendTasks;
+  std::vector<std::thread> mLoopTasks;
   std::thread mCleanTask;
 
   std::atomic_bool mIsRunning{true};
   std::atomic_size_t mNumBlockedFlows{0};
+  InterruptibleSleep mSleeper;
   struct Impl;
   std::unique_ptr<Impl> pImpl_;
 };

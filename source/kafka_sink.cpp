@@ -2,7 +2,6 @@
 // Created by brian on 3/13/24.
 //
 #include <future>
-#include <ranges>
 #include <algorithm>
 
 #include <hound/common/util.hpp>
@@ -13,9 +12,9 @@
 #include <torch/script.h>
 
 hd::sink::KafkaSink::KafkaSink() {
-  mSendTasks.reserve(opt.num_gpus);
+  mLoopTasks.reserve(opt.num_gpus);
   for (int i = 0; i < opt.num_gpus; ++i) {
-    mSendTasks.emplace_back(std::thread([this, ith = i] {
+    mLoopTasks.emplace_back(std::thread([this, ith = i] {
       const auto mdl = torch::jit::load(hd::global::opt.model_path);
       torch::Device device(torch::kCUDA, ith);
       auto model = new torch::jit::Module(mdl);
@@ -30,10 +29,11 @@ hd::sink::KafkaSink::KafkaSink() {
 }
 
 hd::sink::KafkaSink::~KafkaSink() {
-  for (auto& _send_task : mSendTasks) {
-    _send_task.detach();
+  for (auto& _task : mLoopTasks) {
+    _task.detach();
   }
-  mCleanTask.detach();
+  mSleeper.stop_sleep();
+  mCleanTask.join();
   while (mEncodingQueue.size_approx() > 0) {
     std::this_thread::sleep_for(10ms);
   }
@@ -94,7 +94,7 @@ void hd::sink::KafkaSink::LoopTask(torch::jit::Module* model, torch::Device& dev
         for (auto& _job : _jobs) _job.join();
       });
   }
-  ELOG_TRACE << WHITE("函数 void LoopTask() 结束");
+  ELOG_INFO << CYAN("编码任务[") << std::this_thread::get_id() << CYAN("] 结束");
 }
 
 torch::Tensor hd::sink::KafkaSink::EncodeFlowList(const shared_flow_vec& long_flow_list, torch::jit::Module* model,
@@ -223,9 +223,8 @@ bool hd::sink::KafkaSink::Impl::send_feature_to_kafka(const torch::Tensor& featu
 }
 
 void hd::sink::KafkaSink::cleanUnwantedFlowTask() {
-  while (mIsRunning) {
-    std::this_thread::sleep_for(60s);
-    if (not mIsRunning) break;
+  do {
+    mSleeper.sleep_for(60s);
     std::scoped_lock lock(mtxAccessToFlowTable);
     int count = 0, transferred = 0;
     for (flow_iter it = mFlowTable.begin(); it not_eq mFlowTable.end();) {
@@ -251,7 +250,7 @@ void hd::sink::KafkaSink::cleanUnwantedFlowTask() {
                  << BLUE(",Table")
                  << mFlowTable.size();
     }
-  }
+  } while (mIsRunning);
   ELOG_TRACE << WHITE("函数 void cleanUnwantedFlowTask() 结束");
 }
 
