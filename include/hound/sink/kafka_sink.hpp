@@ -5,6 +5,7 @@
 #ifndef HOUND_KAFKA_HPP
 #define HOUND_KAFKA_HPP
 
+#include <future>
 #include <torch/torch.h>
 
 #include <hound/type/hd_flow.hpp>
@@ -54,13 +55,16 @@ private:
 
   std::atomic_bool mIsRunning{true};
   std::atomic_size_t mNumBlockedFlows{0};
+
+  std::future<void> encoding_guard;
+
   InterruptibleSleep mSleeper;
   struct Impl;
   std::unique_ptr<Impl> pImpl_;
 };
 
 struct KafkaSink::Impl {
-  void merge_to_existing_flow(parsed_vector&, KafkaSink*) const;
+  static void merge_to_existing_flow(parsed_vector&, KafkaSink*);
   static torch::Tensor encode_flow_tensors(flow_vec_ref const& _flow_list, torch::Device& device,
                                            torch::jit::Module* model);
   static parsed_vector parse_raw_packets(const shared_raw_vec& _raw_list);

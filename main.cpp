@@ -1,12 +1,9 @@
 #include <csignal>
+#include <unistd.h>
 #include <hound/common/util.hpp>
 #include <hound/common/global.hpp>
-
 #include <hound/live_parser.hpp>
 #include <hound/sink/kafka/producer_pool.hpp>
-
-#include <c10/util/Exception.h>
-#include <unistd.h> // 包含getpid()
 
 namespace hd::global {
 type::capture_option opt;
@@ -30,26 +27,25 @@ int main(const int argc, char* argv[]) {
   using namespace hd::global;
   using namespace hd::type;
   using namespace hd::util::literals;
+  using namespace easylog;
 
-  easylog::set_async(true);
   hd::util::ParseOptions(opt, argc, argv);
-  // calc_device = torch::Device(torch::kCUDA, opt.cudaId);
-  producer_pool = ProducerPool(opt.poolSize, opt.brokers);
-  // model_pool = ModelPool(opt.model_path);
   opt.num_gpus = torch::cuda::device_count();
-  if (opt.stride == 1) opt.fill_bit = 0;
+  producer_pool = ProducerPool(opt.poolSize, opt.brokers);
 
-  static LiveParser _live_parser;
   static int ctrlc = 0, max_ = 5;
   static int _signal{0};
   static int pid = getpid();
   static int ppid = getppid();
+
+  /// _live_parser的初始化一定要比easylog::logger：：init_log（）后
+  static LiveParser* _live_parser{nullptr};
   auto handler = [](int const sig) -> void {
-    easylog::set_console(true);
+    set_console(true);
     std::printf("\x1b[2D");
     ELOG_INFO << RED("PID: [") << pid << RED("],PPID: [") << ppid << RED("] 正在退出...");
-    if (_live_parser.is_running) {
-      _live_parser.stopCapture();
+    if (_live_parser->isRunning()) {
+      _live_parser->stopCapture();
     }
     quit_guard(max_, ctrlc);
     _signal = sig;
@@ -59,14 +55,17 @@ int main(const int argc, char* argv[]) {
   std::signal(SIGTERM, handler);
   std::signal(SIGKILL, handler);
 
-  ELOG_INFO << "进程：" RED("PID") << pid << RED(" PPID") << ppid << CYAN("已开始运行。 你可以通过 tail -f ./log 查看日志。");
-  easylog::init_log(easylog::Severity::INFO, "log", true, false, 10_MB, 4);
-  try {
-    _live_parser.startCapture();
-  } catch (const c10::Error&) {
-    ELOG_ERROR << RED("发生一个torch内部错误");
-  }
-  easylog::set_console(true);
-  ELOG_INFO << YELLOW("程序退出信号: ") << hd::util::signal_msgs[_signal];
+  ELOG_INFO << CYAN("程序正在运行中");
+  ELOG_INFO << RED("PID: ") << pid << RED(", PPID： ") << ppid;
+  ELOG_INFO << "日志： tail -f ./log";
+
+  /// _live_parser的初始化一定要比easylog::logger：：init_log（）后
+  init_log(Severity::DEBUG, "log", true, false, 10_MB, 4);
+  _live_parser = new LiveParser();
+  _live_parser->startCapture();
+  set_console(true);
+  delete _live_parser;
+  ELOG_INFO << YELLOW("程序结束状态: ") << hd::util::signal_msgs[_signal];
+  ELOG_INFO << RED("处理GPU/Kafka队列中剩余的数据, 请等待....");
   return 0;
 }

@@ -111,7 +111,6 @@ public:
     producers_.emplace_back(std::move(producer));
   }
 
-public:
   ProducerPool& operator=(ProducerPool&& other) noexcept {
     if (this == &other) return *this;
     producers_ = std::move(other.producers_);
@@ -126,7 +125,6 @@ private:
     return std::make_unique<hd::sink::ManagedProducer>(RdKafka::Producer::create(kafkaConf_.get(), errstr));
   }
 
-private:
   KafkaConf kafkaConf_;
   std::vector<hd::sink::ProducerManager> producers_;
 

@@ -22,9 +22,7 @@ public:
   void stopCapture();
 
   ~LiveParser();
-
-public:
-  std::atomic<bool> is_running{true};
+  bool isRunning() const;
 
 private:
   static void liveHandler(u_char*, const pcap_pkthdr*, const u_char*);
@@ -32,6 +30,7 @@ private:
   void consumer_job();
 
 private:
+  std::atomic<bool> is_running{true};
   pcap_handle_t mHandle{nullptr};
   raw_vector mPacketQueue;
   std::condition_variable cv_producer;      // 生产者条件变量

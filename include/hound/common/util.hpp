@@ -89,6 +89,7 @@ inline std::unordered_map<int, std::string_view> signal_msgs {
   {	8, "SIGFPE: Erroneous arithmetic operation."},
   {11, "SIGSEGV: Invalid access to storage."},
   {15, "SIGTERM: Termination request."},
+  {	0, "NORMAL: Normal exit, no error(s)."},
   {	1, "SIGHUP: Hangup."},
   {	3, "SIGQUIT: Quit."},
   {	5, "SIGTRAP: Trace/breakpoint trap."},
