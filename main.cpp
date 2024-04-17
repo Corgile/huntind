@@ -60,7 +60,7 @@ int main(const int argc, char* argv[]) {
   ELOG_INFO << "日志： tail -f ./log";
 
   /// _live_parser的初始化一定要比easylog::logger：：init_log（）后
-  init_log(Severity::DEBUG, "log", true, false, 10_MB, 4);
+  init_log(Severity::INFO, "log", true, false, 10_MB, 4);
   _live_parser = new LiveParser();
   _live_parser->startCapture();
   set_console(true);
