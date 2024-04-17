@@ -40,7 +40,6 @@ struct KafkaConf {
     delete conf;
   }
 
-public:
   KafkaConf(const KafkaConf& other) = delete;
   KafkaConf& operator=(const KafkaConf& other) = delete;
 
@@ -82,7 +81,9 @@ private:
 
 class ProducerPool {
 public:
-  ProducerPool() = default;
+  ProducerPool() {
+    easylog::logger<>::instance();
+  }
 
   ProducerPool(size_t poolSize, const std::string& brokers): kafkaConf_(brokers) {
     std::string errstr;
@@ -111,7 +112,6 @@ public:
     producers_.emplace_back(std::move(producer));
   }
 
-public:
   ProducerPool& operator=(ProducerPool&& other) noexcept {
     if (this == &other) return *this;
     producers_ = std::move(other.producers_);
@@ -126,7 +126,6 @@ private:
     return std::make_unique<hd::sink::ManagedProducer>(RdKafka::Producer::create(kafkaConf_.get(), errstr));
   }
 
-private:
   KafkaConf kafkaConf_;
   std::vector<hd::sink::ProducerManager> producers_;
 

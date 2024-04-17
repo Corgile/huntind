@@ -38,9 +38,6 @@ struct capture_option final {
   std::string brokers{};
   std::string topic{};
 
-public:
-  void print() const;
-
   ~capture_option();
 };
 }

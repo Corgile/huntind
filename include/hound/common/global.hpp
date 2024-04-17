@@ -17,6 +17,7 @@
 namespace hd::global {
 extern type::capture_option opt;
 extern ProducerPool producer_pool;
+extern std::atomic_size_t NumBlockedFlows;
 #if defined(BENCHMARK)
 extern std::atomic<int32_t> packet_index;
 extern std::atomic<int32_t> num_captured_packet;

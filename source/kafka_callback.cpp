@@ -1,17 +1,29 @@
 //
 // Created by brian on 3/13/24.
 //
-#include "hound/sink/kafka/callback.hpp"
-#include "hound/common/global.hpp"
-#include "hound/common/macro.hpp"
+#include <hound/sink/kafka/callback.hpp>
+#include <hound/common/global.hpp>
+#include <hound/common/macro.hpp>
+
+MyReportCB::MyReportCB() {
+  easylog::logger<>::instance();
+}
+
+MyEventCB::MyEventCB() {
+  easylog::logger<>::instance();
+}
+MyPartitionCB::MyPartitionCB() {
+  easylog::logger<>::instance();
+}
 
 int32_t MyPartitionCB::partitioner_cb(RdKafka::Topic const* topic,
                                       std::string const* key,
                                       int32_t partition_cnt,
                                       void* msg_opaque) {
+  easylog::logger<>::instance();
   const int32_t partition = last_partition++ % partition_cnt;
   last_partition = partition;
-  ELOG_DEBUG << "分区: " << partition;
+  ELOG_DEBUG << "消息将会发送到分区: " << partition;
   return partition;
 }
 
@@ -25,6 +37,7 @@ void MyReportCB::dr_cb(RdKafka::Message& message) {
 }
 
 void MyEventCB::event_cb(RdKafka::Event& event) {
+  easylog::logger<>::instance();
   switch (event.type()) {
   case RdKafka::Event::EVENT_ERROR:
     ELOG_ERROR << RED("错误: ") << event.str();

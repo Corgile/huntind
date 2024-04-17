@@ -1,16 +1,14 @@
 #include <csignal>
+#include <unistd.h>
 #include <hound/common/util.hpp>
 #include <hound/common/global.hpp>
-
 #include <hound/live_parser.hpp>
 #include <hound/sink/kafka/producer_pool.hpp>
-
-#include <c10/util/Exception.h>
-#include <unistd.h> // 包含getpid()
 
 namespace hd::global {
 type::capture_option opt;
 ProducerPool producer_pool;
+std::atomic_size_t NumBlockedFlows{0};
 #if defined(BENCHMARK)
 std::atomic<int32_t> packet_index = 0;
 std::atomic<int32_t> num_captured_packet = 0;
@@ -20,53 +18,68 @@ std::atomic<int32_t> num_written_csv = 0;
 #endif
 }
 
+using namespace hd::global;
+using namespace hd::type;
+using namespace hd::util::literals;
+using namespace easylog;
+
+static int pid{0};
+static int ppid{0};
+static int _signal{0};
+
+static LiveParser* _live_parser{nullptr};
+
 static void quit_guard(const int max_, int& ctrlc) {
-  if (++ctrlc >= max_) {
-    exit(EXIT_FAILURE);
+  if (ctrlc++ <= 1) return;
+  ELOG_INFO << RED("PID: [") << pid << RED("],PPID: [") << ppid << RED("] 后续事务进行中, 耐心等待！");
+  if (ctrlc >= max_) {
+    ELOG_INFO << YELLOW("程序结束状态: ") << hd::util::signal_msgs[_signal];
+    exit(EXIT_SUCCESS);
   }
 }
 
-int main(const int argc, char* argv[]) {
-  using namespace hd::global;
-  using namespace hd::type;
-  using namespace hd::util::literals;
-
-  easylog::set_async(true);
-  hd::util::ParseOptions(opt, argc, argv);
-  // calc_device = torch::Device(torch::kCUDA, opt.cudaId);
-  producer_pool = ProducerPool(opt.poolSize, opt.brokers);
-  // model_pool = ModelPool(opt.model_path);
-  opt.num_gpus = torch::cuda::device_count();
-  if (opt.stride == 1) opt.fill_bit = 0;
-
-  static LiveParser _live_parser;
-  static int ctrlc = 0, max_ = 5;
-  static int _signal{0};
-  static int pid = getpid();
-  static int ppid = getppid();
+static void register_handler() {
+  static int ctrlc = 0, patience = 10;
   auto handler = [](int const sig) -> void {
-    easylog::set_console(true);
     std::printf("\x1b[2D");
-    ELOG_INFO << RED("PID: [") << pid << RED("],PPID: [") << ppid << RED("] 正在退出...");
-    if (_live_parser.is_running) {
-      _live_parser.stopCapture();
+    set_console(true);
+    if (ctrlc == 0) {
+      ELOG_INFO << RED("PID: [") << pid << RED("]  PPID: [") << ppid << RED("] 正在退出...");
     }
-    quit_guard(max_, ctrlc);
+    if (_live_parser->isRunning()) {
+      _live_parser->stopCapture();
+    }
+    quit_guard(patience, ctrlc);
     _signal = sig;
   };
   std::signal(SIGSTOP, handler);
   std::signal(SIGINT, handler);
   std::signal(SIGTERM, handler);
   std::signal(SIGKILL, handler);
+}
 
-  ELOG_INFO << "进程：" RED("PID") << pid << RED(" PPID") << ppid << CYAN("已开始运行。 你可以通过 tail -f ./log 查看日志。");
-  easylog::init_log(easylog::Severity::INFO, "log", true, false, 10_MB, 4);
-  try {
-    _live_parser.startCapture();
-  } catch (const c10::Error&) {
-    ELOG_ERROR << RED("发生一个torch内部错误");
-  }
-  easylog::set_console(true);
-  ELOG_INFO << YELLOW("程序退出信号: ") << hd::util::signal_msgs[_signal];
+static void init_parameters(const int argc, char* argv[]) {
+  set_console(true);
+  hd::util::ParseOptions(opt, argc, argv);
+  pid = getpid();
+  ppid = getppid();
+  ELOG_INFO << CYAN("程序正在运行中: ") << RED("PID: ") << pid << RED(" PPID： ") << ppid;
+  ELOG_INFO << "日志： tail -f ./log";
+  opt.num_gpus = torch::cuda::device_count();
+  producer_pool = ProducerPool(opt.poolSize, opt.brokers);
+}
+
+inline void main_loop() {
+  set_console(false);
+  _live_parser = new LiveParser();
+  _live_parser->startCapture();
+  delete _live_parser;
+}
+
+int main(const int argc, char* argv[]) {
+  init_log(Severity::INFO, "log", true, false, 10_MB, 4, true);
+  register_handler();
+  init_parameters(argc, argv);
+  main_loop();
   return 0;
 }

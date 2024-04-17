@@ -5,6 +5,7 @@
 #ifndef HOUND_KAFKA_HPP
 #define HOUND_KAFKA_HPP
 
+#include <future>
 #include <torch/torch.h>
 
 #include <hound/type/hd_flow.hpp>
@@ -41,7 +42,7 @@ private:
   // [[deprecated]]
   // int32_t SendEncoding(shared_flow_vec const& long_flow_list) const;
 
-  torch::Tensor EncodeFlowList(const shared_flow_vec& long_flow_list, torch::jit::Module* model, torch::Device& device);
+  torch::Tensor EncodeFlowList(const shared_flow_vec& long_flow_list, torch::jit::Module* model, torch::Device& device) const;
 
 private:
   std::mutex mtxAccessToFlowTable;
@@ -53,16 +54,15 @@ private:
   std::thread mCleanTask;
 
   std::atomic_bool mIsRunning{true};
-  std::atomic_size_t mNumBlockedFlows{0};
+
   InterruptibleSleep mSleeper;
   struct Impl;
   std::unique_ptr<Impl> pImpl_;
 };
 
 struct KafkaSink::Impl {
-  void merge_to_existing_flow(parsed_vector&, KafkaSink*) const;
-  static torch::Tensor encode_flow_tensors(flow_vec_ref const& _flow_list, torch::Device& device,
-                                           torch::jit::Module* model);
+  static void merge_to_existing_flow(parsed_vector&, KafkaSink*);
+  static torch::Tensor encode_flow_tensors(flow_vec_ref& _flow_list, torch::Device& device, torch::jit::Module* model);
   static parsed_vector parse_raw_packets(const shared_raw_vec& _raw_list);
   static bool send_feature_to_kafka(const torch::Tensor& feature, const std::string& id);
   static void split_flows_by_count(shared_flow_vec const&, vec_of_flow_vec&, size_t const&);

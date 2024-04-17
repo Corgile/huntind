@@ -11,7 +11,7 @@
 #include <string_view>
 
 namespace hd ::type {
-template<typename T = std::chrono::milliseconds>
+template <typename T = std::chrono::milliseconds>
 struct Timer {
 public:
   [[maybe_unused]]
@@ -31,7 +31,7 @@ public:
   Timer(size_t& _elapsed, std::string& msg_buf)
     : elapsed(_elapsed),
       msg_buf(msg_buf),
-      task_name("计时任务"), start(std::chrono::high_resolution_clock::now()) {}
+      task_name(""), start(std::chrono::high_resolution_clock::now()) {}
 
   [[maybe_unused]]
   Timer(size_t& _elapsed, const std::string_view task, std::string& msg_buf)
@@ -48,10 +48,10 @@ public:
     auto const end = std::chrono::high_resolution_clock::now();
     auto __elapsed = std::chrono::duration_cast<T>(end - start).count();
     std::string _msg;
+    auto m = std::to_string(__elapsed);
     _msg.append(task_name)
-        .append("耗时:")
-        .append(std::to_string(__elapsed))
-        .append(unit());
+        .append(m).append(unit())
+        .append(8 - m.size(), ' ');
     if (elapsed == std::numeric_limits<size_t>::max()) {
       ELOG_INFO << _msg;
     } else {
@@ -68,10 +68,10 @@ private:
   size_t mElapsed{std::numeric_limits<size_t>::max()};
 
   static constexpr const char* unit() {
-    if constexpr (std::is_same_v<T, std::chrono::seconds>) return " s";
-    if constexpr (std::is_same_v<T, std::chrono::milliseconds>) return " ms";
-    if constexpr (std::is_same_v<T, std::chrono::microseconds>) return " us";
-    if constexpr (std::is_same_v<T, std::chrono::nanoseconds>) return " ns";
+    if constexpr (std::is_same_v<T, std::chrono::seconds>) return "s";
+    if constexpr (std::is_same_v<T, std::chrono::milliseconds>) return "ms";
+    if constexpr (std::is_same_v<T, std::chrono::microseconds>) return "us";
+    if constexpr (std::is_same_v<T, std::chrono::nanoseconds>) return "ns";
     return {};
   }
 };
