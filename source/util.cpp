@@ -140,6 +140,7 @@ void hd::util::ParseOptions(capture_option& arg, int argc, char** argv) {
         exit(EXIT_FAILURE);
       }
       arg.workers = j;
+      ELOG_INFO << "Callback 线程: " << j;
       break;
     case 'S': arg.stride = std::stoi(optarg);
       if (arg.stride & arg.stride - 1 or arg.stride == 0) {

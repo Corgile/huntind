@@ -22,7 +22,6 @@ struct KafkaConf {
     conf->set("partitioner_cb", partitioner, errstr);
   https://blog.csdn.net/sinat_36304757/article/details/106688581
     conf->set("batch.num.messages", "2000", errstr);
-    conf->set("enable.auto.commit", "true", errstr);
     conf->set("queue.buffering.max.ms", "1000", errstr);
     conf->set("queue.buffering.max.messages", "1000000", errstr);
     conf->set("queue.buffering.max.kbytes", "2097152", errstr);

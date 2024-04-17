@@ -13,7 +13,6 @@
 #include <torch/script.h>
 
 hd::sink::KafkaSink::KafkaSink() {
-  ELOG_DEBUG << "创建 KafkaSink";
   mSendTasks.reserve(opt.num_gpus);
   for (int i = 0; i < opt.num_gpus; ++i) {
     mSendTasks.emplace_back(std::thread([this, ith = i] {

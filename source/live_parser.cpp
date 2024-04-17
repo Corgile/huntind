@@ -70,7 +70,7 @@ void hd::type::LiveParser::stopCapture() {
   pcap_breakloop(mHandle.get());
   is_running = false;
   cv_consumer.notify_all();
-  ELOG_INFO << CYAN("准备退出.., 不过要先处理剩下的数据包....");
+  ELOG_INFO << YELLOW("正在处理剩下的数据, 请等待几秒....");
 }
 
 hd::type::LiveParser::~LiveParser() {

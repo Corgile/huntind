@@ -33,10 +33,10 @@ void MyEventCB::event_cb(RdKafka::Event& event) {
     ELOG_TRACE << BLUE("EVENT_STATS: ") << event.str();
     break;
   case RdKafka::Event::EVENT_LOG:
-    ELOG_TRACE << BLUE("EVENT_LOG: ") << event.fac();
+    ELOG_WARN << BLUE("EVENT_LOG: ") << event.fac() << event.str();
     break;
   case RdKafka::Event::EVENT_THROTTLE:
-    ELOG_TRACE << RED("EVENT_THROTTLE: ") << event.broker_name();
+    ELOG_TRACE << RED("EVENT_THROTTLE: ") << event.broker_name() << event.str();
     break;
   }
 }

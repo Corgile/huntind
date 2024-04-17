@@ -65,7 +65,38 @@ inline option longopts[] = {
   {"verbose",     no_argument,     nullptr, 'V'},
   {nullptr,       0,               nullptr, 0}
 };
-static char const* shortopts = "c:J:P:W:F:f:N:E:D:S:L:R:p:CTVhIM:m:B:b:x:y:";
+
+inline std::unordered_map<int, std::string_view> signal_msgs {
+  {23, "SIGURG: Urgent data is available at a socket."},
+  {19, "SIGSTOP: Stop, unblockable."},
+  {20, "SIGTSTP: Keyboard stop."},
+  {18, "SIGCONT: Continue."},
+  {17, "SIGCHLD: Child terminated or stopped."},
+  {21, "SIGTTIN: Background read from control terminal."},
+  {22, "SIGTTOU: Background write to control terminal."},
+  {29, "SIGPOLL: Pollable event occurred (System V)."},
+  {25, "SIGXFSZ: File size limit exceeded."},
+  {24, "SIGXCPU: CPU time limit exceeded."},
+  {26, "SIGVTALR: Virtual timer expired."},
+  {27, "SIGPROF: Profiling timer expired."},
+  {16,"SIGSTKFLT: Stack fault (obsolete)."},
+  {30,"SIGPWR: Power failure imminent."},
+  { 7,"SIGBUS: Bus error."},
+  {31,"SIGSYS: Bad system call."},
+  {	2, "SIGINT: Interactive attention signal."},
+  {	4, "SIGILL: Illegal instruction."},
+  {	6, "SIGABRT: Abnormal termination."},
+  {	8, "SIGFPE: Erroneous arithmetic operation."},
+  {11, "SIGSEGV: Invalid access to storage."},
+  {15, "SIGTERM: Termination request."},
+  {	1, "SIGHUP: Hangup."},
+  {	3, "SIGQUIT: Quit."},
+  {	5, "SIGTRAP: Trace/breakpoint trap."},
+  {	9, "SIGKILL: Killed."},
+  {13, "SIGPIPE: Broken pipe."},
+  {14, "SIGALRM: Alarm clock."},
+};
+static auto shortopts = "c:J:P:W:F:f:N:E:D:S:L:R:p:CTVhIM:m:B:b:x:y:";
 // "K:"
 
 #pragma endregion ShortAndLongOptions //@format:on

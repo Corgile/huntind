@@ -6,6 +6,7 @@
 #include <hound/sink/kafka/producer_pool.hpp>
 
 #include <c10/util/Exception.h>
+#include <unistd.h> // 包含getpid()
 
 namespace hd::global {
 type::capture_option opt;
@@ -35,8 +36,6 @@ int main(const int argc, char* argv[]) {
   using namespace hd::util::literals;
 
   easylog::set_async(true);
-  easylog::init_log(easylog::Severity::INFO, "log", true, true, 10_MB, 4);
-
   hd::util::ParseOptions(opt, argc, argv);
   // calc_device = torch::Device(torch::kCUDA, opt.cudaId);
   producer_pool = ProducerPool(opt.poolSize, opt.brokers);
@@ -49,8 +48,9 @@ int main(const int argc, char* argv[]) {
   static int ctrlc = 0, max_ = 5;
   static int _signal{0};
   auto handler = [](int const sig) -> void {
+    easylog::set_console(true);
     std::printf("\x1b[2D");
-    ELOG_INFO << RED("正在退出...");
+    ELOG_INFO << RED("PID: [") << getpid() << RED("],PPID: [") << getppid() << RED("] 正在退出...");
     if (_live_parser.is_running) {
       _live_parser.stopCapture();
     }
@@ -62,12 +62,14 @@ int main(const int argc, char* argv[]) {
   std::signal(SIGTERM, handler);
   std::signal(SIGKILL, handler);
 
-  ELOG_INFO << GREEN("已经开始捕获流消息....");
+  ELOG_INFO << CYAN("程序已经开始运行。 你可以通过 tail -f ./log 查看日志。");
+  easylog::init_log(easylog::Severity::INFO, "log", true, false, 10_MB, 4);
   try {
     _live_parser.startCapture();
   } catch (const c10::Error&) {
     ELOG_ERROR << RED("发生一个torch内部错误");
   }
-  ELOG_INFO << YELLOW("程序退出信号: ") << _signal;
+  easylog::set_console(true);
+  ELOG_INFO << YELLOW("程序退出信号: ") << hd::util::signal_msgs[_signal];
   return 0;
 }
