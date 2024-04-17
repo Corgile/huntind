@@ -32,7 +32,7 @@ public:
   ~KafkaSink();
 
 private:
-  void sendToKafkaTask(torch::jit::Module* model, torch::Device& device);
+  void LoopTask(torch::jit::Module* model, torch::Device& device);
 
   /// \brief 将<code>mFlowTable</code>里面超过 timeout 但是数量不足的flow删掉
   void cleanUnwantedFlowTask();

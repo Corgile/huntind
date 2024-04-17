@@ -11,6 +11,7 @@
 
 struct KafkaConf {
   KafkaConf() = default;
+
   KafkaConf(const std::string& brokers) {
     conf = RdKafka::Conf::create(RdKafka::Conf::CONF_GLOBAL);
     partitioner = new MyPartitionCB();
@@ -19,12 +20,20 @@ struct KafkaConf {
     std::string errstr;
     conf->set("bootstrap.servers", brokers, errstr);
     conf->set("partitioner_cb", partitioner, errstr);
+  https://blog.csdn.net/sinat_36304757/article/details/106688581
+    conf->set("batch.num.messages", "2000", errstr);
+    conf->set("enable.auto.commit", "true", errstr);
+    conf->set("queue.buffering.max.ms", "1000", errstr);
+    conf->set("queue.buffering.max.messages", "1000000", errstr);
+    conf->set("queue.buffering.max.kbytes", "2097152", errstr);
     conf->set("dr_cb", delivery_cb, errstr);
     conf->set("event_cb", event_cb, errstr);
   }
+
   RdKafka::Conf* get() const {
     return conf;
   }
+
   ~KafkaConf() {
     delete event_cb;
     delete delivery_cb;
@@ -33,22 +42,6 @@ struct KafkaConf {
   }
 
 public:
-  /*
-  KafkaConf(const KafkaConf& other)
-    : conf{other.conf},
-      partitioner{other.partitioner},
-      delivery_cb{other.delivery_cb},
-      event_cb{other.event_cb} {}
-
-  KafkaConf& operator=(const KafkaConf& other) {
-    if (this == &other) return *this;
-    conf = other.conf;
-    partitioner = other.partitioner;
-    delivery_cb = other.delivery_cb;
-    event_cb = other.event_cb;
-    return *this;
-  }
-  */
   KafkaConf(const KafkaConf& other) = delete;
   KafkaConf& operator=(const KafkaConf& other) = delete;
 
@@ -82,10 +75,10 @@ public:
   }
 
 private:
-  RdKafka::Conf* conf;
-  MyPartitionCB* partitioner;
-  MyReportCB* delivery_cb;
-  MyEventCB* event_cb;
+  RdKafka::Conf* conf{nullptr};
+  MyPartitionCB* partitioner{nullptr};
+  MyReportCB* delivery_cb{nullptr};
+  MyEventCB* event_cb{nullptr};
 };
 
 class ProducerPool {
@@ -96,15 +89,15 @@ public:
     std::string errstr;
     producers_.reserve(poolSize);
     for (size_t i = 0; i < poolSize; ++i) {
-      const auto producer = RdKafka::Producer::create(kafkaConf_.get(), errstr);
-      if (!producer) {
+      const auto _producer = RdKafka::Producer::create(kafkaConf_.get(), errstr);;
+      if (not _producer) {
         throw std::runtime_error("Failed to create producer: " + errstr);
       }
-      producers_.emplace_back(hd::sink::ProducerUp(producer));
+      producers_.emplace_back(new hd::sink::ManagedProducer(_producer));
     }
   }
 
-  hd::sink::ProducerUp acquire() {
+  hd::sink::ProducerManager acquire() {
     std::scoped_lock lock(mutex_);
     if (producers_.empty()) {
       return generate();
@@ -114,7 +107,7 @@ public:
     return producer;
   }
 
-  void collect(hd::sink::ProducerUp producer) {
+  void collect(hd::sink::ProducerManager producer) {
     std::scoped_lock lock(mutex_);
     producers_.emplace_back(std::move(producer));
   }
@@ -128,15 +121,16 @@ public:
   }
 
 private:
-  hd::sink::ProducerUp generate() {
+  hd::sink::ProducerManager generate() {
     std::string errstr;
     producers_.reserve(producers_.size() + 1);
-    return hd::sink::ProducerUp(RdKafka::Producer::create(kafkaConf_.get(), errstr));
+    return std::make_unique<hd::sink::ManagedProducer>(RdKafka::Producer::create(kafkaConf_.get(), errstr));
   }
 
 private:
   KafkaConf kafkaConf_;
-  std::vector<hd::sink::ProducerUp> producers_;
+  std::vector<hd::sink::ProducerManager> producers_;
+
   std::mutex mutex_;
 };
 

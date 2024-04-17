@@ -11,22 +11,42 @@
 #include <hound/common/macro.hpp>
 #include <hound/no_producer_err.hpp>
 
-namespace RdKafka {
-struct Deleter {
-  void operator()(Producer* ptr) const {
-    if (not ptr) return;
-    auto err_code = ptr->flush(10'000);
-    if (err_code not_eq ERR_NO_ERROR) [[unlikely]] {
+namespace hd::sink {
+class ManagedProducer {
+public:
+  ManagedProducer(RdKafka::Producer* producer)
+    : producer_(producer), stop_polling_(false) {
+    polling_thread_ = std::thread([this] {
+      while (not stop_polling_) {
+        producer_->poll(1000);
+      }
+    });
+  }
+
+  ~ManagedProducer() {
+    stop_polling_ = true;
+    if (polling_thread_.joinable()) {
+      polling_thread_.join();
+    }
+    if (not producer_) return;
+    const auto err_code = producer_->flush(10'000);
+    if (err_code not_eq RdKafka::ERR_NO_ERROR) [[unlikely]] {
       ELOG_ERROR << "error code: " << err_code;
     }
-    delete ptr;
+    delete producer_;
   }
+
+  RdKafka::Producer* get() const { return producer_; }
+
+  bool isValid() const { return producer_ not_eq nullptr; }
+
+private:
+  RdKafka::Producer* producer_;
+  std::thread polling_thread_;
+  std::atomic<bool> stop_polling_;
 };
-}//RdKafka
 
-namespace hd::sink {
-using ProducerUp = std::unique_ptr<RdKafka::Producer, RdKafka::Deleter>;
+using ProducerManager = std::unique_ptr<ManagedProducer>;
 }
-
 
 #endif //HD_AFKA_PRODUCER_HPP

@@ -22,7 +22,8 @@ hd::sink::KafkaSink::KafkaSink() {
       auto model = new torch::jit::Module(mdl);
       model->to(device);
       model->eval();
-      this->KafkaSink::sendToKafkaTask(model, device);
+      this->KafkaSink::LoopTask(model, device);
+      delete model;
     }));
   }
   mCleanTask = std::thread(&KafkaSink::cleanUnwantedFlowTask, this);
@@ -52,9 +53,8 @@ void hd::sink::KafkaSink::MakeFlow(const shared_raw_vec& _raw_list) {
   this->pImpl_->merge_to_existing_flow(_parsed_list, this);
 }
 
-void hd::sink::KafkaSink::sendToKafkaTask(torch::jit::Module* model, torch::Device& device) {
+void hd::sink::KafkaSink::LoopTask(torch::jit::Module* model, torch::Device& device) {
   while (mIsRunning) {
-    if (not mIsRunning) break;
     flow_vector _vector{};
     hd_flow flow_buffer;
     _vector.reserve(mEncodingQueue.size_approx());
@@ -64,18 +64,16 @@ void hd::sink::KafkaSink::sendToKafkaTask(torch::jit::Module* model, torch::Devi
     if (_vector.empty()) continue;
     mNumBlockedFlows.fetch_add(_vector.size());
     ELOG_INFO << GREEN("新增:") << _vector.size() << RED("排队:") << mNumBlockedFlows.load();
-    auto p = std::make_shared<flow_vector>(_vector);
-    auto _encoding = std::async(std::launch::async, [&] { return this->EncodeFlowList(p, model, device); });
-
     std::vector<std::string> ordered_id;
     ordered_id.reserve(_vector.size());
     std::ranges::for_each(_vector, [&ordered_id](const auto& _flow) {
       ordered_id.emplace_back(_flow.flowId);
     });
 
+    auto p = std::make_shared<flow_vector>(_vector);
+    auto _encoding = std::async(std::launch::async, [&] { return this->EncodeFlowList(p, model, device); });
     auto _count = std::async(
-      std::launch::async,
-      [this, encoding = std::move(_encoding.get()), _all_id = std::move(ordered_id)] {
+      std::launch::async, [this, encoding = std::move(_encoding.get()), _all_id = std::move(ordered_id)] {
         constexpr int batch_size = 1500;
         const int data_size = encoding.size(0);
         // assert(_all_id.size() == data_size);// 不一致说明EncodeFlowList内部错了
@@ -83,46 +81,22 @@ void hd::sink::KafkaSink::sendToKafkaTask(torch::jit::Module* model, torch::Devi
         std::vector<std::thread> _jobs;
         _jobs.reserve(batch_count);
         for (int i = 0; i < batch_count; i++) {
-          _jobs.emplace_back(
-            [&, this, offset = i * batch_size]() mutable {
-              int const curr_batch = std::min(batch_size, data_size - offset);
-              std::string id;
-              const auto feat_ = encoding.narrow(0, offset, curr_batch);
-              for (int j = 0; j < curr_batch; ++j) {
-                id.append(_all_id[offset + j]).append("\n");
-              }
-              this->pImpl_->send_feature_to_kafka(feat_, id);
+          _jobs.emplace_back([&, this, offset = i * batch_size]() mutable {
+            std::string id;
+            const auto curr_batch = std::min(batch_size, data_size - offset);
+            const auto feat_ = encoding.narrow(0, offset, curr_batch);
+            for (int j = 0; j < curr_batch; ++j) {
+              // TODO: id太长，应适当压缩
+              id.append(_all_id[offset + j]).append("\n");
             }
-          );
+            this->pImpl_->send_feature_to_kafka(feat_, id);
+          });
         }
         for (auto& _job : _jobs) _job.join();
       });
   }
-  ELOG_TRACE << WHITE("函数 void sendToKafkaTask() 结束");
+  ELOG_TRACE << WHITE("函数 void LoopTask() 结束");
 }
-#ifdef HD_DEPRECATED
-// ReSharper disable once CppDFAUnreachableFunctionCal
-int32_t hd::sink::KafkaSink::SendEncoding(shared_flow_vec const& long_flow_list) const {
-  std::atomic_int32_t res{0};
-  vec_of_flow_vec flow_splits;
-  this->pImpl_->split_flows_by_count(long_flow_list, flow_splits, 1500);
-  for (int i = 0; i < flow_splits.size(); ++i) {
-    std::thread([&flow_splits, _f_index = i, this, &res] {
-      auto& _flow_list = flow_splits[_f_index];
-      auto device = torch::Device(torch::kCUDA, _f_index % opt.num_gpus);
-      const auto feat = pImpl_->encode_flow_tensors(_flow_list, device);
-
-      if (feat.equal(torch::empty({1}))) return;
-      std::string ordered_flow_id;
-      std::ranges::for_each(_flow_list, [&ordered_flow_id](const auto& _flow) {
-        ordered_flow_id.append(_flow.flowId).append("\n");
-      });
-      res += this->pImpl_->send_feature_to_kafka(feat, ordered_flow_id);
-    }).join();
-  }
-  return res;
-}
-#endif
 
 torch::Tensor hd::sink::KafkaSink::EncodeFlowList(const shared_flow_vec& long_flow_list, torch::jit::Module* model,
                                                   torch::Device& device) {
@@ -201,16 +175,16 @@ hd::sink::KafkaSink::Impl::encode_flow_tensors(flow_vec_ref const& _flow_list, t
     const std::string err_msg{e.msg()};
     const auto pos = err_msg.find_first_of('\n');
     ELOG_ERROR << "\x1B[31;1m" << err_msg.substr(0, pos) << "\x1B[0m";
-    return torch::empty({1, 128});
+    return torch::rand({1, 128});
   } catch (std::runtime_error& e) {
     const std::string err_msg{e.what()};
     const auto pos = err_msg.find_first_of('\n');
     ELOG_ERROR << RED("RunTimeErr: ") << "\x1B[31;1m" << err_msg.substr(0, pos) << "\x1B[0m";
-    return torch::empty({1, 128});
+    return torch::rand({1, 128});
   }
   const long count = _flow_list.size();
   ELOG_INFO << msg << GREEN(",流数量:") << count
-              << ",本批次GPU编码 ≈ " << count * 1000000 / _us << " 条/s";
+              << ",GPU编码 ≈ " << count * 1000000 / _us << " 条/s";
   return encodings.cpu();
 }
 
@@ -230,8 +204,8 @@ void hd::sink::KafkaSink::Impl::split_flows_by_count(
 
 bool hd::sink::KafkaSink::Impl::send_feature_to_kafka(const torch::Tensor& feature, const std::string& id) {
   const auto feature_byte_count = feature.itemsize() * feature.numel();
-  ProducerUp producer = producer_pool.acquire();
-  const auto errcode = producer->produce(
+  ProducerManager _manager = producer_pool.acquire();
+  const auto errcode = _manager->get()->produce(
     opt.topic,
     // 不指定分区, 由patiotionerCB指定。
     RdKafka::Topic::PARTITION_UA,
@@ -242,11 +216,10 @@ bool hd::sink::KafkaSink::Impl::send_feature_to_kafka(const torch::Tensor& featu
     id.data(),// need compress
     id.length(), 0, nullptr);
   if (errcode == RdKafka::ERR_REQUEST_TIMED_OUT) {
-    const auto err_code = producer->flush(5'000);
+    const auto err_code = _manager->get()->flush(5'000);
     ELOG_ERROR << err_code << " error(s)";
   }
-  producer_pool.collect(std::move(producer));
-  ELOG_TRACE << CYAN("发送OK");
+  producer_pool.collect(std::move(_manager));
   return errcode == RdKafka::ERR_NO_ERROR;
 }
 

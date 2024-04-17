@@ -6,9 +6,9 @@
 #include "hound/common/macro.hpp"
 
 int32_t MyPartitionCB::partitioner_cb(RdKafka::Topic const* topic,
-                                       std::string const* key,
-                                       int32_t partition_cnt,
-                                       void* msg_opaque) {
+                                      std::string const* key,
+                                      int32_t partition_cnt,
+                                      void* msg_opaque) {
   const int32_t partition = last_partition++ % partition_cnt;
   last_partition = partition;
   ELOG_DEBUG << "分区: " << partition;
@@ -16,14 +16,12 @@ int32_t MyPartitionCB::partitioner_cb(RdKafka::Topic const* topic,
 }
 
 void MyReportCB::dr_cb(RdKafka::Message& message) {
-  if (not hd::global::opt.verbose) return;
-  // 发送出错的回调
   if (message.err()) {
     ELOG_ERROR << "消息推送失败: " << message.errstr();
-  } else {
-    ELOG_DEBUG << GREEN("消息推送成功至: ") << message.topic_name() << "["
-               << message.partition() << "][" << message.offset() << "]";
   }
+  if (not hd::global::opt.verbose) return;
+  ELOG_INFO << GREEN(">>>消息推送成功至: ") << message.topic_name() << "["
+               << message.partition() << "][" << message.offset() << "]";
 }
 
 void MyEventCB::event_cb(RdKafka::Event& event) {

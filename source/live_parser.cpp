@@ -18,7 +18,7 @@ hd::type::LiveParser::LiveParser() {
   for (int i = 0; i < opt.workers; ++i) {
     mConsumerTasks.emplace_back(std::thread(&LiveParser::consumer_job, this));
   }
-  this->mPacketQueue.reserve(110'000);
+  this->mPacketQueue.reserve(150'000);
 }
 
 void hd::type::LiveParser::startCapture() {
@@ -57,10 +57,9 @@ void hd::type::LiveParser::consumer_job() {
     mPacketQueue.swap(_swapped_buff);
     lock.unlock();
     cv_producer.notify_all();
-
+    cv_consumer.notify_all();
     auto shared_buff = std::make_shared<raw_vector>(_swapped_buff);
-    // sink.MakeFlow(shared_buff);
-    std::ignore = std::async(std::launch::async, [&] {
+    std::ignore = std::async(std::launch::async, [&shared_buff, &sink] {
       sink.MakeFlow(shared_buff);
     });
   }
