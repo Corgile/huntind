@@ -47,10 +47,12 @@ int main(const int argc, char* argv[]) {
   static LiveParser _live_parser;
   static int ctrlc = 0, max_ = 5;
   static int _signal{0};
+  static int pid = getpid();
+  static int ppid = getppid();
   auto handler = [](int const sig) -> void {
     easylog::set_console(true);
     std::printf("\x1b[2D");
-    ELOG_INFO << RED("PID: [") << getpid() << RED("],PPID: [") << getppid() << RED("] 正在退出...");
+    ELOG_INFO << RED("PID: [") << pid << RED("],PPID: [") << ppid << RED("] 正在退出...");
     if (_live_parser.is_running) {
       _live_parser.stopCapture();
     }
@@ -62,7 +64,7 @@ int main(const int argc, char* argv[]) {
   std::signal(SIGTERM, handler);
   std::signal(SIGKILL, handler);
 
-  ELOG_INFO << CYAN("程序已经开始运行。 你可以通过 tail -f ./log 查看日志。");
+  ELOG_INFO << "进程：" RED("PID[") << pid << RED("] PPID[") << ppid << CYAN("已开始运行。 你可以通过 tail -f ./log 查看日志。");
   easylog::init_log(easylog::Severity::INFO, "log", true, false, 10_MB, 4);
   try {
     _live_parser.startCapture();
