@@ -40,7 +40,6 @@ struct KafkaConf {
     delete conf;
   }
 
-public:
   KafkaConf(const KafkaConf& other) = delete;
   KafkaConf& operator=(const KafkaConf& other) = delete;
 
@@ -82,7 +81,9 @@ private:
 
 class ProducerPool {
 public:
-  ProducerPool() = default;
+  ProducerPool() {
+    easylog::logger<>::instance();
+  }
 
   ProducerPool(size_t poolSize, const std::string& brokers): kafkaConf_(brokers) {
     std::string errstr;

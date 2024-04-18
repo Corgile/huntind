@@ -79,6 +79,7 @@ void hd::util::Doc() {
 }
 
 void hd::util::ParseOptions(capture_option& arg, int argc, char** argv) {
+  easylog::logger<>::instance();
   if (argc <= 1) [[unlikely]]{
     hd::util::Doc();
     exit(EXIT_SUCCESS);

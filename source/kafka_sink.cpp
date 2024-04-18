@@ -168,8 +168,8 @@ hd::sink::KafkaSink::Impl::encode_flow_tensors(flow_vec_ref const& _flow_list, t
     constexpr int width = 5;
     ELOG_DEBUG << CYAN("尝试使用设备") << "CUDA:" << device.index();
     /// TODO: encode_flow_tensors函数中， BuildSlideWindow 函数占了50%~98%的时间
-    // auto [slide_windows, flow_index_arr] = transform::BuildSlideWindowConcurrently(_flow_list, width, device);
-    auto [slide_windows, flow_index_arr] = transform::BuildSlideWindow(_flow_list, width, device);
+    auto [slide_windows, flow_index_arr] = transform::BuildSlideWindowConcurrently(_flow_list, width, device);
+    // auto [slide_windows, flow_index_arr] = transform::BuildSlideWindow(_flow_list, width, device);
     Timer<std::chrono::microseconds> timer(_us, CYAN("<<<编码"), msg);
     const auto encoded_flows = BatchEncode(model, slide_windows, 8192, 500, false);
     encodings = transform::MergeFlow(encoded_flows, flow_index_arr, device);
