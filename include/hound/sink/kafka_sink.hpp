@@ -34,7 +34,7 @@ public:
   ~KafkaSink();
 
 private:
-  void LoopTask(torch::jit::Module& model, torch::Device& device);
+  void LoopTask(torch::jit::Module* model, torch::Device& device);
 
   /// \brief 将<code>mFlowTable</code>里面超过 timeout 但是数量不足的flow删掉
   void cleanUnwantedFlowTask();
@@ -65,8 +65,7 @@ private:
 
 struct KafkaSink::Impl {
   static void merge_to_existing_flow(parsed_vector&, KafkaSink*);
-  static torch::Tensor encode_flow_tensors(flow_vec_ref const& _flow_list, torch::Device& device,
-                                           torch::jit::Module* model);
+  static torch::Tensor encode_flow_tensors(flow_vec_ref& _flow_list, torch::Device& device, torch::jit::Module* model);
   static parsed_vector parse_raw_packets(const shared_raw_vec& _raw_list);
   static bool send_feature_to_kafka(const torch::Tensor& feature, const std::string& id);
   static void split_flows_by_count(shared_flow_vec const&, vec_of_flow_vec&, size_t const&);
