@@ -37,6 +37,7 @@ void hd::type::LiveParser::startCapture() {
 void hd::type::LiveParser::liveHandler(u_char* user_data, const pcap_pkthdr* pkthdr, const u_char* packet) {
   auto const _this{reinterpret_cast<LiveParser*>(user_data)};
   std::unique_lock _accessToQueue(_this->mQueueLock);
+  // TODO lock-free mPacketQueue, now it's vector
   _this->mPacketQueue.emplace_back(pkthdr, packet, std::min(opt.payload + 128, static_cast<int>(pkthdr->caplen)));
   _this->cv_consumer.notify_all();
   _accessToQueue.unlock();

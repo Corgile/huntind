@@ -23,7 +23,7 @@ static int ppid{0};
 static void quit_guard(const int max_, int& ctrlc) {
   if (ctrlc++ <= 1) return;
   ELOG_INFO << RED("PID: [") << pid << RED("],PPID: [") << ppid << RED("] 后续事务进行中, 耐心等待！");
-  if(ctrlc >= max_) exit(EXIT_SUCCESS);
+  if (ctrlc >= max_) exit(EXIT_SUCCESS);
 }
 
 int main(const int argc, char* argv[]) {

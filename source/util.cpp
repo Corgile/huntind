@@ -36,7 +36,7 @@ void hd::util::OpenLiveHandle(capture_option& option, pcap_handle_t& handle) {
   }
   ELOG_DEBUG << "网卡: " << option.device;
   /* open device */
-  handle.reset(pcap_open_live(option.device.c_str(), BUFSIZ, 1, 1000, ByteBuffer));
+  handle.reset(pcap_open_live(option.device.c_str(), 60 + 60 + 8 + option.payload, 1, 1000, ByteBuffer));
   if (handle == nullptr) {
     ELOG_ERROR << "监听网卡设备失败: " << ByteBuffer;
     exit(EXIT_FAILURE);
@@ -180,7 +180,10 @@ bool hd::util::detail::_checkLength(parsed_vector const& existing) {
   return existing.size() >= opt.min_packets and existing.size() <= opt.max_packets;
 }
 
+/// TODO:
+/// 到100就行了  后面的不用管
 bool hd::util::IsFlowReady(parsed_vector const& existing, parsed_packet const& _new) {
-  if (existing.size() == opt.max_packets) return true;
-  return detail::_isTimeout(existing, _new) and detail::_checkLength(existing);
+  return existing.size() == opt.max_packets;
+  // if (existing.size() == opt.max_packets) return true;
+  // return detail::_isTimeout(existing, _new) and detail::_checkLength(existing);
 }
