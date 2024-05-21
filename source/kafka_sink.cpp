@@ -11,17 +11,29 @@
 #include <hound/encode/transform.hpp>
 #include <torch/script.h>
 
+void static inline ensure_flatten_parameters(const torch::jit::Module& m) {
+  for (const auto& sub_module : m.named_modules()) {
+    if (not sub_module.value.type()->name()) continue;
+    auto _name = sub_module.value.type()->name().value();
+    if (_name == "torch::nn::LSTM" or _name == "torch::nn::GRU"
+      or _name == "torch::nn::RNNBase" or _name == "torch::nn::RNN") {
+      const_cast<torch::jit::Module&>(sub_module.value).run_method("flatten_parameters");
+    }
+  }
+}
+
 hd::sink::KafkaSink::KafkaSink() {
   mLoopTasks.reserve(opt.num_gpus);
+  const auto mdl = torch::jit::load(opt.model_path);
   for (int i = 0; i < opt.num_gpus; ++i) {
-    mLoopTasks.emplace_back(std::thread([this, ith = i] {
-      const auto mdl = torch::jit::load(opt.model_path);
+    mLoopTasks.emplace_back(std::thread([this, ith = i, _model = std::move(mdl)] {
       torch::Device device(torch::kCUDA, ith);
-      auto model = new torch::jit::Module(mdl);
-      model->to(device);
-      model->eval();
+      torch::jit::Module model(_model);
+      ensure_flatten_parameters(model);
+      model.to(device);
+      model.eval();
       LoopTask(model, device);
-      delete model;
+      // delete model;
     }));
   }
   mCleanTask = std::thread(&KafkaSink::cleanUnwantedFlowTask, this);
@@ -39,12 +51,14 @@ hd::sink::KafkaSink::~KafkaSink() {
     /// 相当于将 encoding_guard = std::async(...) 异步变同步
     encoding_guard.get();
   }
+  easylog::set_console(true);
   ELOG_DEBUG << CYAN("退出时， Producer [")
              << std::this_thread::get_id()
              << CYAN("] 的发送队列剩余: ")
              << this->mEncodingQueue.size_approx()
              << CYAN(", FlowTable 剩余 ")
              << this->mFlowTable.size();
+  easylog::set_console(false);
 }
 
 /// Producer for mFlowTable
@@ -53,7 +67,7 @@ void hd::sink::KafkaSink::MakeFlow(const shared_raw_vec& _raw_list) {
   this->pImpl_->merge_to_existing_flow(_parsed_list, this);
 }
 
-void hd::sink::KafkaSink::LoopTask(torch::jit::Module* model, torch::Device& device) {
+void hd::sink::KafkaSink::LoopTask(torch::jit::Module& model, torch::Device& device) {
   while (mIsRunning) {
     flow_vector _vector{};
     hd_flow flow_buffer;
@@ -71,7 +85,7 @@ void hd::sink::KafkaSink::LoopTask(torch::jit::Module* model, torch::Device& dev
     });
 
     auto p = std::make_shared<flow_vector>(_vector);
-    auto _encoding = std::async(std::launch::async, [&] { return this->EncodeFlowList(p, model, device); });
+    auto _encoding = std::async(std::launch::async, [&] { return this->EncodeFlowList(p, &model, device); });
     encoding_guard = std::async(
       std::launch::async, [this, encoding = std::move(_encoding.get()), _all_id = std::move(ordered_id)] {
         constexpr int batch_size = 1500;
@@ -166,26 +180,28 @@ hd::sink::KafkaSink::Impl::encode_flow_tensors(flow_vec_ref const& _flow_list, t
   torch::Tensor encodings;
   try {
     constexpr int width = 5;
-    ELOG_DEBUG << CYAN("尝试使用设备") << "CUDA:" << device.index();
     /// TODO: encode_flow_tensors函数中， BuildSlideWindow 函数占了50%~98%的时间
     auto [slide_windows, flow_index_arr] = transform::BuildSlideWindowConcurrently(_flow_list, width, device);
     // auto [slide_windows, flow_index_arr] = transform::BuildSlideWindow(_flow_list, width, device);
     Timer<std::chrono::microseconds> timer(_us, CYAN("<<<编码"), msg);
     const auto encoded_flows = BatchEncode(model, slide_windows, 8192, 500, false);
     encodings = transform::MergeFlow(encoded_flows, flow_index_arr, device);
-  } catch (c10::Error& e) {
-    const std::string err_msg{e.msg()};
-    const auto pos = err_msg.find_first_of('\n');
-    ELOG_ERROR << "\x1B[31;1m" << err_msg.substr(0, pos) << "\x1B[0m";
+  //} catch (c10::Error& e) {
+  } catch (...) {
+    // const std::string err_msg{e.msg()};
+    // const auto pos = err_msg.find_first_of('\n');
+    // ELOG_ERROR << "\x1B[31;1m" << err_msg.substr(0, pos) << "\x1B[0m";
+    ELOG_ERROR << CYAN("使用设备") << "CUDA:" << device.index() << "编码不成功";
     return torch::rand({1, 128});
-  } catch (std::runtime_error& e) {
-    const std::string err_msg{e.what()};
-    const auto pos = err_msg.find_first_of('\n');
-    ELOG_ERROR << RED("RunTimeErr: ") << "\x1B[31;1m" << err_msg.substr(0, pos) << "\x1B[0m";
-    return torch::rand({1, 128});
-  }
+  } 
+    // catch (std::runtime_error& e) {
+    // const std::string err_msg{e.what()};
+    // const auto pos = err_msg.find_first_of('\n');
+    // ELOG_ERROR << RED("RunTimeErr: ") << "\x1B[31;1m" << err_msg.substr(0, pos) << "\x1B[0m";
+    // return torch::rand({1, 128});
+    // }
   const long count = _flow_list.size();
-  ELOG_INFO << msg << GREEN(",流数量:") << count
+  ELOG_WARN << CYAN("使用设备") << "CUDA:" << device.index() << ", " << msg << GREEN(",流数量:") << count
               << ",GPU编码 ≈ " << count * 1000000 / _us << " 条/s";
   return encodings.cpu();
 }

@@ -86,7 +86,9 @@ hd::type::LiveParser::~LiveParser() {
   std::printf("%s%d\n", CYAN("num_consumed_packet = "), num_consumed_packet.load());
   std::printf("%s%d\n", CYAN("num_written_csv = "), num_written_csv.load());
 #endif //- #if defined(BENCHMARK)
+  easylog::set_console(true);
   ELOG_DEBUG << CYAN("处理完成， raw包队列剩余 ") << mPacketQueue.size();
+  easylog::set_console(false);
 }
 
 bool hd::type::LiveParser::isRunning() const {
