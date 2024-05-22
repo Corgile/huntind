@@ -28,7 +28,6 @@ int32_t MyPartitionCB::partitioner_cb(RdKafka::Topic const* topic,
 }
 
 void MyReportCB::dr_cb(RdKafka::Message& message) {
-  easylog::logger<>::instance();
   if (message.err()) {
     ELOG_ERROR << "消息推送失败: " << message.errstr();
   }

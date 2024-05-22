@@ -30,20 +30,20 @@ static LiveParser* _live_parser{nullptr};
 
 static void quit_guard(const int max_, int& ctrlc) {
   if (ctrlc++ <= 1) return;
-  set_console(true);
   ELOG_INFO << RED("PID: [") << pid << RED("],PPID: [") << ppid << RED("] 后续事务进行中, 耐心等待！");
-  set_console(false);
-  if (ctrlc >= max_) exit(EXIT_SUCCESS);
+  if (ctrlc >= max_) {
+    ELOG_INFO << YELLOW("程序结束状态: ") << hd::util::signal_msgs[_signal];
+    exit(EXIT_SUCCESS);
+  }
 }
 
 static void register_handler() {
   static int ctrlc = 0, patience = 10;
   auto handler = [](int const sig) -> void {
     std::printf("\x1b[2D");
+    set_console(true);
     if (ctrlc == 0) {
-      set_console(true);
-      ELOG_INFO << RED("PID: [") << pid << RED("],PPID: [") << ppid << RED("] 正在退出...");
-      set_console(false);
+      ELOG_INFO << RED("PID: [") << pid << RED("]  PPID: [") << ppid << RED("] 正在退出...");
     }
     if (_live_parser->isRunning()) {
       _live_parser->stopCapture();
@@ -58,44 +58,27 @@ static void register_handler() {
 }
 
 static void init_parameters(const int argc, char* argv[]) {
-  init_log(Severity::INFO, "log", true, false, 10_MB, 4);
+  set_console(true);
   hd::util::ParseOptions(opt, argc, argv);
-  opt.num_gpus = torch::cuda::device_count();
-  producer_pool = ProducerPool(opt.poolSize, opt.brokers);
   pid = getpid();
   ppid = getppid();
-}
-
-static void verbose_message() {
-  set_console(true);
-  ELOG_INFO << CYAN("程序正在运行中: ") << RED("PID: ") << pid << RED(", PPID： ") << ppid;
+  ELOG_INFO << CYAN("程序正在运行中: ") << RED("PID: ") << pid << RED(" PPID： ") << ppid;
   ELOG_INFO << "日志： tail -f ./log";
-  set_console(false);
+  opt.num_gpus = torch::cuda::device_count();
+  producer_pool = ProducerPool(opt.poolSize, opt.brokers);
 }
 
-static void main_loop() {
-  set_console(false);
-  set_console(false);
-  set_console(false);
+inline void main_loop() {
   set_console(false);
   _live_parser = new LiveParser();
   _live_parser->startCapture();
+  delete _live_parser;
 }
 
 int main(const int argc, char* argv[]) {
-
-  init_parameters(argc, argv);
+  init_log(Severity::INFO, "log", true, false, 10_MB, 4, true);
   register_handler();
-  verbose_message();
+  init_parameters(argc, argv);
   main_loop();
-
-  set_console(false);
-  delete _live_parser;
-
-  set_console(true);
-  ELOG_INFO << YELLOW("程序结束状态: ") << hd::util::signal_msgs[_signal];
-  ELOG_INFO << RED("发送本地Kafka队列中剩余的消息, 请等待....");
-  set_console(false);
-
   return 0;
 }

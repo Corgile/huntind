@@ -46,6 +46,7 @@ void hd::type::LiveParser::liveHandler(u_char* user_data, const pcap_pkthdr* pkt
 #endif // BENCHMARK
 }
 
+/*
 void hd::type::LiveParser::consumer_job() {
   using namespace std::chrono_literals;
   sink::KafkaSink sink;
@@ -64,6 +65,40 @@ void hd::type::LiveParser::consumer_job() {
     });
   }
   ELOG_DEBUG << YELLOW("CallBack任务 [") << std::this_thread::get_id() << YELLOW("] 结束");
+}
+*/
+
+void hd::type::LiveParser::consumer_job() {
+  using namespace std::chrono_literals;
+  sink::KafkaSink sink;
+  std::list<std::future<void>> tasks;
+  while (is_running) {
+    for (auto it = tasks.begin(); it != tasks.end();) {
+      if (it->wait_for(0s) == std::future_status::ready) {
+        it->get();
+        it = tasks.erase(it);
+      } else {
+        ++it;
+      }
+    }
+    std::unique_lock lock(mQueueLock);
+    cv_consumer.wait_for(lock, 1s, [this] { return not mPacketQueue.empty(); });
+    raw_vector _swapped_buff;
+    _swapped_buff.reserve(mPacketQueue.size());
+    mPacketQueue.swap(_swapped_buff);
+    lock.unlock();
+    cv_producer.notify_all();
+    if (_swapped_buff.empty()) {
+      std::this_thread::sleep_for(5s);
+      continue;
+    }
+    auto shared_data = std::make_shared<raw_vector>(_swapped_buff);
+    auto future_task = std::async(std::launch::async,
+      [shared_data, &sink]  {
+      sink.MakeFlow(shared_data);
+    });
+    tasks.push_back(std::move(future_task));
+  }
 }
 
 void hd::type::LiveParser::stopCapture() {
