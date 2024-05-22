@@ -42,7 +42,7 @@ private:
   // [[deprecated]]
   // int32_t SendEncoding(shared_flow_vec const& long_flow_list) const;
 
-  torch::Tensor EncodeFlowList(const shared_flow_vec& long_flow_list, torch::jit::Module* model, torch::Device& device);
+  torch::Tensor EncodeFlowList(const shared_flow_vec& long_flow_list, torch::jit::Module* model, torch::Device& device) const;
 
 private:
   std::mutex mtxAccessToFlowTable;
@@ -54,8 +54,6 @@ private:
   std::thread mCleanTask;
 
   std::atomic_bool mIsRunning{true};
-
-  std::future<void> encoding_guard;
 
   InterruptibleSleep mSleeper;
   struct Impl;

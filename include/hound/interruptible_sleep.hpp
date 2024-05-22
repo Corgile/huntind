@@ -21,7 +21,7 @@ public:
     cv.wait_for(lock, duration, [this] { return stop_requested; });
   }
 
-  void stop_sleep() {
+  void wakeup() {
     std::lock_guard lock(mtx);
     stop_requested = true;
     cv.notify_one();
