@@ -81,18 +81,19 @@ void hd::sink::KafkaSink::LoopTask(torch::jit::Module* model, torch::Device& dev
     }
     flow_vector _vector{};
     hd_flow flow_buffer;
+    std::this_thread::sleep_for(5s);  // 避免忙等待
     _vector.reserve(mEncodingQueue.size_approx());
     while (mEncodingQueue.try_dequeue(flow_buffer)) {
       _vector.emplace_back(flow_buffer);
     }
     if (_vector.empty()) {
-      std::this_thread::sleep_for(5s);  // 避免忙等待
+      std::this_thread::sleep_for(20s);  // 避免忙等待
       continue;
     }
-    mNumBlockedFlows.fetch_add(_vector.size());
+    NumBlockedFlows.fetch_add(_vector.size());
     ELOG_INFO << "线程 " << std::this_thread::get_id()
               << GREEN(" 新增:") << _vector.size()
-              << RED("排队:") << mNumBlockedFlows.load();
+              << RED("排队:") << NumBlockedFlows.load();
 
     std::vector<std::string> ordered_id;
     ordered_id.reserve(_vector.size());
@@ -104,7 +105,7 @@ void hd::sink::KafkaSink::LoopTask(torch::jit::Module* model, torch::Device& dev
       std::launch::async, [&, p = std::make_shared<flow_vector>(_vector),
         _all_id = std::move(ordered_id)] {
         try {
-          constexpr int batch_size = 1500;
+          constexpr int batch_size = 2000;
           auto encoding = EncodeFlowList(p, model, device);
           const int data_size = encoding.size(0);
           const int batch_count = (data_size + batch_size - 1) / batch_size;
@@ -151,7 +152,7 @@ torch::Tensor hd::sink::KafkaSink::EncodeFlowList(const shared_flow_vec& long_fl
       const auto _it_start = long_flow_list->begin() + f_index;
       const auto _it___end = std::min(_it_start + batch_size, long_flow_list->end());
       flow_vec_ref subvec(_it_start, _it___end);
-      mNumBlockedFlows -= subvec.size();
+      NumBlockedFlows -= subvec.size();
       const auto feat = pImpl_->encode_flow_tensors(subvec, device, model);
       std::scoped_lock lock(r);
       result.emplace_back(feat);
@@ -204,9 +205,9 @@ hd::sink::KafkaSink::Impl::encode_flow_tensors(flow_vec_ref& _flow_list, torch::
   try {
     constexpr int width = 5;
     /// TODO: encode_flow_tensors函数中， BuildSlideWindow 函数占了50%~98%的时间
-    auto [slide_windows, flow_index_arr] = transform::BuildSlideWindowConcurrently(_flow_list, width, device);
-    // auto [slide_windows, flow_index_arr] = transform::BuildSlideWindow(_flow_list, width, device);
-    Timer<std::chrono::microseconds> timer(_us, CYAN("<<<编码"), msg);
+    // auto [slide_windows, flow_index_arr] = transform::BuildSlideWindowConcurrently(_flow_list, width, device);
+    auto [slide_windows, flow_index_arr] = transform::BuildSlideWindow(_flow_list, width, device);
+    Timer<std::chrono::microseconds> timer(_us, CYAN("编码"), msg);
     const auto encoded_flows = BatchEncode(model, slide_windows, 8192, 500, false);
     encodings = transform::MergeFlow(encoded_flows, flow_index_arr, device);
     //} catch (c10::Error& e) {
@@ -225,7 +226,7 @@ hd::sink::KafkaSink::Impl::encode_flow_tensors(flow_vec_ref& _flow_list, torch::
   // return torch::rand({1, 128});
   // }
   _flow_list.clear();
-  ELOG_WARN << CYAN("使用设备") << "CUDA:" << device.index() << ", " << msg << GREEN(",流数量:") << count
+  ELOG_WARN << CYAN("<<<使用设备") << "CUDA:" << device.index() << msg << GREEN(",流数量:") << count
               << ",GPU编码 ≈ " << count * 1000000 / _us << " 条/s";
   return encodings.cpu();
 }

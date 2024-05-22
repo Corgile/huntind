@@ -46,28 +46,6 @@ void hd::type::LiveParser::liveHandler(u_char* user_data, const pcap_pkthdr* pkt
 #endif // BENCHMARK
 }
 
-/*
-void hd::type::LiveParser::consumer_job() {
-  using namespace std::chrono_literals;
-  sink::KafkaSink sink;
-  while (is_running) {
-    std::unique_lock lock(mQueueLock);
-    cv_consumer.wait_for(lock, 1s, [this] { return not mPacketQueue.empty(); });
-    raw_vector _swapped_buff;
-    _swapped_buff.reserve(mPacketQueue.size());
-    mPacketQueue.swap(_swapped_buff);
-    lock.unlock();
-    cv_producer.notify_all();
-    cv_consumer.notify_all();
-    auto shared_buff = std::make_shared<raw_vector>(_swapped_buff);
-    std::ignore = std::async(std::launch::async, [&shared_buff, &sink] {
-      sink.MakeFlow(shared_buff);
-    });
-  }
-  ELOG_DEBUG << YELLOW("CallBack任务 [") << std::this_thread::get_id() << YELLOW("] 结束");
-}
-*/
-
 void hd::type::LiveParser::consumer_job() {
   using namespace std::chrono_literals;
   sink::KafkaSink sink;
@@ -82,7 +60,7 @@ void hd::type::LiveParser::consumer_job() {
       }
     }
     std::unique_lock lock(mQueueLock);
-    cv_consumer.wait_for(lock, 1s, [this] { return not mPacketQueue.empty(); });
+    cv_consumer.wait_for(lock, 2s, [this] { return not mPacketQueue.empty(); });
     raw_vector _swapped_buff;
     _swapped_buff.reserve(mPacketQueue.size());
     mPacketQueue.swap(_swapped_buff);

@@ -54,7 +54,6 @@ private:
   std::thread mCleanTask;
 
   std::atomic_bool mIsRunning{true};
-  std::atomic_size_t mNumBlockedFlows{0};
 
   std::future<void> encoding_guard;
 

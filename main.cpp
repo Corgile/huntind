@@ -8,6 +8,7 @@
 namespace hd::global {
 type::capture_option opt;
 ProducerPool producer_pool;
+std::atomic_size_t NumBlockedFlows{0};
 #if defined(BENCHMARK)
 std::atomic<int32_t> packet_index = 0;
 std::atomic<int32_t> num_captured_packet = 0;
