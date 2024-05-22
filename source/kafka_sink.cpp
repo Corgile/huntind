@@ -88,8 +88,9 @@ void hd::sink::KafkaSink::LoopTask(torch::jit::Module* model, torch::Device& dev
     auto p = std::make_shared<flow_vector>(_vector);
     auto _encoding = std::async(std::launch::async, [&] { return this->EncodeFlowList(p, model, device); });
     encoding_guard = std::async(
-      std::launch::async, [this, encoding = std::move(_encoding.get()), _all_id = std::move(ordered_id)] {
+      std::launch::async, [this, _encoding_future = std::move(_encoding), _all_id = std::move(ordered_id)]() mutable {
         constexpr int batch_size = 1500;
+        auto encoding = _encoding_future.get();
         const int data_size = encoding.size(0);
         // assert(_all_id.size() == data_size);// 不一致说明EncodeFlowList内部错了
         const int batch_count = (data_size + batch_size - 1) / batch_size;
@@ -109,6 +110,7 @@ void hd::sink::KafkaSink::LoopTask(torch::jit::Module* model, torch::Device& dev
         }
         for (auto& _job : _jobs) _job.join();
       });
+    encoding_guard.get();
   }
   ELOG_INFO << CYAN("流处理任务[") << std::this_thread::get_id() << CYAN("] 结束");
 }
