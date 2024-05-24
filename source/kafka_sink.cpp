@@ -246,7 +246,7 @@ bool hd::sink::KafkaSink::Impl::send_one_msg(torch::Tensor const& feature, std::
 
 void hd::sink::KafkaSink::cleanUnwantedFlowTask() {
   while (mIsRunning) {
-    mSleeper.sleep_for(5s);
+    mSleeper.sleep_for(std::chrono::seconds(opt.flowTimeout));
     std::scoped_lock lock(mtxAccessToFlowTable);
     for (flow_iter it = mFlowTable.begin(); it not_eq mFlowTable.end();) {
       if (not util::IsFlowReady(it->second)) {

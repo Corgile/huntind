@@ -78,8 +78,8 @@ inline void main_loop() {
 
 int main(const int argc, char* argv[]) {
   init_log(Severity::INFO, "log", true, false, 10_MB, 4, true);
-  register_handler();
   init_parameters(argc, argv);
+  register_handler();
   main_loop();
   return 0;
 }

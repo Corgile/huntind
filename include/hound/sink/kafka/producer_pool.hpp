@@ -27,8 +27,10 @@ struct KafkaConf {
     conf->set("queue.buffering.max.kbytes", "2097152", errstr);
     conf->set("dr_cb", delivery_cb, errstr);
     conf->set("event_cb", event_cb, errstr);
-    
-    conf->set("acks", "1", errstr);
+    http://blog.csdn.net/lisheng5218/article/details/87603001
+    conf->set("request.required.acks", "0", errstr);
+    conf->set("producer.type", "async", errstr);
+    conf->set("compression.type", "zstd", errstr);
     conf->set("request.timeout.ms", "5000", errstr);
     conf->set("message.timeout.ms", "30000", errstr);
   }
