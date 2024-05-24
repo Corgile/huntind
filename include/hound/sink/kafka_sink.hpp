@@ -67,7 +67,8 @@ struct KafkaSink::Impl {
   static void merge_to_existing_flow(parsed_vector&, KafkaSink*);
   static torch::Tensor encode_flow_tensors(flow_vec_ref& _flow_list, torch::Device& device, torch::jit::Module* model);
   static parsed_vector parse_raw_packets(raw_vector& _raw_list);
-  static bool send_feature_to_kafka(const torch::Tensor& feature, const std::string& id);
+  static void send_feature_to_kafka(const torch::Tensor& feature, std::vector<std::string> const& ids);
+  static bool send_one_msg(const torch::Tensor& feature, std::string const& id);
 };
 } // namespace hd::sink
 

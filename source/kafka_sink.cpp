@@ -9,6 +9,7 @@
 #include <hound/sink/kafka_sink.hpp>
 #include <hound/encode/flow-encode.hpp>
 #include <hound/encode/transform.hpp>
+#include <hound/compress_string.hpp>
 #include <torch/script.h>
 
 hd::sink::KafkaSink::KafkaSink() {
@@ -67,34 +68,18 @@ void hd::sink::KafkaSink::LoopTask(torch::jit::Module* model, torch::Device& dev
     ELOG_INFO << GREEN("新增: ") << _vector.size() << " | "
               << RED("排队: ") << NumBlockedFlows.load();
 
-    std::vector<std::string> ordered_id;
-    ordered_id.reserve(_vector.size());
-    std::ranges::for_each(_vector, [&ordered_id](const auto& _flow) {
-      ordered_id.emplace_back(_flow.flowId);
-    });
-    mTaskExecutor.AddTask([=, &device, this] {
-      auto encoding = EncodeFlowList(std::make_shared<flow_vector>(_vector), model, device);
-      /**
-       * kafka单条消息最大size参考值
-       * 如果太大，可能会出现kafka的相关报错：
-       * local queue full, message timed out, message too large
-       * */
-      constexpr int batch_size = 1500;
-      const int data_size = encoding.size(0);
-      const int batch_count = (data_size + batch_size - 1) / batch_size;
-      /// 阻塞发送, 为了节省资源（ TODO 实际上可以允许多线程同时发送 ）
-      for (int i = 0; i < batch_count; i++) {
-        auto offset = i * batch_size;
-        std::string id;
-        const auto curr_batch = std::min(batch_size, data_size - offset);
-        const auto feat_ = encoding.narrow(0, offset, curr_batch);
-        for (int j = 0; j < curr_batch; ++j) {
-          /// TODO key太大了  需要压缩
-          id.append(ordered_id[offset + j]).append("\n");
-        }
-        this->pImpl_->send_feature_to_kafka(feat_, id);
-      }
-    });
+    mTaskExecutor.AddTask(
+      [=, &device, this,
+        long_flow_list = std::make_shared<flow_vector>(std::move(_vector))] {
+        torch::Tensor encoding = EncodeFlowList(long_flow_list, model, device);
+        std::vector<std::string> key_;
+        key_.reserve(long_flow_list->size());
+        std::ranges::for_each(*long_flow_list, [&key_](const hd_flow& _flow) {
+          key_.emplace_back(_flow.flowId);
+        });
+        assert(long_flow_list->size() == encoding.size(0));
+        this->pImpl_->send_feature_to_kafka(encoding, key_);
+      });
   }
   ELOG_INFO << CYAN("流处理任务[") << std::this_thread::get_id() << CYAN("] 结束");
 }
@@ -120,7 +105,7 @@ torch::Tensor hd::sink::KafkaSink::EncodeFlowList(const shared_flow_vec& long_fl
   threads.reserve(batch_count);
 
   for (size_t i = 0; i < data_size; i += batch_size) {
-    threads.emplace_back([f_index = i, &long_flow_list, batch_size, this, &r, &result, &device, &model] {
+    threads.emplace_back([f_index = i, &long_flow_list, this, &r, &result, &device, &model] {
       const auto _it_start = long_flow_list->begin() + f_index;
       const auto _it___end = std::min(_it_start + batch_size, long_flow_list->end());
       flow_vec_ref subvec(_it_start, _it___end);
@@ -198,7 +183,46 @@ hd::sink::KafkaSink::Impl::encode_flow_tensors(flow_vec_ref& _flow_list, torch::
   return encodings.cpu();
 }
 
-bool hd::sink::KafkaSink::Impl::send_feature_to_kafka(const torch::Tensor& feature, const std::string& id) {
+void
+hd::sink::KafkaSink::Impl::send_feature_to_kafka(
+  const torch::Tensor& feature, std::vector<std::string> const& ids) {
+  /**
+   * batch_size是kafka单条消息包含的【流编码最大条数】参考值
+   * 如果太大，可能会出现kafka的相关报错：
+   * local queue full, message timed out, message too large
+   * */
+  constexpr int batch_size = 1500;
+
+  if (ids.size() <= batch_size) {
+    std::string id, compressed;
+    for (auto& item : ids)id.append(item).append("\n");
+    /// 压缩
+    zstd::compress(id, compressed);
+    send_one_msg(std::move(feature), std::move(compressed));
+    return;
+  }
+
+  const int data_size = feature.size(0);
+  const int batch_count = (data_size + batch_size - 1) / batch_size;
+
+  std::vector<std::thread> send_job;
+  for (int i = 0; i < batch_count; i++) {
+    send_job.emplace_back([=, offset = i * batch_size]() {
+      std::string id, compressed;
+      const auto curr_batch = std::min(batch_size, data_size - offset);
+      const auto feat_ = feature.narrow(0, offset, curr_batch);
+      for (int j = 0; j < curr_batch; ++j) {
+        id.append(ids[offset + j]).append("\n");
+      }
+      /// 压缩
+      zstd::compress(id, compressed);
+      send_one_msg(std::move(feat_), std::move(compressed));
+    });
+  }
+  for (auto& item : send_job) item.join();
+}
+
+bool hd::sink::KafkaSink::Impl::send_one_msg(torch::Tensor const& feature, std::string const& id) {
   const auto feature_byte_count = feature.itemsize() * feature.numel();
   ProducerManager _manager = producer_pool.acquire();
   const auto errcode = _manager->get()->produce(
@@ -211,6 +235,7 @@ bool hd::sink::KafkaSink::Impl::send_feature_to_kafka(const torch::Tensor& featu
     feature_byte_count,
     id.data(),// need compress
     id.length(), 0, nullptr);
+
   if (errcode == RdKafka::ERR_REQUEST_TIMED_OUT) {
     const auto err_code = _manager->get()->flush(5'000);
     ELOG_ERROR << err_code << " error(s)";
