@@ -20,13 +20,17 @@ struct KafkaConf {
     std::string errstr;
     conf->set("bootstrap.servers", brokers, errstr);
     conf->set("partitioner_cb", partitioner, errstr);
-  https://blog.csdn.net/sinat_36304757/article/details/106688581
+    https://blog.csdn.net/sinat_36304757/article/details/106688581
     conf->set("batch.num.messages", "2000", errstr);
     conf->set("queue.buffering.max.ms", "1000", errstr);
     conf->set("queue.buffering.max.messages", "1000000", errstr);
     conf->set("queue.buffering.max.kbytes", "2097152", errstr);
     conf->set("dr_cb", delivery_cb, errstr);
     conf->set("event_cb", event_cb, errstr);
+    
+    conf->set("acks", "1", errstr);
+    conf->set("request.timeout.ms", "5000", errstr);
+    conf->set("message.timeout.ms", "30000", errstr);
   }
 
   RdKafka::Conf* get() const {
@@ -41,6 +45,7 @@ struct KafkaConf {
   }
 
   KafkaConf(const KafkaConf& other) = delete;
+
   KafkaConf& operator=(const KafkaConf& other) = delete;
 
   KafkaConf(KafkaConf&& other) noexcept
@@ -85,11 +90,11 @@ public:
     easylog::logger<>::instance();
   }
 
-  ProducerPool(size_t poolSize, const std::string& brokers): kafkaConf_(brokers) {
+  ProducerPool(size_t poolSize, const std::string& brokers) : kafkaConf_(brokers) {
     std::string errstr;
     producers_.reserve(poolSize);
     for (size_t i = 0; i < poolSize; ++i) {
-      const auto _producer = RdKafka::Producer::create(kafkaConf_.get(), errstr);;
+      const auto _producer = RdKafka::Producer::create(kafkaConf_.get(), errstr);
       if (not _producer) {
         throw std::runtime_error("Failed to create producer: " + errstr);
       }

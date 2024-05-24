@@ -42,6 +42,7 @@ PacketToTensor(parsed_packet const& packet, long protocol, torch::Device& device
 std::tuple<torch::Tensor, torch::Tensor>
 BuildSlideWindow(flow_vec_ref const& flow_list, int width, torch::Device& device);
 
+[[deprecated]]
 std::pair<torch::Tensor, torch::Tensor>
 BuildSlideWindowConcurrently(flow_vec_ref const& flow_list, int width, torch::Device& device);
 

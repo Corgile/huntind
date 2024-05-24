@@ -48,6 +48,7 @@ transform::PacketToTensor(parsed_packet const& packet, long protocol, torch::Dev
     }, 0);
 }
 
+[[deprecated]]
 std::pair<torch::Tensor, torch::Tensor>
 transform::BuildSlideWindowConcurrently(flow_vec_ref const& flow_list, int width, torch::Device& device) {
   const auto index_option = torch::TensorOptions().dtype(torch::kI32).device(device);

@@ -177,13 +177,13 @@ bool hd::util::detail::_isTimeout(parsed_vector const& existing) {
 }
 
 bool hd::util::detail::_checkLength(parsed_vector const& existing) {
-  return existing.size() >= opt.min_packets and existing.size() <= opt.max_packets;
+  return existing.size() == opt.min_packets;
+  // return existing.size() >= opt.min_packets and existing.size() <= opt.max_packets;
 }
 
-/// TODO:
 /// 到100就行了  后面的不用管
 bool hd::util::IsFlowReady(parsed_vector const& existing, parsed_packet const& _new) {
-  return existing.size() == opt.max_packets;
+  return existing.size() == opt.min_packets;
   // if (existing.size() == opt.max_packets) return true;
   // return detail::_isTimeout(existing, _new) and detail::_checkLength(existing);
 }

@@ -12,13 +12,15 @@
 #include <hound/type/parsed_packet.hpp>
 #include <ylt/util/concurrentqueue.h>
 #include <hound/interruptible_sleep.hpp>
+#include <hound/task_executor.hpp>
 
 namespace hd::sink {
 using namespace hd::type;
 using namespace hd::global;
 using namespace std::chrono_literals;
 
-using flow_map = std::unordered_map<std::string, parsed_vector>;
+// using flow_map = std::map<std::string, parsed_vector>;
+using flow_map = std::pmr::map<std::string, parsed_vector>;
 using flow_iter = flow_map::iterator;
 
 using shared_flow_vec = std::shared_ptr<flow_vector>;
@@ -29,7 +31,7 @@ class KafkaSink final {
 public:
   KafkaSink();
 
-  void MakeFlow(shared_raw_vec const& _raw_list);
+  void MakeFlow(raw_vector& _raw_list);
 
   ~KafkaSink();
 
@@ -56,6 +58,7 @@ private:
   std::atomic_bool mIsRunning{true};
 
   InterruptibleSleep mSleeper;
+  TaskExecutor mTaskExecutor;
   struct Impl;
   std::unique_ptr<Impl> pImpl_;
 };
@@ -63,9 +66,8 @@ private:
 struct KafkaSink::Impl {
   static void merge_to_existing_flow(parsed_vector&, KafkaSink*);
   static torch::Tensor encode_flow_tensors(flow_vec_ref& _flow_list, torch::Device& device, torch::jit::Module* model);
-  static parsed_vector parse_raw_packets(const shared_raw_vec& _raw_list);
+  static parsed_vector parse_raw_packets(raw_vector& _raw_list);
   static bool send_feature_to_kafka(const torch::Tensor& feature, const std::string& id);
-  static void split_flows_by_count(shared_flow_vec const&, vec_of_flow_vec&, size_t const&);
 };
 } // namespace hd::sink
 
