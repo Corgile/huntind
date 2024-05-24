@@ -51,7 +51,7 @@ public:
     auto m = std::to_string(__elapsed);
     _msg.append(task_name)
         .append(m).append(unit())
-        .append(8 - m.size(), ' ');
+        .append(9 - m.size(), ' ');
     if (elapsed == std::numeric_limits<size_t>::max()) {
       ELOG_INFO << _msg;
     } else {

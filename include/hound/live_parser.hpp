@@ -11,6 +11,7 @@
 #include <hound/type/raw_packet.hpp>
 #include <hound/type/deleters.hpp>
 #include <hound/sink/kafka_sink.hpp>
+#include <hound/task_executor.hpp>
 
 namespace hd::type {
 class LiveParser {
@@ -33,10 +34,9 @@ private:
   std::atomic<bool> is_running{true};
   pcap_handle_t mHandle{nullptr};
   raw_vector mPacketQueue;
-  std::condition_variable cv_producer;      // 生产者条件变量
-  std::condition_variable cv_consumer;      // 消费者条件变量
   std::vector<std::thread> mConsumerTasks;
-  mutable std::mutex mQueueLock;
+  std::mutex queue_mtx;
+  TaskExecutor mTaskExecutor;
 };
 } // type
 

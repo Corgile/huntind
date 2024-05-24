@@ -3,7 +3,7 @@
 //
 
 #include <algorithm>
-
+#include <malloc.h>
 #include <hound/common/util.hpp>
 #include <hound/common/timer.hpp>
 #include <hound/sink/kafka_sink.hpp>
@@ -11,24 +11,12 @@
 #include <hound/encode/transform.hpp>
 #include <torch/script.h>
 
-void static inline ensure_flatten_parameters(const torch::jit::Module* m) {
-  for (const auto& sub_module : m->named_modules()) {
-    if (not sub_module.value.type()->name()) continue;
-    auto _name = sub_module.value.type()->name().value();
-    if (_name == "torch::nn::LSTM" or _name == "torch::nn::GRU"
-      or _name == "torch::nn::RNNBase" or _name == "torch::nn::RNN") {
-      const_cast<torch::jit::Module&>(sub_module.value).run_method("flatten_parameters");
-    }
-  }
-}
-
 hd::sink::KafkaSink::KafkaSink() {
   mLoopTasks.reserve(opt.num_gpus);
   for (int i = 0; i < opt.num_gpus; ++i) {
     mLoopTasks.emplace_back(std::thread([this, ith = (i + 1) % opt.num_gpus] {
       auto mdl = torch::jit::load(opt.model_path);
       auto model = new torch::jit::Module(mdl);
-      ensure_flatten_parameters(model);
 
       torch::Device device(torch::kCUDA, ith);
       model->to(device);
@@ -45,49 +33,38 @@ hd::sink::KafkaSink::~KafkaSink() {
   mSleeper.wakeup();
   mIsRunning = false;
   mCleanTask.join();
-  for (auto& _task : mLoopTasks) {
-    _task.join();
-  }
-  easylog::set_console(true);
+  for (auto& _task : mLoopTasks) _task.join();
+#ifdef HD_SHOW_LOG_DEBUG
   ELOG_DEBUG << CYAN("退出时， Producer [")
              << std::this_thread::get_id()
              << CYAN("] 的发送队列剩余: ")
              << this->mEncodingQueue.size_approx()
              << CYAN(", FlowTable 剩余 ")
              << this->mFlowTable.size();
-  easylog::set_console(false);
+#endif
 }
 
 /// Producer for mFlowTable
-void hd::sink::KafkaSink::MakeFlow(const shared_raw_vec& _raw_list) {
+void hd::sink::KafkaSink::MakeFlow(raw_vector& _raw_list) {
   auto _parsed_list = pImpl_->parse_raw_packets(_raw_list);
   this->pImpl_->merge_to_existing_flow(_parsed_list, this);
 }
 
 void hd::sink::KafkaSink::LoopTask(torch::jit::Module* model, torch::Device& device) {
-  std::list<std::future<void>> tasks;  // 存储异步任务的列表
   while (mIsRunning) {
-    for (auto it = tasks.begin(); it != tasks.end();) {
-      if (it->wait_for(0s) == std::future_status::ready) {
-        it->get();  // 获取任务结果，处理可能的异常
-        it = tasks.erase(it);  // 移除已完成的任务
-      } else {
-        ++it;
-      }
-    }
     flow_vector _vector{};
     hd_flow flow_buffer;
-    std::this_thread::sleep_for(5s);  // 避免忙等待
     _vector.reserve(mEncodingQueue.size_approx());
     while (mEncodingQueue.try_dequeue(flow_buffer)) {
       _vector.emplace_back(flow_buffer);
     }
     if (_vector.empty()) {
-      std::this_thread::sleep_for(20s);  // 避免忙等待
+      std::this_thread::sleep_for(5s);
       continue;
     }
+
     NumBlockedFlows.fetch_add(_vector.size());
-    ELOG_INFO << GREEN("新增: ") << _vector.size() << "  "
+    ELOG_INFO << GREEN("新增: ") << _vector.size() << " | "
               << RED("排队: ") << NumBlockedFlows.load();
 
     std::vector<std::string> ordered_id;
@@ -95,37 +72,29 @@ void hd::sink::KafkaSink::LoopTask(torch::jit::Module* model, torch::Device& dev
     std::ranges::for_each(_vector, [&ordered_id](const auto& _flow) {
       ordered_id.emplace_back(_flow.flowId);
     });
-
-    auto _encoding = std::async(
-      std::launch::async, [&, p = std::make_shared<flow_vector>(_vector),
-        _all_id = std::move(ordered_id)] {
-        try {
-          constexpr int batch_size = 2000;
-          auto encoding = EncodeFlowList(p, model, device);
-          const int data_size = encoding.size(0);
-          const int batch_count = (data_size + batch_size - 1) / batch_size;
-          std::vector<std::thread> _jobs;
-          for (int i = 0; i < batch_count; i++) {
-            _jobs.emplace_back([&, this, offset = i * batch_size]() mutable {
-              try {
-                std::string id;
-                const auto curr_batch = std::min(batch_size, data_size - offset);
-                const auto feat_ = encoding.narrow(0, offset, curr_batch);
-                for (int j = 0; j < curr_batch; ++j) {
-                  id.append(_all_id[offset + j]).append("\n");
-                }
-                this->pImpl_->send_feature_to_kafka(feat_, id);
-              } catch (const std::exception& e) {
-                std::cerr << "Error in thread: " << e.what() << std::endl;
-              }
-            });
-          }
-          for (auto& _job : _jobs) _job.join();
-        } catch (const std::exception& e) {
-          std::cerr << "Error in async task: " << e.what() << std::endl;
+    mTaskExecutor.AddTask([=, &device, this] {
+      auto encoding = EncodeFlowList(std::make_shared<flow_vector>(_vector), model, device);
+      /**
+       * kafka单条消息最大size参考值
+       * 如果太大，可能会出现kafka的相关报错：
+       * local queue full, message timed out, message too large
+       * */
+      constexpr int batch_size = 1500;
+      const int data_size = encoding.size(0);
+      const int batch_count = (data_size + batch_size - 1) / batch_size;
+      /// 阻塞发送, 为了节省资源（ TODO 实际上可以允许多线程同时发送 ）
+      for (int i = 0; i < batch_count; i++) {
+        auto offset = i * batch_size;
+        std::string id;
+        const auto curr_batch = std::min(batch_size, data_size - offset);
+        const auto feat_ = encoding.narrow(0, offset, curr_batch);
+        for (int j = 0; j < curr_batch; ++j) {
+          /// TODO key太大了  需要压缩
+          id.append(ordered_id[offset + j]).append("\n");
         }
-      });
-    tasks.push_back(std::move(_encoding));
+        this->pImpl_->send_feature_to_kafka(feat_, id);
+      }
+    });
   }
   ELOG_INFO << CYAN("流处理任务[") << std::this_thread::get_id() << CYAN("] 结束");
 }
@@ -133,9 +102,17 @@ void hd::sink::KafkaSink::LoopTask(torch::jit::Module* model, torch::Device& dev
 torch::Tensor hd::sink::KafkaSink::EncodeFlowList(const shared_flow_vec& long_flow_list,
                                                   torch::jit::Module* model,
                                                   torch::Device& device) const {
-  std::mutex r;
   const int data_size = long_flow_list->size();
   constexpr int batch_size = 3000;
+
+  if (data_size < batch_size) [[likely]] {
+    flow_vec_ref subvec(long_flow_list->begin(), long_flow_list->end());
+    NumBlockedFlows -= subvec.size();
+    return pImpl_->encode_flow_tensors(subvec, device, model);
+  }
+#pragma region Unlikely 这段代码按道理讲几乎不会被覆盖到
+  ELOG_DEBUG << CYAN("流消息太多， 采用多线程模式");
+  std::mutex r;
   auto const batch_count = (data_size + batch_size - 1) / batch_size;
   std::vector<torch::Tensor> result;
   std::vector<std::thread> threads;
@@ -153,40 +130,41 @@ torch::Tensor hd::sink::KafkaSink::EncodeFlowList(const shared_flow_vec& long_fl
       result.emplace_back(feat);
     });
   }
-  for (int i = 0; i < threads.size(); ++i) {
-    threads[i].join();
-  }
+  for (auto& _thread : threads) _thread.join();
   return torch::concat(result, 0);
+#pragma endregion
 }
 
 #pragma region Kafka Implementations
 
 hd::type::parsed_vector
-hd::sink::KafkaSink::Impl::parse_raw_packets(const shared_raw_vec& _raw_list) {
+hd::sink::KafkaSink::Impl::parse_raw_packets(raw_vector& _raw_list) {
   parsed_vector _parsed_list{};
-  if (_raw_list->empty()) return _parsed_list;
-  _parsed_list.reserve(_raw_list->size());
-  std::ranges::for_each(*_raw_list, [&](raw_packet const& item) {
+  if (_raw_list.size_approx() == 0) return _parsed_list;
+  _parsed_list.reserve(_raw_list.size_approx());
+  raw_packet item;
+  while (_raw_list.try_dequeue(item)) {
     parsed_packet _parsed(item);
-    if (not _parsed.present()) return;
+    if (not _parsed.present()) continue;
     _parsed_list.emplace_back(_parsed);
-  });
+  }
   return _parsed_list;
 }
 
-void hd::sink::KafkaSink::Impl::merge_to_existing_flow(parsed_vector& _parsed_list, KafkaSink* _this) {
+void hd::sink::KafkaSink::Impl::merge_to_existing_flow(parsed_vector& _parsed_list, KafkaSink* this_) {
   /// 合并packet到flow
-  std::scoped_lock mapLock{_this->mtxAccessToFlowTable};
-  std::ranges::for_each(_parsed_list, [&_this](parsed_packet const& _parsed) {
-    parsed_vector& _existing = _this->mFlowTable[_parsed.mKey];
-    if (util::IsFlowReady(_existing, _parsed)) {
+  std::scoped_lock mapLock{this_->mtxAccessToFlowTable};
+  std::ranges::for_each(_parsed_list, [this_](parsed_packet const& _parsed) {
+    parsed_vector& existing = this_->mFlowTable[_parsed.mKey];
+    if (util::IsFlowReady(existing)) {
       parsed_vector data{};
-      data.swap(_existing);
-      _this->mEncodingQueue.enqueue({_parsed.mKey, data});
-      ELOG_TRACE << "加入编码队列: " << _this->mEncodingQueue.size_approx();
+      data.swap(existing);
+      assert(existing.empty());
+      this_->mEncodingQueue.enqueue({_parsed.mKey, data});
+      ELOG_TRACE << "加入编码队列: " << this_->mEncodingQueue.size_approx();
     }
-    _existing.emplace_back(_parsed);
-    assert(_existing.size() <= opt.max_packets);
+    existing.emplace_back(_parsed);
+    assert(existing.size() <= opt.max_packets);
   });
 }
 
@@ -199,51 +177,25 @@ hd::sink::KafkaSink::Impl::encode_flow_tensors(flow_vec_ref& _flow_list, torch::
   const long count = _flow_list.size();
   try {
     constexpr int width = 5;
-    /// TODO: encode_flow_tensors函数中， BuildSlideWindow 函数占了50%~98%的时间
-    // auto [slide_windows, flow_index_arr] = transform::BuildSlideWindowConcurrently(_flow_list, width, device);
     auto [slide_windows, flow_index_arr] = transform::BuildSlideWindow(_flow_list, width, device);
     Timer<std::chrono::microseconds> timer(_us, msg);
     const auto encoded_flows = BatchEncode(model, slide_windows, 8192, 500, false);
     encodings = transform::MergeFlow(encoded_flows, flow_index_arr, device);
-    //} catch (c10::Error& e) {
   } catch (...) {
-    // const std::string err_msg{e.msg()};
-    // const auto pos = err_msg.find_first_of('\n');
-    // ELOG_ERROR << "\x1B[31;1m" << err_msg.substr(0, pos) << "\x1B[0m";
     _flow_list.clear();
     ELOG_ERROR << "使用设备CUDA:\x1B[31;1m" << device.index() << "\x1B[0m编码" << count << "条流失败";
     return torch::rand({1, 128});
   }
-  // catch (std::runtime_error& e) {
-  // const std::string err_msg{e.what()};
-  // const auto pos = err_msg.find_first_of('\n');
-  // ELOG_ERROR << RED("RunTimeErr: ") << "\x1B[31;1m" << err_msg.substr(0, pos) << "\x1B[0m";
-  // return torch::rand({1, 128});
-  // }
   _flow_list.clear();
 
   auto aligned_count = std::to_string(count);
   aligned_count.insert(0, 6 - aligned_count.size(), ' ');
-  ELOG_WARN << GREEN("OK: ")
-            << YELLOW("设备:") << " CUDA:\x1b[36;1m" << device.index() << "\x1b[0m | "
-            << YELLOW("数量:") << aligned_count << " | "
-            << YELLOW("耗时:") << msg << " | "
-            << GREEN("平均:") << count * 1000000 / _us << " 条/s";
+  ELOG_INFO << GREEN("OK: ")
+            << YELLOW("On") << "CUDA:\x1b[36;1m" << device.index() << "\x1b[0m| "
+            << YELLOW("Num:") << aligned_count << "| "
+            << YELLOW("Time:") << msg << "| "
+            << GREEN("Avg:") << count * 1000000 / _us << " f/s";
   return encodings.cpu();
-}
-
-void hd::sink::KafkaSink::Impl::split_flows_by_count(
-  shared_flow_vec const& _list, vec_of_flow_vec& output, size_t const& count) {
-  std::ranges::remove_if(*_list, [](const hd_flow& item) -> bool {
-    return item.count < opt.min_packets;
-  });
-  output.reserve(_list->size() / count + 1);
-  while (not _list->empty()) {
-    const size_t current_batch_size = std::min(count, _list->size());
-    std::vector sub_vector(_list->begin(), _list->begin() + current_batch_size);
-    output.emplace_back(std::move(sub_vector));
-    _list->erase(_list->begin(), _list->begin() + current_batch_size);
-  }
 }
 
 bool hd::sink::KafkaSink::Impl::send_feature_to_kafka(const torch::Tensor& feature, const std::string& id) {
@@ -269,31 +221,19 @@ bool hd::sink::KafkaSink::Impl::send_feature_to_kafka(const torch::Tensor& featu
 
 void hd::sink::KafkaSink::cleanUnwantedFlowTask() {
   while (mIsRunning) {
-    mSleeper.sleep_for(60s);
+    mSleeper.sleep_for(5s);
     std::scoped_lock lock(mtxAccessToFlowTable);
-    int count = 0, transferred = 0;
     for (flow_iter it = mFlowTable.begin(); it not_eq mFlowTable.end();) {
-      auto& [key, _packets] = *it;
-      if (not util::detail::_isTimeout(_packets)) {
-        ++it;
-        continue;
+      if (not util::IsFlowReady(it->second)) {
+        if (util::detail::_isTimeout(it->second)) {
+          it = mFlowTable.erase(it);
+        } else ++it;
+      } else {
+        mEncodingQueue.enqueue({it->first, it->second});
+        it = mFlowTable.erase(it);
       }
-      if (util::detail::_checkLength(_packets)) {
-        mEncodingQueue.enqueue({key, _packets});
-        transferred++;
-      }
-      it = mFlowTable.erase(it);
-      count++;
     }
-    if (count > 0) {
-      ELOG_DEBUG << CYAN("FlowTable") << RED("-") << count
-                 << "=" << GREEN("EncodeQueue") << GREEN("+") << transferred
-                 << RED("Drop(") << count - transferred << RED(")")
-                 << BLUE(". Queue:")
-                 << mEncodingQueue.size_approx()
-                 << BLUE(",Table")
-                 << mFlowTable.size();
-    }
+    malloc_trim(0);
   }
   ELOG_TRACE << WHITE("函数 void cleanUnwantedFlowTask() 结束");
 }

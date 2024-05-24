@@ -6,20 +6,24 @@ SET(TARGET hd-torch-kafka)
 INCLUDE(cmake/ansi.cmake)
 ADD_COMPILE_DEFINITIONS(HD_LOG_DEBUG)
 
-OPTION(USE_CUDA "Use CUDA" ON)
+#@format:off
+OPTION(USE_CUDA      "Use CUDA"     ON)
+OPTION(USE_JE_MALLOC "Use jemalloc" OFF)
+OPTION(USE_TC_MALLOC "Use tcmalloc" OFF)
+#@format:on
 
 IF(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    MESSAGE(STATUS "Debug 模式")
-#    SET(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fsanitize=address")
-#    SET(CMAKE_LINKER_FLAGS_DEBUG "${CMAKE_LINKER_FLAGS_DEBUG} -fsanitize=address")
+  MESSAGE(STATUS "Debug 模式")
+  # SET(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fsanitize=address")
+  # SET(CMAKE_LINKER_FLAGS_DEBUG "${CMAKE_LINKER_FLAGS_DEBUG} -fsanitize=address")
 ENDIF()
 
 IF(USE_CUDA)
-    MESSAGE(STATUS "${BoldBlue}Using CUDA: ${BoldGreen}YES${ColorReset}")
-    SET(CMAKE_CUDA_ARCHITECTURES 86)
-    SET(CMAKE_CUDA_COMPILER /usr/local/cuda/bin/nvcc)
-    SET(CAFFE2_USE_CUDNN ON)
-    ADD_COMPILE_DEFINITIONS(USE_CUDA)
+  MESSAGE(STATUS "${BoldBlue}Using CUDA: ${BoldGreen}YES${ColorReset}")
+  SET(CMAKE_CUDA_ARCHITECTURES 86)
+  SET(CMAKE_CUDA_COMPILER /usr/local/cuda/bin/nvcc)
+  SET(CAFFE2_USE_CUDNN ON)
+  ADD_COMPILE_DEFINITIONS(USE_CUDA)
 ENDIF()
 
 FIND_PACKAGE(Torch REQUIRED PATHS $ENV{TORCH_PATH})
@@ -27,19 +31,19 @@ MESSAGE(STATUS "${BoldGreen}Torch 链接库:  ${ColorReset}${TORCH_LIBRARIES}")
 MESSAGE(STATUS "${BoldGreen}Torch 头文件:  ${ColorReset}${TORCH_INCLUDE_DIRS}")
 
 IF(NOT USE_THREADS)
-    FIND_PACKAGE(RdKafka CONFIG REQUIRED)
-    GET_TARGET_PROPERTY(RdKafka__INCLUDES RdKafka::rdkafka++ INTERFACE_INCLUDE_DIRECTORIES)
-    GET_TARGET_PROPERTY(RdKafka_LIBRARIES RdKafka::rdkafka++ INTERFACE_LINK_LIBRARIES)
-    MESSAGE(STATUS "${BoldYellow}RdKafka 链接库:  ${ColorReset}${RdKafka_LIBRARIES}")
-    MESSAGE(STATUS "${BoldYellow}RdKafka 头文件:  ${ColorReset}${RdKafka__INCLUDES}")
+  FIND_PACKAGE(RdKafka CONFIG REQUIRED)
+  GET_TARGET_PROPERTY(RdKafka__INCLUDES RdKafka::rdkafka++ INTERFACE_INCLUDE_DIRECTORIES)
+  GET_TARGET_PROPERTY(RdKafka_LIBRARIES RdKafka::rdkafka++ INTERFACE_LINK_LIBRARIES)
+  MESSAGE(STATUS "${BoldYellow}RdKafka 链接库:  ${ColorReset}${RdKafka_LIBRARIES}")
+  MESSAGE(STATUS "${BoldYellow}RdKafka 头文件:  ${ColorReset}${RdKafka__INCLUDES}")
 ENDIF()
 
 INCLUDE_DIRECTORIES(
-        ${RdKafka__INCLUDES}
-        ${TORCH_INCLUDE_DIRS}
-        include
-        include/yalanting/include
-        include/yalanting/include/ylt/thirdparty
+    ${RdKafka__INCLUDES}
+    ${TORCH_INCLUDE_DIRS}
+    include
+    include/yalanting/include
+    include/yalanting/include/ylt/thirdparty
 )
 
 ADD_SUBDIRECTORY(${PROJECT_SOURCE_DIR}/source)
@@ -47,9 +51,9 @@ ADD_EXECUTABLE(${TARGET} main.cpp ${SOURCE_FILES})
 
 OPTION(USE_THREADS "Use Threads::Threads" OFF)
 IF(USE_THREADS)
-    MESSAGE(STATUS "${BoldYellow}Using Threads::Threads: ${BoldGreen}YES${ColorReset}")
-    FIND_PACKAGE(Threads REQUIRED)
-    TARGET_LINK_LIBRARIES(${TARGET} PRIVATE Threads::Threads)
+  MESSAGE(STATUS "${BoldYellow}Using Threads::Threads: ${BoldGreen}YES${ColorReset}")
+  FIND_PACKAGE(Threads REQUIRED)
+  TARGET_LINK_LIBRARIES(${TARGET} PRIVATE Threads::Threads)
 ENDIF()
 TARGET_LINK_LIBRARIES(${TARGET} PRIVATE hd_source)
 MESSAGE(STATUS "${BoldRed}Target:  ${TARGET}${ColorReset}")

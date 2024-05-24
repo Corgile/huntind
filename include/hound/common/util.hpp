@@ -110,7 +110,7 @@ void Doc();
 
 void ParseOptions(capture_option& arg, int argc, char* argv[]);
 
-bool IsFlowReady(parsed_vector const& existing, parsed_packet const& _new);
+bool IsFlowReady(parsed_vector const& existing, parsed_packet const& _new = {});
 
 namespace detail {
 using namespace hd::type;
