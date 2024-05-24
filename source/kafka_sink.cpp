@@ -196,7 +196,7 @@ hd::sink::KafkaSink::Impl::send_feature_to_kafka(
   if (ids.size() <= batch_size) {
     std::string id, compressed;
     for (auto& item : ids)id.append(item).append("\n");
-    /// 压缩
+    /// 压缩： 在配置 \p compression.type  参数后是否还有必要？
     zstd::compress(id, compressed);
     send_one_msg(std::move(feature), std::move(compressed));
     return;
