@@ -14,6 +14,8 @@
 #include <hound/interruptible_sleep.hpp>
 #include <hound/task_executor.hpp>
 
+#include <hound/double_buffered_queue.hpp>
+
 namespace hd::sink {
 using namespace hd::type;
 using namespace hd::global;
@@ -44,13 +46,16 @@ private:
   // [[deprecated]]
   // int32_t SendEncoding(shared_flow_vec const& long_flow_list) const;
 
-  torch::Tensor EncodeFlowList(const shared_flow_vec& long_flow_list, torch::jit::Module* model, torch::Device& device) const;
+  torch::Tensor EncodeFlowList(flow_vector& data_list, torch::jit::Module* model, torch::Device& device) const;
 
 private:
   std::mutex mtxAccessToFlowTable;
   flow_map mFlowTable;
 
-  flow_queue mEncodingQueue;
+  // flow_queue mEncodingQueue[2];
+  // std::atomic<int> current{0};
+
+  DoubleBufferQueue <hd_flow> doubleBufferQueue;
 
   std::vector<std::thread> mLoopTasks;
   std::thread mCleanTask;
@@ -65,10 +70,27 @@ private:
 
 struct KafkaSink::Impl {
   static void merge_to_existing_flow(parsed_vector&, KafkaSink*);
-  static torch::Tensor encode_flow_tensors(flow_vec_ref& _flow_list, torch::Device& device, torch::jit::Module* model);
+
+  static torch::Tensor
+  encode_flow_tensors(flow_vector::const_iterator _begin,
+                      flow_vector::const_iterator _end,
+                      torch::Device& device,
+                      torch::jit::Module* model);
+
+  static torch::Tensor
+  encode_flow_concurrently(flow_vector::const_iterator _begin,
+                      flow_vector::const_iterator _end,
+                      torch::Device& device,
+                      torch::jit::Module* model);
+
   static parsed_vector parse_raw_packets(raw_vector& _raw_list);
-  static void send_feature_to_kafka(const torch::Tensor& feature, std::vector<std::string> const& ids);
-  static bool send_one_msg(const torch::Tensor& feature, std::string const& id);
+
+  static void send_all_to_kafka(const torch::Tensor& feature, std::vector<std::string> const& ids);
+
+private:
+  static void send_concurrently(const torch::Tensor& feature, std::vector<std::string> const& ids);
+
+  static bool send_one_msg(torch::Tensor const& feature, std::vector<std::string> const& id);
 };
 } // namespace hd::sink
 

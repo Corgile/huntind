@@ -9,6 +9,7 @@
   #include <hound/dbg/dbg.hpp>
   #include <ylt/easylog.hpp>
 #endif
+#define Seconds(x)  std::chrono::seconds(x)
 
 #pragma region 常量
 #ifndef XXX_PADSIZE

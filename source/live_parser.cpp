@@ -2,9 +2,9 @@
 // Created by brian on 11/22/23.
 //
 
-#include "hound/live_parser.hpp"
-#include "hound/common/global.hpp"
 #include "hound/common/util.hpp"
+#include "hound/common/global.hpp"
+#include "hound/live_parser.hpp"
 
 using namespace hd::global;
 
@@ -22,40 +22,28 @@ void hd::type::LiveParser::startCapture() {
   if (opt.duration > 0) {
     /// canceler thread
     std::thread([this] {
-      std::this_thread::sleep_for(std::chrono::seconds(opt.duration));
+      std::this_thread::sleep_for(Seconds(opt.duration));
       this->stopCapture();
     }).detach();
   }
   pcap_loop(mHandle.get(), opt.num_packets, liveHandler, reinterpret_cast<u_char*>(this));
-  // cv_consumer.notify_all();
 }
 
 void hd::type::LiveParser::liveHandler(u_char* user_data, const pcap_pkthdr* pkthdr, const u_char* packet) {
   auto const _this{reinterpret_cast<LiveParser*>(user_data)};
-  _this->mPacketQueue.enqueue({pkthdr, packet, std::min(opt.payload + 128, static_cast<int>(pkthdr->caplen))});
-#if defined(BENCHMARK)
-  ++num_captured_packet;
-#endif // BENCHMARK
+  _this->doubleBufferQueue.enqueue({pkthdr, packet, std::min(opt.total_bytes, pkthdr->caplen)});
 }
 
 void hd::type::LiveParser::consumer_job() {
-  using namespace std::chrono_literals;
   sink::KafkaSink sink;
   while (is_running) {
-    std::this_thread::sleep_for(2s);
-    raw_vector _vector;
-    {
-      std::scoped_lock lock(queue_mtx);
-      _vector.swap(mPacketQueue);
-    }
-    if (_vector.size_approx() == 0) {
-      std::this_thread::sleep_for(2s);
+    std::this_thread::sleep_for(Seconds(opt.wait1));
+    std::shared_ptr current_queue = doubleBufferQueue.read();
+    if (current_queue->size_approx() == 0) {
+      std::this_thread::sleep_for(Seconds(opt.wait2));
       continue;
     }
-    auto shared_ = std::make_shared<raw_vector>(std::move(_vector));
-    mTaskExecutor.AddTask([shared_, &sink] {
-      sink.MakeFlow(*shared_);
-    });
+    mTaskExecutor.AddTask([current_queue, &sink] { sink.MakeFlow(*current_queue); });
   }
 }
 
@@ -76,7 +64,7 @@ hd::type::LiveParser::~LiveParser() {
   std::printf("%s%d\n", CYAN("num_consumed_packet = "), num_consumed_packet.load());
   std::printf("%s%d\n", CYAN("num_written_csv = "), num_written_csv.load());
 #endif //- #if defined(BENCHMARK)
-  ELOG_DEBUG << CYAN("处理完成， raw包队列剩余 ") << mPacketQueue.size_approx();
+  ELOG_DEBUG << CYAN("处理完成， raw包队列剩余 ") << doubleBufferQueue.size();
 }
 
 bool hd::type::LiveParser::isRunning() const {

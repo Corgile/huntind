@@ -24,11 +24,11 @@ torch::Tensor transform::z_score_norm(torch::Tensor const& data, torch::Device& 
 }
 
 torch::Tensor
-transform::FlowToTensor(hd_flow& flow, torch::TensorOptions const& option, torch::Device& device, int width) {
+transform::FlowToTensor(hd_flow const& flow, torch::TensorOptions const& option, torch::Device& device, int width) {
   const auto w = flow.count - flow.count % width;
   torch::Tensor flow_tensor = torch::empty({w, 136}, option);
   for (size_t _idx = 0; _idx < w; ++_idx) {
-    flow_tensor[_idx] = PacketToTensor(flow.at(_idx), flow.protocol, device);
+    flow_tensor[_idx] = PacketToTensor(flow._packet_list[_idx], flow.protocol, device);
   }
   return flow_tensor;
 }
@@ -36,7 +36,7 @@ transform::FlowToTensor(hd_flow& flow, torch::TensorOptions const& option, torch
 torch::Tensor
 transform::PacketToTensor(parsed_packet const& packet, long protocol, torch::Device& device) {
   constexpr int n_digits = 148;
-  const auto _blob_data = (void*)packet.mBlobData.data();
+  const auto _blob_data = (void*) packet.mBlobData.data();
   const auto _ft = torch::from_blob(_blob_data, {n_digits}, torch::kU8).to(device);
   long _end = protocol == IPPROTO_TCP ? 60 : 120;
   long _start = protocol == IPPROTO_TCP ? 64 : 124;
@@ -62,7 +62,7 @@ transform::BuildSlideWindowConcurrently(flow_vec_ref const& flow_list, int width
   std::vector<std::future<future_type>> futures;
   futures.reserve(batch_count);
   for (int i = 0; i < data_size; i += batch_size) {
-    futures.emplace_back(std::async(std::launch::async, [&, start=i, end=std::min(i + batch_size, data_size)] {
+    futures.emplace_back(std::async(std::launch::async, [&, start = i, end = std::min(i + batch_size, data_size)] {
       std::vector<torch::Tensor> _window_list;
       std::vector<torch::Tensor> _index_list;
       _window_list.reserve(batch_size);
@@ -93,7 +93,7 @@ transform::BuildSlideWindowConcurrently(flow_vec_ref const& flow_list, int width
 }
 
 std::tuple<torch::Tensor, torch::Tensor>
-transform::BuildSlideWindow(flow_vec_ref const& flow_list, int width, torch::Device& device) {
+transform::BuildSlideWindow(flow_vector const& flow_list, int width, torch::Device& device) {
   const auto index_option = torch::TensorOptions().dtype(torch::kI32).device(device);
   const auto window_option = torch::TensorOptions().dtype(torch::kF32).device(device);
 
@@ -110,7 +110,7 @@ transform::BuildSlideWindow(flow_vec_ref const& flow_list, int width, torch::Dev
   window_list.reserve(num_windows);
 
   long offset = 0;
-  std::ranges::for_each(flow_list, [&](hd_flow& flow) {
+  std::ranges::for_each(flow_list, [&](hd_flow const& flow) {
     const torch::Tensor flow_tensor = FlowToTensor(flow, window_option, device, width);
     auto viewd = flow_tensor.reshape({-1, 5, 136}).slice(1, 0, 4).reshape({-1, 544});
     window_list.emplace_back(viewd);
@@ -156,7 +156,7 @@ void print_tensor(torch::Tensor const& tensor) {
   }
   const auto temp = tensor.cpu();
   auto tensor_accessor = temp.accessor<int32_t, 2>();  // 使用 float 类型和 2D 访问器
-  for (int i = 0; i < std::min(10, (int)tensor_accessor.size(0)); ++i) {
+  for (int i = 0; i < std::min(10, (int) tensor_accessor.size(0)); ++i) {
     std::cout << "(" << tensor_accessor[i][0] << ", " << tensor_accessor[i][1] << ")\n";
   }
 }
@@ -165,9 +165,9 @@ torch::Tensor
 BatchEncode(torch::jit::Module* model, const torch::Tensor& data,
             int64_t batch_size, int64_t max_batch, bool stay_on_gpu) {
   const int64_t data_size = data.size(0);
-  std::vector<torch::Tensor> CPU_results, GPU_results;
+  std::vector<torch::Tensor> /*CPU_results,*/ GPU_results;
   GPU_results.reserve(data_size / batch_size + 1);
-  CPU_results.reserve(data_size / batch_size + 1);
+  // CPU_results.reserve(data_size / batch_size + 1);
   for (int64_t start = 0; start < data_size; start += batch_size) {
     auto end = std::min(start + batch_size, data_size);
     auto batch_data = data.slice(0, start, end);
@@ -175,16 +175,17 @@ BatchEncode(torch::jit::Module* model, const torch::Tensor& data,
     GPU_results.emplace_back(output);
     if (stay_on_gpu) [[unlikely]] continue;
     // ↓↓↓ 把数据转移至CPU防止GPU-OOM
-    if (GPU_results.size() < max_batch) continue;
-    CPU_results.emplace_back(concat(GPU_results, 0).cpu());
-    GPU_results.clear();
+    // if (GPU_results.size() < max_batch) continue;
+    // CPU_results.emplace_back(concat(GPU_results, 0).cpu());
+    // GPU_results.clear();
   }
-  if (stay_on_gpu) [[unlikely]] return concat(GPU_results, 0);//.to(hd::global::calc_device);
-  if (not GPU_results.empty()) {
-    CPU_results.emplace_back(concat(GPU_results, 0).cpu());
-    GPU_results.clear();
-  }
-  return concat(CPU_results, 0);
+  if (stay_on_gpu) [[likely]] return concat(GPU_results, 0);
+  return {};
+  // if (not GPU_results.empty()) {
+  //   CPU_results.emplace_back(concat(GPU_results, 0).cpu());
+  //   GPU_results.clear();
+  // }
+  // return concat(CPU_results, 0);
 }
 
 #pragma endregion Exported API

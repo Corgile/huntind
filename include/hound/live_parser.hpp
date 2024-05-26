@@ -23,6 +23,7 @@ public:
   void stopCapture();
 
   ~LiveParser();
+
   bool isRunning() const;
 
 private:
@@ -33,10 +34,11 @@ private:
 private:
   std::atomic<bool> is_running{true};
   pcap_handle_t mHandle{nullptr};
-  raw_vector mPacketQueue;
   std::vector<std::thread> mConsumerTasks;
-  std::mutex queue_mtx;
   TaskExecutor mTaskExecutor;
+  // std::atomic<int> current{0};
+  // raw_vector mPacketQueue[2];
+  DoubleBufferQueue<raw_packet> doubleBufferQueue;
 };
 } // type
 

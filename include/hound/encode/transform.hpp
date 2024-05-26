@@ -24,7 +24,7 @@ z_score_norm(torch::Tensor const& data, torch::Device&);
 /// @param width
 /// @return Tensor in \code (num_packets, 136)\endcode
 torch::Tensor
-FlowToTensor(hd_flow& flow, torch::TensorOptions const& option, torch::Device& device, int width);
+FlowToTensor(hd_flow const& flow, torch::TensorOptions const& option, torch::Device& device, int width);
 
 /// @brief 将packet中的二进制数转换成tensor中的数据
 /// @param packet parsed packet (we want its blob data)
@@ -38,9 +38,9 @@ PacketToTensor(parsed_packet const& packet, long protocol, torch::Device& device
 /// @param flow_list flow list / vector
 /// @param width window size
 /// @param device cuda设备
-/// @return tuple<Tensor, Tensor> (slide_windows, window_indices)
+/// @return tuple<Tensor, Tensor> (slide_windows, window_indices) on GPU
 std::tuple<torch::Tensor, torch::Tensor>
-BuildSlideWindow(flow_vec_ref const& flow_list, int width, torch::Device& device);
+BuildSlideWindow(flow_vector const& flow_list, int width, torch::Device& device);
 
 [[deprecated]]
 std::pair<torch::Tensor, torch::Tensor>

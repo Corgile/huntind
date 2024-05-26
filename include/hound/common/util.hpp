@@ -39,9 +39,10 @@ inline option longopts[] = {
   {"sep",       required_argument, nullptr, 'm'},
   {"brokers",   required_argument, nullptr, 'B'},
   {"pool",      required_argument, nullptr, 'b'},
-  {"partition", required_argument, nullptr, 'x'},
   {"topic",     required_argument, nullptr, 'y'},
   {"model",     required_argument, nullptr, 'M'},
+  {"wait1",     required_argument, nullptr, '.'},
+  {"wait2",     required_argument, nullptr, '/'},
   {"index",     required_argument, nullptr, 'I'},
   /// num of bits to convert as an integer
   {"stride",    required_argument, nullptr, 'S'},
@@ -97,7 +98,7 @@ inline std::unordered_map<int, std::string_view> signal_msgs {
   {13, "SIGPIPE: Broken pipe."},
   {14, "SIGALRM: Alarm clock."},
 };
-static auto shortopts = "c:J:P:W:F:f:N:E:D:S:L:R:p:CTVhIM:m:B:b:x:y:";
+static auto shortopts = "c:J:P:W:F:f:N:E:D:S:L:R:p:CTVhIM:m:B:b:x:y:/:.:";
 // "K:"
 
 #pragma endregion ShortAndLongOptions //@format:on

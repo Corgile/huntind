@@ -11,6 +11,7 @@
 namespace hd::type {
 struct capture_option final {
   int32_t payload{20};
+  uint32_t total_bytes{128};
   int32_t num_packets{-1};
   int32_t flowTimeout{20};
   bool include_ts{false};
@@ -21,6 +22,8 @@ struct capture_option final {
 
   int32_t stride{8};
   int32_t workers{1};
+  int32_t wait1{5};
+  int32_t wait2{10};
   std::string device{};
   std::string filter{};
   std::string output_file{};
@@ -31,9 +34,7 @@ struct capture_option final {
   int32_t duration{-1};
   std::string separator{','};
   char format[8] = {'%', 'l', 'd', ','};
-  bool write_file{false};
-  size_t poolSize{50};
-  int32_t partition{1};
+  size_t poolSize{4};
   int32_t num_gpus{4};
   std::string brokers{};
   std::string topic{};

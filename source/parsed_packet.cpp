@@ -85,12 +85,6 @@ hd::type::parsed_packet::parsed_packet(parsed_packet&& other) noexcept {
   HasContent = other.HasContent;
 }
 
-hd::type::parsed_packet& hd::type::parsed_packet::operator=(parsed_packet other) {
-  using std::swap;
-  swap(*this, other);
-  return *this;
-}
-
 bool hd::type::parsed_packet::present() const {
   return HasContent;
 }

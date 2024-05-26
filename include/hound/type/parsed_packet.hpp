@@ -37,8 +37,6 @@ public:
   parsed_packet(parsed_packet const& copied);
   /// @brief m'tor
   parsed_packet(parsed_packet&& other) noexcept;
-  /// swap
-  parsed_packet& operator=(parsed_packet other);
 
   bool present() const;
 
@@ -78,7 +76,7 @@ private:
   }
 
 private:
-  bool HasContent{true};
+  bool HasContent{false};
 };
 } // hd
 
