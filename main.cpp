@@ -29,6 +29,16 @@ static int _signal{0};
 
 static LiveParser* _live_parser{nullptr};
 
+// 获取系统中可用的CPU数量
+int get_num_cpus() {
+  unsigned int num_cpus = std::thread::hardware_concurrency();
+  if (num_cpus == 0) {
+    num_cpus = sysconf(_SC_NPROCESSORS_ONLN);
+  }
+  return num_cpus;
+}
+
+
 static void quit_guard(const int max_, int& ctrlc) {
   if (ctrlc++ <= 1) return;
   ELOG_INFO << RED("PID: [") << pid << RED("],PPID: [") << ppid << RED("] 后续事务进行中, 耐心等待！");
@@ -66,6 +76,7 @@ static void init_parameters(const int argc, char* argv[]) {
   ELOG_INFO << CYAN("程序正在运行中: ") << RED("PID: ") << pid << RED(" PPID： ") << ppid;
   ELOG_INFO << "日志： tail -f ./log";
   opt.num_gpus = torch::cuda::device_count();
+  opt.num_cpus = get_num_cpus();
   producer_pool = ProducerPool(opt.poolSize, opt.brokers);
 }
 

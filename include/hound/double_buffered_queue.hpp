@@ -30,6 +30,7 @@ public:
     int nextQueue = (currentQueue + 1) & 0x1;
     current.store(nextQueue);
     /// Return the queue that is now inactive for processing
+    std::scoped_lock read_lock(read_);
     return std::make_shared<container>(std::move(queues[currentQueue]));
   }
 
@@ -39,6 +40,7 @@ public:
 
 private:
   container queues[2];
+  std::mutex read_;
   std::atomic<int> current;
 };
 

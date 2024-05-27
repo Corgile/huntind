@@ -14,22 +14,26 @@
 
 class TaskExecutor {
 public:
-  TaskExecutor() : mIsRunning(true) {
-    mThread = std::thread(&TaskExecutor::Run, this);
-  }
+  TaskExecutor() : mIsRunning(true), mThread(&TaskExecutor::Run, this) {}
 
   ~TaskExecutor();
 
   void AddTask(std::function<void()> task);
 
-private:
   void Run();
 
-  std::queue<std::function<void()>> mTasks;
+private:
+  void SetThreadAffinity(int cpu_id);
+
+  void CleanFutures();
+
   std::thread mThread;
   std::mutex mMutex;
   std::condition_variable mCondition;
-  bool mIsRunning;
+  std::atomic_bool mIsRunning;
+  std::queue<std::pair<std::function<void()>, int>> mTasks;
+  std::vector<std::future<void>> mFutures; // Store futures of running tasks
+  std::atomic<int> next_cpu_id{8}; // Next CPU ID to assign
 };
 
 #endif //TASK_EXECUTOR_HPP
