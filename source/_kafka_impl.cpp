@@ -140,7 +140,7 @@ encode_flow_concurrently(flow_vector::const_iterator _begin,
 
   const int data_size = std::distance(_begin, _end);
   /// 单个CUDA设备一次编码的流条数
-  constexpr int batch_size = 3000;
+  constexpr int batch_size = 2000;
   std::mutex r;
   auto const batch_count = (data_size + batch_size - 1) / batch_size;
   std::vector<torch::Tensor> result;
@@ -151,7 +151,7 @@ encode_flow_concurrently(flow_vector::const_iterator _begin,
     threads.emplace_back([&, f_index = i] {
       const auto _it_beg = _begin + f_index;
       const auto _it_end = std::min(_it_beg + batch_size, _end);
-      NumBlockedFlows -= std::distance(_it_beg, _it_end);
+      NumBlockedFlows.fetch_sub(std::distance(_it_beg, _it_end));
       const auto feat = encode_flow_tensors(_it_beg, _it_end, device, model);
       std::scoped_lock lock(r);
       result.emplace_back(feat);

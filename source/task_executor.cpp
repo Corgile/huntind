@@ -35,9 +35,9 @@ void TaskExecutor::Run() {
       std::tie(task_func, cpu_id) = std::move(mTasks.front());
       mTasks.pop();
     }
-    auto task_future = std::async(std::launch::async, [cpu_id, task_func, this] {
+    auto task_future = std::async(std::launch::async, [cpu_id, task_=std::move(task_func), this] {
       SetThreadAffinity(cpu_id);
-      task_func();
+      task_();
     });
     {
       std::scoped_lock<std::mutex> lock(mMutex);

@@ -22,7 +22,7 @@ struct capture_option final {
 
   int32_t stride{8};
   int32_t workers{1};
-  int32_t wait1{5};
+  int32_t wait1{3};
   int32_t wait2{10};
   std::string device{};
   std::string filter{};

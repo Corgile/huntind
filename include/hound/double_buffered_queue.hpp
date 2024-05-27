@@ -30,8 +30,12 @@ public:
     int nextQueue = (currentQueue + 1) & 0x1;
     current.store(nextQueue);
     /// Return the queue that is now inactive for processing
-    std::scoped_lock read_lock(read_);
-    return std::make_shared<container>(std::move(queues[currentQueue]));
+    container buffer;
+    {
+      std::scoped_lock read_lock(read_);
+      buffer.swap(queues[currentQueue]);
+    }
+    return std::make_shared<container>(std::move(buffer));
   }
 
   size_t size() const {

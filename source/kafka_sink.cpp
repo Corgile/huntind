@@ -57,11 +57,15 @@ void hd::sink::KafkaSink::LoopTask(torch::jit::Module* model, torch::Device& dev
       continue;
     }
 
+    NumBlockedFlows.fetch_add(new_data_size);
+    ELOG_INFO << GREEN("新增: ") << new_data_size << " | "
+              << RED("排队: ") << NumBlockedFlows.load();
+
     mTaskExecutor.AddTask([=, &device, this] {
       hd_flow buf;
       flow_vector data_list;
       std::vector<std::string> key_;
-      key_.reserve(data_list.size());
+      key_.reserve(current_queue->size_approx());
       data_list.reserve(current_queue->size_approx());
       while (current_queue->try_dequeue(buf)) { data_list.emplace_back(buf); }
 
@@ -72,10 +76,6 @@ void hd::sink::KafkaSink::LoopTask(torch::jit::Module* model, torch::Device& dev
       assert(data_list.size() == encoding.size(0));
       this->pImpl_->send_all_to_kafka(encoding, key_);
     });
-
-    NumBlockedFlows.fetch_add(new_data_size);
-    ELOG_INFO << GREEN("新增: ") << new_data_size << " | "
-              << RED("排队: ") << NumBlockedFlows.load();
   }
   ELOG_INFO << CYAN("流处理任务[") << std::this_thread::get_id() << CYAN("] 结束");
 }
@@ -85,10 +85,10 @@ torch::Tensor hd::sink::KafkaSink::EncodeFlowList(flow_vector& data_list,
                                                   torch::Device& device) const {
   const int data_size = data_list.size();
   /// 单个CUDA设备一次编码的流条数
-  constexpr int batch_size = 6000;
+  constexpr int batch_size = 2000;
 
   if (data_size < batch_size) [[likely]] {
-    NumBlockedFlows -= data_list.size();
+    NumBlockedFlows.fetch_sub(data_size);
     return pImpl_->encode_flow_tensors(data_list.begin(), data_list.end(), device, model);
   }
   ELOG_DEBUG << CYAN("流消息太多， 采用多线程模式");
