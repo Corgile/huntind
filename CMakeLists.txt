@@ -7,7 +7,7 @@ INCLUDE(cmake/ansi.cmake)
 ADD_COMPILE_DEFINITIONS(HD_LOG_DEBUG)
 
 #@format:off
-OPTION(USE_CUDA      "Use CUDA"     ON)
+OPTION(USE_CUDA      "Use CUDA"     OFF)
 OPTION(USE_JE_MALLOC "Use jemalloc" OFF)
 OPTION(USE_TC_MALLOC "Use tcmalloc" OFF)
 #@format:on

@@ -11,11 +11,11 @@
 
 hd::sink::KafkaSink::KafkaSink() {
   mLoopTasks.reserve(opt.num_gpus);
-  for (int i = 0; i < opt.num_gpus; ++i) {
-    mLoopTasks.emplace_back(std::thread([this, ith = (i + 1) % opt.num_gpus] {
+  for (int i = 0; i < opt.workers; ++i) {
+    mLoopTasks.emplace_back(std::thread([this] {
       auto mdl = torch::jit::load(opt.model_path);
       auto model = new torch::jit::Module(mdl);
-      torch::Device device(torch::kCUDA, ith);
+      torch::Device device(torch::kCPU);
       model->to(device);
       model->eval();
       LoopTask(model, device);

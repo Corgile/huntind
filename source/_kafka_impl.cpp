@@ -56,11 +56,12 @@ encode_flow_tensors(flow_vector::const_iterator _begin,
     auto [sld_wind, flow_idx_arr] =
       transform::BuildSlideWindow({_begin, _end}, width, device);
     Timer<std::chrono::microseconds> timer(_us, msg);
-    const auto encoded_flows = BatchEncode(model, sld_wind, 4096, 4096, true);
+    const auto encoded_flows = BatchEncode(model, sld_wind, 4096);
     encodings = transform::MergeFlow(encoded_flows, flow_idx_arr, device);
-  } catch (...) {
-    ELOG_ERROR << "使用设备CUDA:\x1B[31;1m" << device.index() << "\x1B[0m编码" << count << "条流失败";
-    return torch::rand({1, 128});
+  } catch (c10::Error& e) {
+    ELOG_ERROR << e.msg();
+    ELOG_ERROR << "使用设备CUDA:\x1B[31;1m" << device.type() << "\x1B[0m编码" << count << "条流失败";
+    return torch::rand({count, 1, 128});
   }
   auto aligned_count = std::to_string(count);
   aligned_count.insert(0, 6 - aligned_count.size(), ' ');

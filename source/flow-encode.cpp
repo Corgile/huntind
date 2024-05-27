@@ -162,30 +162,17 @@ void print_tensor(torch::Tensor const& tensor) {
 }
 
 torch::Tensor
-BatchEncode(torch::jit::Module* model, const torch::Tensor& data,
-            int64_t batch_size, int64_t max_batch, bool stay_on_gpu) {
+BatchEncode(torch::jit::Module* model, const torch::Tensor& data, int64_t batch_size) {
   const int64_t data_size = data.size(0);
-  std::vector<torch::Tensor> /*CPU_results,*/ GPU_results;
-  GPU_results.reserve(data_size / batch_size + 1);
-  // CPU_results.reserve(data_size / batch_size + 1);
+  std::vector<torch::Tensor> CPU_results;
+  CPU_results.reserve(data_size / batch_size + 1);
   for (int64_t start = 0; start < data_size; start += batch_size) {
     auto end = std::min(start + batch_size, data_size);
     auto batch_data = data.slice(0, start, end);
-    auto output = model->forward({data}).toTensor();
-    GPU_results.emplace_back(output);
-    if (stay_on_gpu) [[unlikely]] continue;
-    // ↓↓↓ 把数据转移至CPU防止GPU-OOM
-    // if (GPU_results.size() < max_batch) continue;
-    // CPU_results.emplace_back(concat(GPU_results, 0).cpu());
-    // GPU_results.clear();
+    auto output = model->forward({data}).toTuple();
+    CPU_results.emplace_back(output->elements()[1].toTensor());
   }
-  if (stay_on_gpu) [[likely]] return concat(GPU_results, 0);
-  return {};
-  // if (not GPU_results.empty()) {
-  //   CPU_results.emplace_back(concat(GPU_results, 0).cpu());
-  //   GPU_results.clear();
-  // }
-  // return concat(CPU_results, 0);
+  return concat(CPU_results, 0);
 }
 
 #pragma endregion Exported API
