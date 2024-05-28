@@ -22,5 +22,7 @@ def main(target_pid: int):
             log_file.flush()  # 确保数据被写入文件
 
 if __name__ == '__main__':
-    if len(sys.argv) < 2: exit(-1)
+    if len(sys.argv) < 2:
+        print(f"usage: python {sys.argv[0]} PID")
+        exit(-1)
     main(int(sys.argv[1]))
