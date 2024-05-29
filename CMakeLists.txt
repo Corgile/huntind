@@ -16,7 +16,7 @@ OPTION(HD_USE_THREADS   "Use Threads::Threads"  OFF)
 INCLUDE(cmake/log-level.cmake)
 
 IF(HD_USE_CUDA)
-  MESSAGE(STATUS "${BoldBlue}使用 CUDA: ${BoldCyan}${USE_CUDA}${ColorReset}")
+  MESSAGE(STATUS "${BoldBlue}使用 CUDA: ${BoldCyan}${HD_USE_CUDA}${ColorReset}")
   SET(CMAKE_CUDA_ARCHITECTURES 86)
   SET(CMAKE_CUDA_COMPILER /usr/local/cuda/bin/nvcc)
   SET(CAFFE2_USE_CUDNN ON)

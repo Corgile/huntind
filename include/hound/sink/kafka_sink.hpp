@@ -55,7 +55,7 @@ private:
   // flow_queue mEncodingQueue[2];
   // std::atomic<int> current{0};
 
-  DoubleBufferQueue <hd_flow> doubleBufferQueue;
+  DoubleBufferQueue<hd_flow, std::vector<hd_flow>> doubleBufferQueue;
 
   std::vector<std::thread> mLoopTasks;
   std::thread mCleanTask;
@@ -79,9 +79,9 @@ struct KafkaSink::Impl {
 
   static torch::Tensor
   encode_flow_concurrently(flow_vector::const_iterator _begin,
-                      flow_vector::const_iterator _end,
-                      torch::Device& device,
-                      torch::jit::Module* model);
+                           flow_vector::const_iterator _end,
+                           torch::Device& device,
+                           torch::jit::Module* model);
 
   static parsed_vector parse_raw_packets(raw_vector& _raw_list);
 

@@ -50,7 +50,7 @@ void hd::sink::KafkaSink::MakeFlow(raw_vector& _raw_list) {
 void hd::sink::KafkaSink::LoopTask(torch::jit::Module* model, torch::Device& device) {
   while (mIsRunning) {
     std::shared_ptr current_queue = doubleBufferQueue.read();
-    int const new_data_size = static_cast<int>(current_queue->size_approx());
+    int const new_data_size = static_cast<int>(current_queue->size());
 
     if (new_data_size == 0) {
       std::this_thread::sleep_for(Seconds(5));
@@ -63,19 +63,21 @@ void hd::sink::KafkaSink::LoopTask(torch::jit::Module* model, torch::Device& dev
               << RED("排队: ") << NumBlockedFlows.load();
 #endif
     mTaskExecutor.AddTask([=, &device, this] {
-      hd_flow buf;
+      /*hd_flow buf;
       flow_vector data_list;
-      std::vector<std::string> key_;
       key_.reserve(current_queue->size_approx());
       data_list.reserve(current_queue->size_approx());
       while (current_queue->try_dequeue(buf)) {
-        key_.emplace_back(buf.flowId);
         data_list.emplace_back(buf);
-      }
+      }*/
+      std::vector<std::string> key_;
+      std::for_each((*current_queue).begin(), (*current_queue).end(), [&key_](auto& buf) {
+        key_.emplace_back(buf.flowId);
+      });
 
-      torch::Tensor encoding = EncodeFlowList(data_list, model, device);
+      torch::Tensor encoding = EncodeFlowList(*current_queue, model, device);
 
-      assert(data_list.size() == encoding.size(0));
+      assert(current_queue->size() == encoding.size(0));
       this->pImpl_->send_all_to_kafka(encoding, key_);
     });
   }

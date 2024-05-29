@@ -8,20 +8,23 @@
 
 #include <atomic>
 
-template<typename Data>
+template<typename Data, typename container = moodycamel::ConcurrentQueue<Data>>
 class DoubleBufferQueue {
-  using container = moodycamel::ConcurrentQueue<Data>;
 public:
   DoubleBufferQueue() : current(0) {}
 
   // Add item to the active queue
   void enqueue(Data& item) {
-    queues[current.load()].enqueue(item);
+    if constexpr (std::is_same_v<container, std::vector<Data>>) {
+      queues[current.load()].emplace_back(std::forward<Data>(item));
+    } else queues[current.load()].enqueue(item);
   }
 
   /// Add item to the active queue
   void enqueue(Data&& item) {
-    queues[current.load()].enqueue(item);
+    if constexpr (std::is_same_v<container, std::vector<Data>>) {
+      queues[current.load()].emplace_back(std::forward<Data>(item));
+    } else queues[current.load()].enqueue(item);
   }
 
   /// Read the active queue and return the queue to be processed
@@ -39,7 +42,10 @@ public:
   }
 
   size_t size() const {
-    return queues[0].size_approx() + queues[1].size_approx();
+    if constexpr (std::is_same_v<container, std::vector<Data>>) {
+      return queues[0].size() + queues[1].size();
+    }
+    else return queues[0].size_approx() + queues[1].size_approx();
   }
 
 private:

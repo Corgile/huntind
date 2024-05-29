@@ -25,7 +25,7 @@ using parsed_vector = std::vector<parsed_packet>;
 
 struct parsed_packet final {
 
-  uint16_t protocol{};
+  uint16_t protocol;
   long mTsSec, mTSuSec, mCapLen;
   std::string mKey, mBlobData;
 

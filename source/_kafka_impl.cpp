@@ -13,7 +13,6 @@
 hd::type::parsed_vector
 hd::sink::KafkaSink::Impl::parse_raw_packets(raw_vector& _raw_list) {
   parsed_vector _parsed_list{};
-  if (_raw_list.size_approx() == 0) return _parsed_list;
   _parsed_list.reserve(_raw_list.size_approx());
   raw_packet item;
   while (_raw_list.try_dequeue(item)) {
