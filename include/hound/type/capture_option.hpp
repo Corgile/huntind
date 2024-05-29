@@ -35,8 +35,8 @@ struct capture_option final {
   std::string separator{','};
   char format[8] = {'%', 'l', 'd', ','};
   size_t poolSize{4};
-  int32_t num_gpus{4};
-  int32_t num_cpus{16};
+  uint32_t num_gpus{4};
+  uint32_t num_cpus{16};
   std::string brokers{};
   std::string topic{};
 

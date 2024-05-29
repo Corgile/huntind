@@ -17,7 +17,7 @@ using namespace hd::type;
 torch::Tensor
 z_score_norm(torch::Tensor const& data, torch::Device&);
 
-/// @brief 将flow转换成Tensor
+/// @brief 将flow转换成Tensor TODO: 疑似性能瓶颈
 /// @param flow \p hd_flow& as input
 /// @param option tensor 选项(device, dtype,...)
 /// @param device
@@ -44,14 +44,14 @@ BuildSlideWindow(flow_vector const& flow_list, int width, torch::Device& device)
 
 [[deprecated]]
 std::pair<torch::Tensor, torch::Tensor>
-BuildSlideWindowConcurrently(flow_vec_ref const& flow_list, int width, torch::Device& device);
+BuildSlideWindowConcurrently(flow_vector const& flow_list, int width, torch::Device& device);
 
 
-/// @param predict_flows 输入需要被分类的flow
+/// @param encoded_flows 输入需要被分类的flow
 /// @param index_arr 滑动窗口下标
 /// @param device 显卡
 /// @return Tensor in shape of (num_flows, flow_hidden_dim), here: (num_flows, 128)
 torch::Tensor
-MergeFlow(torch::Tensor const& predict_flows, torch::Tensor const& index_arr, torch::Device& device);
+MergeFlow(torch::Tensor const& encoded_flows, torch::Tensor const& index_arr, torch::Device& device);
 }
 #endif //HOUND_TRANSFORM_HPP

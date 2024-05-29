@@ -12,6 +12,7 @@ MyReportCB::MyReportCB() {
 MyEventCB::MyEventCB() {
   easylog::logger<>::instance();
 }
+
 MyPartitionCB::MyPartitionCB() {
   easylog::logger<>::instance();
 }
@@ -23,7 +24,9 @@ int32_t MyPartitionCB::partitioner_cb(RdKafka::Topic const* topic,
   easylog::logger<>::instance();
   const int32_t partition = last_partition++ % partition_cnt;
   last_partition = partition;
+#ifdef HD_LOG_LEVEL_DEBUG
   ELOG_DEBUG << "消息将会发送到分区: " << partition;
+#endif
   return partition;
 }
 
@@ -31,25 +34,30 @@ void MyReportCB::dr_cb(RdKafka::Message& message) {
   if (message.err()) {
     ELOG_ERROR << "消息推送失败: " << message.errstr();
   }
+#ifdef HD_LOG_LEVEL_INFO
   if (not hd::global::opt.verbose) return;
-  ELOG_INFO << GREEN(">>>消息推送成功至: ") << message.topic_name() << "["
-               << message.partition() << "][" << message.offset() << "]";
+  ELOG_INFO << GREEN("消息发送成功: ") << message.topic_name() << "["
+            << message.partition() << "][" << message.offset() << "]";
+#endif
 }
 
 void MyEventCB::event_cb(RdKafka::Event& event) {
   easylog::logger<>::instance();
   switch (event.type()) {
-  case RdKafka::Event::EVENT_ERROR:
-    ELOG_ERROR << RED("错误: ") << event.str();
-    break;
-  case RdKafka::Event::EVENT_STATS:
-    ELOG_TRACE << BLUE("EVENT_STATS: ") << event.str();
-    break;
-  case RdKafka::Event::EVENT_LOG:
-    ELOG_WARN << BLUE("EVENT_LOG: ") << event.fac() << event.str();
-    break;
-  case RdKafka::Event::EVENT_THROTTLE:
-    ELOG_TRACE << RED("EVENT_THROTTLE: ") << event.broker_name() << event.str();
-    break;
+    case RdKafka::Event::EVENT_ERROR:ELOG_ERROR << RED("错误: ") << event.str();
+      break;
+#ifdef HD_LOG_LEVEL_TRACE
+      case RdKafka::Event::EVENT_STATS:
+        ELOG_TRACE << BLUE("EVENT_STATS: ") << event.str();
+        break;
+#endif
+    case RdKafka::Event::EVENT_LOG:ELOG_WARN << BLUE("EVENT_LOG: ") << event.fac() << event.str();
+      break;
+#ifdef HD_LOG_LEVEL_TRACE
+      case RdKafka::Event::EVENT_THROTTLE:
+        ELOG_TRACE << RED("EVENT_THROTTLE: ") << event.broker_name() << event.str();
+        break;
+#endif
+    default:break;
   }
 }

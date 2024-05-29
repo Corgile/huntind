@@ -18,17 +18,18 @@ public:
 
   ~TaskExecutor();
 
-  void AddTask(std::function<void()> task);
+  void AddTask(std::function<void()> const& task);
 
   void Run();
 
 private:
-  void SetThreadAffinity(int cpu_id);
+  static void SetThreadAffinity(int cpu_id);
 
   void CleanFutures();
 
   std::thread mThread;
-  std::mutex mMutex;
+  std::mutex mtxTaskQue;
+  std::mutex mtxFutureQue;
   std::condition_variable mCondition;
   std::atomic_bool mIsRunning;
   std::queue<std::pair<std::function<void()>, int>> mTasks;

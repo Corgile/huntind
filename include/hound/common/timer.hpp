@@ -11,7 +11,7 @@
 #include <string_view>
 
 namespace hd ::type {
-template <typename T = std::chrono::milliseconds>
+template<typename T = std::chrono::milliseconds>
 struct Timer {
 public:
   [[maybe_unused]]
@@ -50,10 +50,10 @@ public:
     std::string _msg;
     auto m = std::to_string(__elapsed);
     _msg.append(task_name)
-        .append(m).append(unit())
-        .append(9 - m.size(), ' ');
+      .append(m).append(unit())
+      .append(9 - m.size(), ' ');
     if (elapsed == std::numeric_limits<size_t>::max()) {
-      ELOG_INFO << _msg;
+      std::cout << _msg;
     } else {
       elapsed = __elapsed;
       msg_buf = _msg;

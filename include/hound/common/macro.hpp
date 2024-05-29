@@ -5,7 +5,7 @@
 #ifndef HOUND_MACROS_HPP
 #define HOUND_MACROS_HPP
 
-#if defined(HD_LOG_ERROR) || defined(HD_LOG_WARN) || defined(HD_LOG_INFO) || defined(HD_LOG_DEBUG)
+#if defined(HD_ENABLE_LOG)
   #include <hound/dbg/dbg.hpp>
   #include <ylt/easylog.hpp>
 #endif

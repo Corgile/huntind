@@ -7,7 +7,7 @@
 void hd::util::SetFilter(pcap_handle_t& handle) {
   if (opt.filter.empty() or handle == nullptr) { return; }
   constexpr bpf_u_int32 net{0};
-  bpf_program fp;
+  bpf_program fp{};
   scope_guard _guard([&fp] {
     pcap_freecode(&fp);
   });

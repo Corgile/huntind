@@ -36,8 +36,6 @@ private:
   pcap_handle_t mHandle{nullptr};
   std::vector<std::thread> mConsumerTasks;
   TaskExecutor mTaskExecutor;
-  // std::atomic<int> current{0};
-  // raw_vector mPacketQueue[2];
   DoubleBufferQueue<raw_packet> doubleBufferQueue;
 };
 } // type

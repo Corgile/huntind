@@ -16,11 +16,10 @@
  * @return encoded data on GPU
  */
 torch::Tensor
-BatchEncode(
-  torch::jit::Module* model, const torch::Tensor& data,
-  int64_t batch_size, int64_t max_batch, bool stay_on_gpu);
+BatchEncode(torch::jit::Module* model, const torch::Tensor& data, int64_t batch_size);
 
 void print_shape(torch::Tensor const& tensor);
+
 void print_tensor(torch::Tensor const& tensor);
 
 #endif // ENCODER_LIBRARY_HPP
