@@ -6,16 +6,16 @@ SET(TARGET hd-torch-kafka-mt)
 INCLUDE(cmake/ansi.cmake)
 
 #@format:off
-OPTION(USE_CUDA         "Use CUDA"              ON)
-OPTION(USE_JE_MALLOC    "Use jemalloc"          OFF)
-OPTION(USE_TC_MALLOC    "Use tcmalloc"          OFF)
+OPTION(HD_USE_CUDA      "Use CUDA"              ON)
+OPTION(HD_USE_JE_MALLOC "Use jemalloc"          OFF)
+OPTION(HD_USE_TC_MALLOC "Use tcmalloc"          OFF)
 OPTION(HD_ENABLE_LOGS   "enable log file"       ON)
 OPTION(HD_CONSOLE_LOG   "enable log console"    OFF)
 OPTION(HD_USE_THREADS   "Use Threads::Threads"  OFF)
 #@format:on
 INCLUDE(cmake/log-level.cmake)
 
-IF(USE_CUDA)
+IF(HD_USE_CUDA)
   MESSAGE(STATUS "${BoldBlue}使用 CUDA: ${BoldCyan}${USE_CUDA}${ColorReset}")
   SET(CMAKE_CUDA_ARCHITECTURES 86)
   SET(CMAKE_CUDA_COMPILER /usr/local/cuda/bin/nvcc)
