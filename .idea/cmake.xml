@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CMakeSharedSettings">
+    <configurations>
+      <configuration PROFILE_NAME="debug" ENABLED="true" GENERATION_DIR="cmake-build/gcc/debug" CONFIG_NAME="Debug" TOOLCHAIN_NAME="CC" GENERATION_OPTIONS="-DHD_ENABLE_LOGS:BOOL=ON -DHD_CONSOLE_LOG:BOOL=ON -DHD_USE_JE_MALLOC:BOOL=OFF -DHD_LOG_LEVEL:STRING=DEBUG">
+        <ADDITIONAL_GENERATION_ENVIRONMENT>
+          <envs>
+            <env name="TORCH_PATH" value="$PROJECT_DIR$/../../environment/SharedLib/libtorch" />
+            <env name="CMAKE_TOOLCHAIN_FILE" value="$PROJECT_DIR$/../../environment/SharedLib/vcpkg/scripts/buildsystems/vcpkg.cmake" />
+          </envs>
+        </ADDITIONAL_GENERATION_ENVIRONMENT>
+      </configuration>
+      <configuration PROFILE_NAME="release" ENABLED="true" GENERATION_DIR="cmake-build/gcc/release" CONFIG_NAME="Release" TOOLCHAIN_NAME="CC" GENERATION_OPTIONS="-DHD_ENABLE_LOGS:BOOL=ON -DHD_CONSOLE_LOG:BOOL=ON -DHD_USE_JE_MALLOC:BOOL=OFF -DHD_LOG_LEVEL:STRING=INFO">
+        <ADDITIONAL_GENERATION_ENVIRONMENT>
+          <envs>
+            <env name="TORCH_PATH" value="$PROJECT_DIR$/../../environment/SharedLib/libtorch" />
+            <env name="CMAKE_TOOLCHAIN_FILE" value="$PROJECT_DIR$/../../environment/SharedLib/vcpkg/scripts/buildsystems/vcpkg.cmake" />
+          </envs>
+        </ADDITIONAL_GENERATION_ENVIRONMENT>
+      </configuration>
+      <configuration PROFILE_NAME="debug-je" ENABLED="true" GENERATION_DIR="cmake-build/gcc/debug-je" CONFIG_NAME="Debug" TOOLCHAIN_NAME="CC" GENERATION_OPTIONS="-DHD_ENABLE_LOGS:BOOL=ON -DHD_CONSOLE_LOG:BOOL=ON -DHD_USE_JE_MALLOC:BOOL=ON -DHD_LOG_LEVEL:STRING=DEBUG">
+        <ADDITIONAL_GENERATION_ENVIRONMENT>
+          <envs>
+            <env name="TORCH_PATH" value="$PROJECT_DIR$/../../environment/SharedLib/libtorch" />
+            <env name="CMAKE_TOOLCHAIN_FILE" value="$PROJECT_DIR$/../../environment/SharedLib/vcpkg/scripts/buildsystems/vcpkg.cmake" />
+          </envs>
+        </ADDITIONAL_GENERATION_ENVIRONMENT>
+      </configuration>
+      <configuration PROFILE_NAME="release-je" ENABLED="true" GENERATION_DIR="cmake-build/gcc/release-je" CONFIG_NAME="Release" TOOLCHAIN_NAME="CC" GENERATION_OPTIONS="-DHD_ENABLE_LOGS:BOOL=ON -DHD_USE_JE_MALLOC:BOOL=ON -DHD_LOG_LEVEL:STRING=INFO">
+        <ADDITIONAL_GENERATION_ENVIRONMENT>
+          <envs>
+            <env name="TORCH_PATH" value="$PROJECT_DIR$/../../environment/SharedLib/libtorch" />
+            <env name="CMAKE_TOOLCHAIN_FILE" value="$PROJECT_DIR$/../../environment/SharedLib/vcpkg/scripts/buildsystems/vcpkg.cmake" />
+          </envs>
+        </ADDITIONAL_GENERATION_ENVIRONMENT>
+      </configuration>
+      <configuration PROFILE_NAME="debug-tc" ENABLED="true" GENERATION_DIR="cmake-build/gcc/debug-tc" CONFIG_NAME="Debug" TOOLCHAIN_NAME="CC" GENERATION_OPTIONS="-DHD_ENABLE_LOGS:BOOL=ON -DHD_CONSOLE_LOG:BOOL=ON -DHD_USE_JE_MALLOC:BOOL=ON -DHD_LOG_LEVEL:STRING=DEBUG">
+        <ADDITIONAL_GENERATION_ENVIRONMENT>
+          <envs>
+            <env name="TORCH_PATH" value="$PROJECT_DIR$/../../environment/SharedLib/libtorch" />
+            <env name="CMAKE_TOOLCHAIN_FILE" value="$PROJECT_DIR$/../../environment/SharedLib/vcpkg/scripts/buildsystems/vcpkg.cmake" />
+          </envs>
+        </ADDITIONAL_GENERATION_ENVIRONMENT>
+      </configuration>
+      <configuration PROFILE_NAME="release-tc" ENABLED="true" GENERATION_DIR="cmake-build/gcc/release-tc" CONFIG_NAME="Release" TOOLCHAIN_NAME="CC" GENERATION_OPTIONS="-DHD_ENABLE_LOGS:BOOL=ON -DHD_USE_JE_MALLOC:BOOL=ON -DHD_LOG_LEVEL:STRING=INFO">
+        <ADDITIONAL_GENERATION_ENVIRONMENT>
+          <envs>
+            <env name="TORCH_PATH" value="$PROJECT_DIR$/../../environment/SharedLib/libtorch" />
+            <env name="CMAKE_TOOLCHAIN_FILE" value="$PROJECT_DIR$/../../environment/SharedLib/vcpkg/scripts/buildsystems/vcpkg.cmake" />
+          </envs>
+        </ADDITIONAL_GENERATION_ENVIRONMENT>
+      </configuration>
+    </configurations>
+  </component>
+</project>
