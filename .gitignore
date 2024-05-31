@@ -9,4 +9,5 @@ pcapfile
 vendor
 generated
 core
-util/*.log
+/scripts/*.log
+/scripts/*.png

@@ -38,6 +38,7 @@ def main(tick_ : int):
     plt.tight_layout()  # 自动调整子图参数,使之填充整个图像区域
     # 保存为PNG
     plt.savefig('system_usage.png')
+    plt.show()
 
 if __name__ == '__main__':
     if len(sys.argv) < 2:
