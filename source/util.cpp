@@ -11,13 +11,13 @@ void hd::util::SetFilter(pcap_handle_t& handle) {
   scope_guard _guard([&fp] {
     pcap_freecode(&fp);
   });
-  ELOG_DEBUG << "包过滤表达式: " << opt.filter;
+  ELOG_INFO << CYAN("packet filter: ") << opt.filter;
   if (pcap_compile(handle.get(), &fp, opt.filter.c_str(), 0, net) == -1) {
-    ELOG_ERROR << "解析 Filter 失败: " << opt.filter << pcap_geterr(handle.get());
+    ELOG_FATAL << "解析 Filter 失败: " << opt.filter << pcap_geterr(handle.get());
     exit(EXIT_FAILURE);
   }
   if (pcap_setfilter(handle.get(), &fp) == -1) {
-    ELOG_ERROR << "设置 Filter 失败: " << pcap_geterr(handle.get());
+    ELOG_FATAL << "设置 Filter 失败: " << pcap_geterr(handle.get());
     exit(EXIT_FAILURE);
   }
   // pcap_freecode(&fp);
@@ -28,7 +28,7 @@ void hd::util::OpenLiveHandle(capture_option& option, pcap_handle_t& handle) {
   if (option.device.empty()) {
     pcap_if_t* l;
     if (int32_t const rv{pcap_findalldevs(&l, ByteBuffer)}; rv == -1) {
-      ELOG_ERROR << "找不到默认网卡设备" << ByteBuffer;
+      ELOG_FATAL << "找不到默认网卡设备" << ByteBuffer;
       exit(EXIT_FAILURE);
     }
     option.device = l->name;
@@ -38,7 +38,7 @@ void hd::util::OpenLiveHandle(capture_option& option, pcap_handle_t& handle) {
   /* open device */
   handle.reset(pcap_open_live(option.device.c_str(), opt.total_bytes, 1, 1000, ByteBuffer));
   if (handle == nullptr) {
-    ELOG_ERROR << "监听网卡设备失败: " << ByteBuffer;
+    ELOG_FATAL << "监听网卡设备失败: " << ByteBuffer;
     exit(EXIT_FAILURE);
   }
   SetFilter(handle);
@@ -135,15 +135,14 @@ void hd::util::ParseOptions(capture_option& arg, int argc, char** argv) {
         break;
       case 'J': j = std::stoi(optarg);
         if (j < 1) {
-          ELOG_ERROR << "worker 必须 >= 1";
+          ELOG_FATAL << "worker 必须 >= 1";
           exit(EXIT_FAILURE);
         }
         arg.workers = j;
-        ELOG_INFO << "Callback 线程: " << j;
         break;
       case 'S': arg.stride = std::stoi(optarg);
         if (arg.stride & arg.stride - 1 or arg.stride == 0) {
-          ELOG_ERROR << "-S,  --stride 只能是1,2,4,8,16,32,64, 现在是: " << arg.stride;
+          ELOG_FATAL << "-S,  --stride 只能是1,2,4,8,16,32,64, 现在是: " << arg.stride;
           exit(EXIT_FAILURE);
         }
         break;

@@ -7,13 +7,14 @@
 #include "hound/common/global.hpp"
 
 TaskExecutor::~TaskExecutor() {
+  mIsRunning = false;
   {
     std::lock_guard<std::mutex> lock(mtxTaskQue);
-    mIsRunning = false;
     mCondition.notify_all();
   }
   if (mThread.joinable()) mThread.join();
-  CleanFutures();
+  mSleeper.wakeup();
+  mCleanFutureThread.join();
 }
 
 void TaskExecutor::AddTask(std::function<void()> const& task) {
@@ -23,7 +24,6 @@ void TaskExecutor::AddTask(std::function<void()> const& task) {
     mTasks.emplace(task, cpu_id);
   }
   mCondition.notify_one();
-  CleanFutures();
 }
 
 void TaskExecutor::Run() {
@@ -36,7 +36,7 @@ void TaskExecutor::Run() {
       if (!mIsRunning && mTasks.empty()) {
         break;
       }
-      std::tie(task_func, cpu_id) = std::move(mTasks.front());
+      std::tie(task_func, cpu_id) = mTasks.front();
       mTasks.pop();
     }
     auto task_future = std::async(std::launch::async, [cpu_id, task_ = std::move(task_func)] {
@@ -48,7 +48,6 @@ void TaskExecutor::Run() {
       mFutures.emplace_back(std::move(task_future));
     }
   }
-  CleanFutures();
 }
 
 void TaskExecutor::SetThreadAffinity(int cpu_id) {
@@ -65,4 +64,13 @@ void TaskExecutor::CleanFutures() {
     return f.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
   });
   mFutures.erase(removeItems.begin(), removeItems.end());
+}
+
+TaskExecutor::TaskExecutor() : mIsRunning(true), mThread(&TaskExecutor::Run, this) {
+  mCleanFutureThread = std::thread([this] {
+    while (mIsRunning) {
+      mSleeper.sleep_for(std::chrono::seconds(60));
+      this->CleanFutures();
+    }
+  });
 }

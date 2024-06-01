@@ -6,10 +6,30 @@
 #define HOUND_MACROS_HPP
 
 #if defined(HD_ENABLE_LOG)
+
   #include <hound/dbg/dbg.hpp>
   #include <ylt/easylog.hpp>
+
 #endif
 #define Seconds(x)  std::chrono::seconds(x)
+#define EmptyStatement (static_cast<void>(0))
+#ifdef HD_LOG_LEVEL_TRACE
+  #define ETRACE(x) x
+#else
+  #define ETRACE(x) EmptyStatement
+#endif
+
+#ifdef HD_LOG_LEVEL_DEBUG
+  #define EDEBUG(x) x
+#else
+  #define EDEBUG(x) EmptyStatement
+#endif
+
+#ifdef HD_LOG_LEVEL_INFO
+  #define EINFO(x) x
+#else
+  #define EINFO(x) EmptyStatement
+#endif
 
 #pragma region 常量
 #ifndef XXX_PADSIZE

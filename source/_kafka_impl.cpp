@@ -33,9 +33,7 @@ void hd::sink::KafkaSink::Impl::merge_to_existing_flow(parsed_vector& _parsed_li
       data.swap(existing);
       assert(existing.empty());
       this_->doubleBufferQueue.enqueue({_parsed.mKey, data});
-#ifdef HD_LOG_LEVEL_TRACE
-      ELOG_TRACE << "加入编码队列: " << this_->doubleBufferQueue.size();
-#endif
+      ETRACE(ELOG_TRACE << "加入编码队列: " << this_->doubleBufferQueue.size());
     }
     existing.emplace_back(_parsed);
     assert(existing.size() <= opt.max_packets);
@@ -65,13 +63,11 @@ encode_flow_tensors(flow_vector::const_iterator _begin,
   }
   auto aligned_count = std::to_string(count);
   aligned_count.insert(0, 6 - aligned_count.size(), ' ');
-#ifdef HD_LOG_LEVEL_INFO
-  ELOG_INFO << GREEN("OK: ")
-            << YELLOW("On") << "CUDA:\x1b[36;1m" << device.index() << "\x1b[0m| "
-            << YELLOW("Num:") << aligned_count << "| "
-            << YELLOW("Time:") << msg << "| "
-            << GREEN("Avg:") << count * 1000000 / _us << " f/s";
-#endif
+  EINFO(ELOG_INFO << GREEN("OK: ")
+                  << YELLOW("On") << "CUDA:\x1b[36;1m" << device.index() << "\x1b[0m| "
+                  << YELLOW("Num:") << aligned_count << "| "
+                  << YELLOW("Time:") << msg << "| "
+                  << GREEN("Avg:") << count * 1000000 / _us << " f/s");
   return encodings.cpu();
 }
 

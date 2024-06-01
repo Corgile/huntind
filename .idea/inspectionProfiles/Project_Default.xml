@@ -11,5 +11,12 @@
     <inspection_tool class="CppRedundantQualifier" enabled="false" level="HINT" enabled_by_default="false" />
     <inspection_tool class="CppTooWideScope" enabled="false" level="WEAK WARNING" enabled_by_default="false" />
     <inspection_tool class="CppTooWideScopeInitStatement" enabled="false" level="HINT" enabled_by_default="false" />
+    <inspection_tool class="PyPep8Inspection" enabled="true" level="WEAK WARNING" enabled_by_default="true">
+      <option name="ignoredErrors">
+        <list>
+          <option value="E701" />
+        </list>
+      </option>
+    </inspection_tool>
   </profile>
 </component>

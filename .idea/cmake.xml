@@ -10,7 +10,7 @@
           </envs>
         </ADDITIONAL_GENERATION_ENVIRONMENT>
       </configuration>
-      <configuration PROFILE_NAME="release" ENABLED="true" GENERATION_DIR="cmake-build/gcc/release" CONFIG_NAME="Release" TOOLCHAIN_NAME="CC" GENERATION_OPTIONS="-DHD_ENABLE_LOGS:BOOL=ON -DHD_CONSOLE_LOG:BOOL=ON -DHD_USE_JE_MALLOC:BOOL=OFF -DHD_LOG_LEVEL:STRING=INFO">
+      <configuration PROFILE_NAME="release" ENABLED="true" GENERATION_DIR="cmake-build/gcc/release" CONFIG_NAME="Release" TOOLCHAIN_NAME="CC" GENERATION_OPTIONS="-DHD_ENABLE_LOGS:BOOL=ON -DHD_CONSOLE_LOG:BOOL=OFF -DHD_USE_JE_MALLOC:BOOL=ON -DHD_LOG_LEVEL:STRING=INFO">
         <ADDITIONAL_GENERATION_ENVIRONMENT>
           <envs>
             <env name="TORCH_PATH" value="$PROJECT_DIR$/../../environment/SharedLib/libtorch" />
@@ -26,7 +26,7 @@
           </envs>
         </ADDITIONAL_GENERATION_ENVIRONMENT>
       </configuration>
-      <configuration PROFILE_NAME="release-je" ENABLED="true" GENERATION_DIR="cmake-build/gcc/release-je" CONFIG_NAME="Release" TOOLCHAIN_NAME="CC" GENERATION_OPTIONS="-DHD_ENABLE_LOGS:BOOL=ON -DHD_USE_JE_MALLOC:BOOL=ON -DHD_LOG_LEVEL:STRING=INFO">
+      <configuration PROFILE_NAME="release-je" ENABLED="true" GENERATION_DIR="cmake-build/gcc/release-je" CONFIG_NAME="Release" TOOLCHAIN_NAME="CC" GENERATION_OPTIONS="-DHD_ENABLE_LOGS:BOOL=ON -DHD_CONSOLE_LOG:BOOL=OFF -DHD_USE_JE_MALLOC:BOOL=ON -DHD_LOG_LEVEL:STRING=INFO">
         <ADDITIONAL_GENERATION_ENVIRONMENT>
           <envs>
             <env name="TORCH_PATH" value="$PROJECT_DIR$/../../environment/SharedLib/libtorch" />
@@ -42,7 +42,7 @@
           </envs>
         </ADDITIONAL_GENERATION_ENVIRONMENT>
       </configuration>
-      <configuration PROFILE_NAME="release-tc" ENABLED="true" GENERATION_DIR="cmake-build/gcc/release-tc" CONFIG_NAME="Release" TOOLCHAIN_NAME="CC" GENERATION_OPTIONS="-DHD_ENABLE_LOGS:BOOL=ON -DHD_USE_JE_MALLOC:BOOL=ON -DHD_LOG_LEVEL:STRING=INFO">
+      <configuration PROFILE_NAME="release-tc" ENABLED="true" GENERATION_DIR="cmake-build/gcc/release-tc" CONFIG_NAME="Release" TOOLCHAIN_NAME="CC" GENERATION_OPTIONS="-DHD_ENABLE_LOGS:BOOL=ON -DHD_CONSOLE_LOG:BOOL=OFF -DHD_USE_JE_MALLOC:BOOL=ON -DHD_LOG_LEVEL:STRING=INFO">
         <ADDITIONAL_GENERATION_ENVIRONMENT>
           <envs>
             <env name="TORCH_PATH" value="$PROJECT_DIR$/../../environment/SharedLib/libtorch" />

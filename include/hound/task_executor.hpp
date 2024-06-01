@@ -11,10 +11,11 @@
 #include <thread>
 #include <mutex>
 #include <condition_variable>
+#include "hound/interruptible_sleep.hpp"
 
 class TaskExecutor {
 public:
-  TaskExecutor() : mIsRunning(true), mThread(&TaskExecutor::Run, this) {}
+  TaskExecutor();
 
   ~TaskExecutor();
 
@@ -28,8 +29,10 @@ private:
   void CleanFutures();
 
   std::thread mThread;
+  std::thread mCleanFutureThread;
   std::mutex mtxTaskQue;
   std::mutex mtxFutureQue;
+  InterruptibleSleep mSleeper;
   std::condition_variable mCondition;
   std::atomic_bool mIsRunning;
   std::queue<std::pair<std::function<void()>, int>> mTasks;

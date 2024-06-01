@@ -87,7 +87,9 @@ inline void main_loop() {
 
 int main(const int argc, char* argv[]) {
   easylog::Severity min_severity;
-#if defined(HD_LOG_LEVEL_DEBUG)
+#if defined(HD_LOG_LEVEL_TRACE)
+  min_severity = Severity::TRACE;
+#elif defined(HD_LOG_LEVEL_DEBUG)
   min_severity = Severity::DEBUG;
 #elif defined(HD_LOG_LEVEL_INFO)
   min_severity = Severity::INFO;
@@ -97,13 +99,11 @@ int main(const int argc, char* argv[]) {
   min_severity = Severity::ERROR;
 #elif defined(HD_LOG_LEVEL_FATAL)
   min_severity = Severity::FATAL;
-#elif defined(HD_LOG_LEVEL_TRACE)
-  min_severity = Severity::TRACE;
 #endif
 #ifdef HD_ENABLE_CONSOLE_LOG
   enable_console = true;
 #endif
-  init_log(min_severity, "log", true, enable_console, 10_MB, 4);
+  init_log(min_severity, "log", true, enable_console, 10_MB, 4, !enable_console);
   init_parameters(argc, argv);
   register_handler();
   main_loop();

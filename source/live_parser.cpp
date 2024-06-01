@@ -9,9 +9,6 @@
 using namespace hd::global;
 
 hd::type::LiveParser::LiveParser() {
-#ifdef HD_LOG_LEVEL_DEBUG
-  ELOG_DEBUG << "初始化连接配置";
-#endif
   util::OpenLiveHandle(opt, mHandle);
   mConsumerTasks.reserve(opt.workers);
   for (int i = 0; i < opt.workers; ++i) {
@@ -53,7 +50,7 @@ void hd::type::LiveParser::stopCapture() {
   pcap_breakloop(mHandle.get());
   is_running = false;
   easylog::set_console(true);
-  ELOG_INFO << YELLOW("正在处理剩下的数据");
+  EINFO(ELOG_INFO << YELLOW("正在处理剩下的数据"));
 }
 
 hd::type::LiveParser::~LiveParser() {
@@ -66,9 +63,7 @@ hd::type::LiveParser::~LiveParser() {
   std::printf("%s%d\n", CYAN("num_consumed_packet = "), num_consumed_packet.load());
   std::printf("%s%d\n", CYAN("num_written_csv = "), num_written_csv.load());
 #endif //- #if defined(BENCHMARK)
-#ifdef HD_LOG_LEVEL_DEBUG
-  ELOG_DEBUG << CYAN("处理完成， raw包队列剩余 ") << doubleBufferQueue.size();
-#endif
+  EDEBUG(ELOG_DEBUG << CYAN("处理完成， raw包队列剩余 ") << doubleBufferQueue.size());
 }
 
 bool hd::type::LiveParser::isRunning() const {
