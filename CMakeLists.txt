@@ -1,7 +1,10 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 3.25)
 PROJECT(hound-torch)
 SET(CMAKE_CXX_STANDARD 20)
-SET(TARGET hd-torch-kafka-mt)
+
+IF(${CMAKE_BUILD_TARGET}x STREQUAL "x")
+  SET(CMAKE_BUILD_TARGET hd-torch-kafka-mt)
+ENDIF()
 
 INCLUDE(cmake/ansi.cmake)
 
@@ -21,7 +24,6 @@ IF(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
 ENDIF()
 
 IF(HD_USE_CUDA)
-  MESSAGE(STATUS "${BoldBlue}使用 CUDA: ${BoldCyan}${HD_USE_CUDA}${ColorReset}")
   SET(CMAKE_CUDA_ARCHITECTURES 86)
   SET(CMAKE_CUDA_COMPILER /usr/local/cuda/bin/nvcc)
   SET(CAFFE2_USE_CUDNN ON)
@@ -50,13 +52,17 @@ INCLUDE_DIRECTORIES(
 )
 
 ADD_SUBDIRECTORY(${PROJECT_SOURCE_DIR}/source)
-ADD_EXECUTABLE(${TARGET} main.cpp ${SOURCE_FILES})
+ADD_EXECUTABLE(${CMAKE_BUILD_TARGET} main.cpp ${SOURCE_FILES})
 
 IF(HD_USE_THREADS)
-  MESSAGE(STATUS "${BoldBlue}Using Threads::Threads: ${BoldCyan}${HD_USE_THREADS}${ColorReset}")
   FIND_PACKAGE(Threads REQUIRED)
-  TARGET_LINK_LIBRARIES(${TARGET} PRIVATE Threads::Threads)
+  TARGET_LINK_LIBRARIES(${CMAKE_BUILD_TARGET} PRIVATE Threads::Threads)
 ENDIF()
 
-TARGET_LINK_LIBRARIES(${TARGET} PRIVATE hd_source)
-MESSAGE(STATUS "${BoldRed}Target:  ${TARGET}${ColorReset}")
+TARGET_LINK_LIBRARIES(${CMAKE_BUILD_TARGET} PRIVATE hd_source)
+
+MESSAGE(STATUS "${BoldBlue}使用 Threads::Threads: ${BoldCyan}${HD_USE_THREADS}${ColorReset}")
+MESSAGE(STATUS "${BoldBlue}使用 jemalloc: ${BoldCyan}${HD_USE_JE_MALLOC}${ColorReset}")
+MESSAGE(STATUS "${BoldBlue}使用 tcmalloc: ${BoldCyan}${HD_USE_TC_MALLOC}${ColorReset}")
+MESSAGE(STATUS "${BoldBlue}使用 CUDA: ${BoldCyan}${HD_USE_CUDA}${ColorReset}")
+MESSAGE(STATUS "${BoldRed}二进制程序:  ${CMAKE_BUILD_TARGET}${ColorReset}")

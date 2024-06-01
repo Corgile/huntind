@@ -9,7 +9,6 @@
 #include <memory>
 #include <librdkafka/rdkafkacpp.h>
 #include <hound/common/macro.hpp>
-#include <hound/no_producer_err.hpp>
 
 namespace hd::sink {
 class ManagedProducer {

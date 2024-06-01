@@ -29,7 +29,6 @@ using namespace easylog;
 static int pid{0};
 static int ppid{0};
 static int Signal{0};
-bool enable_console{false};
 
 static LiveParser* pLiveParser{nullptr};
 
@@ -79,31 +78,14 @@ static void init_parameters(const int argc, char* argv[]) {
 }
 
 inline void main_loop() {
-  set_console(enable_console);
+  set_console(enableConsole);
   pLiveParser = new LiveParser();
   pLiveParser->startCapture();
   delete pLiveParser;
 }
 
 int main(const int argc, char* argv[]) {
-  easylog::Severity min_severity;
-#if defined(HD_LOG_LEVEL_TRACE)
-  min_severity = Severity::TRACE;
-#elif defined(HD_LOG_LEVEL_DEBUG)
-  min_severity = Severity::DEBUG;
-#elif defined(HD_LOG_LEVEL_INFO)
-  min_severity = Severity::INFO;
-#elif defined(HD_LOG_LEVEL_WARN)
-  min_severity = Severity::WARN;
-#elif defined(HD_LOG_LEVEL_ERROR)
-  min_severity = Severity::ERROR;
-#elif defined(HD_LOG_LEVEL_FATAL)
-  min_severity = Severity::FATAL;
-#endif
-#ifdef HD_ENABLE_CONSOLE_LOG
-  enable_console = true;
-#endif
-  init_log(min_severity, "log", true, enable_console, 10_MB, 4, !enable_console);
+  init_log(minSeverity, "log", true, enableConsole, 10_MB, 4, realTimeFlush);
   init_parameters(argc, argv);
   register_handler();
   main_loop();
