@@ -24,9 +24,7 @@ int32_t MyPartitionCB::partitioner_cb(RdKafka::Topic const* topic,
   easylog::logger<>::instance();
   const int32_t partition = last_partition++ % partition_cnt;
   last_partition = partition;
-#ifdef HD_LOG_LEVEL_DEBUG
-  ELOG_DEBUG << "消息将会发送到分区: " << partition;
-#endif
+  ETRACE(ELOG_TRACE << "消息将会发送到分区: " << partition);
   return partition;
 }
 
